@@ -1,7 +1,11 @@
 /* Solution Atlas — catalog search & filtering.
    Progressive enhancement: without JS the full card grid is already rendered.
    Search uses Fuse.js over search-index.json (pack + per-document entries);
-   facets filter the server-rendered cards. */
+   facets filter the server-rendered cards.
+
+   The search index (~800 KB) is NOT fetched on page load: it is loaded lazily
+   on first search interaction, so visitors who only browse or use the facet
+   filters never pay for it. */
 
 (function () {
   "use strict";
@@ -11,39 +15,59 @@
   var hits = document.getElementById("hits");
   var count = document.getElementById("count");
   var clearBtn = document.getElementById("clear");
+  var status = document.getElementById("index-status");
   if (!q || !cards) return;
 
   var cardEls = Array.prototype.slice.call(cards.querySelectorAll(".card"));
   var totalPacks = cardEls.length;
   var active = { domain: new Set(), maturity: new Set(), verification: new Set() };
   var fuse = null;
-  var index = [];
+  var index = null;
+  var indexLoading = null;
   var emptyEl = null;
 
-  // ---- load the search index -------------------------------------------
-  fetch("search-index.json")
-    .then(function (r) { return r.json(); })
-    .then(function (data) {
-      index = data;
-      if (typeof Fuse === "undefined") return;
-      fuse = new Fuse(data, {
-        includeScore: true,
-        includeMatches: true,
-        ignoreLocation: true,
-        threshold: 0.34,
-        minMatchCharLength: 2,
-        keys: [
-          { name: "t", weight: 0.42 },
-          { name: "z", weight: 0.2 },
-          { name: "g", weight: 0.16 },
-          { name: "x", weight: 0.22 }
-        ]
+  function setStatus(message) {
+    if (!status) return;
+    status.textContent = message || "";
+    status.hidden = !message;
+  }
+
+  // ---- search index: loaded lazily, exactly once -------------------------
+  function loadIndex() {
+    if (index || indexLoading) return indexLoading || Promise.resolve();
+    if (typeof Fuse === "undefined") {
+      setStatus("Search is unavailable — the search library failed to load.");
+      return Promise.resolve();
+    }
+    setStatus("Loading search index…");
+    indexLoading = fetch("search-index.json")
+      .then(function (r) {
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        return r.json();
+      })
+      .then(function (data) {
+        index = data;
+        fuse = new Fuse(data, {
+          includeScore: true,
+          includeMatches: true,
+          ignoreLocation: true,
+          threshold: 0.34,
+          minMatchCharLength: 2,
+          keys: [
+            { name: "t", weight: 0.42 },
+            { name: "z", weight: 0.2 },
+            { name: "g", weight: 0.16 },
+            { name: "n", weight: 0.12 },
+            { name: "x", weight: 0.1 }
+          ]
+        });
+        setStatus("");
+      })
+      .catch(function () {
+        setStatus("Search index unavailable — facet filtering still works.");
       });
-      render();
-    })
-    .catch(function () {
-      /* index unavailable — facet filtering still works */
-    });
+    return indexLoading;
+  }
 
   // ---- facets -----------------------------------------------------------
   document.querySelectorAll(".chip").forEach(function (chip) {
@@ -72,7 +96,15 @@
   }
 
   // ---- input ------------------------------------------------------------
-  q.addEventListener("input", render);
+  q.addEventListener("input", function () {
+    render();
+    if (q.value.trim()) loadIndex();
+  });
+  q.addEventListener("focus", function () {
+    // Warm the index once the visitor shows search intent; do not block the
+    // very first render on the network.
+    if (q.value.trim()) loadIndex();
+  });
 
   document.addEventListener("keydown", function (e) {
     if (e.key === "/" && document.activeElement !== q) {
@@ -110,6 +142,18 @@
 
     if (query && fuse) {
       showHits(query);
+    } else if (query && !index) {
+      // Query typed, index not ready yet (or permanently unavailable).
+      cards.hidden = true;
+      hits.hidden = false;
+      hits.innerHTML = "";
+      if (count) count.textContent = "";
+      var waiting = document.createElement("p");
+      waiting.className = "count";
+      waiting.textContent = indexLoading
+        ? "Loading the search index…"
+        : "Search is unavailable — the index could not be loaded. Use the filters below.";
+      hits.appendChild(waiting);
     } else {
       showCards(query);
     }
