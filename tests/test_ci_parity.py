@@ -54,6 +54,30 @@ def test_pyproject_selects_families_that_are_version_stable():
     )
 
 
+def test_shebang_executable_rule_is_ignored():
+    """EXE001 is a Windows/Linux blind spot, not a defect.
+
+    The tools ship a shebang and are invoked as `python tools/<tool>.py`
+    everywhere. Git does not record the executable bit on Windows, so this
+    rule is unreachable locally yet always fails on a Linux runner — exactly
+    the shape of the failures added to CI by this branch.
+    """
+    text = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    assert "EXE001" in text, (
+        "EXE001 must stay in the ignore list; enabling it breaks every "
+        "Windows contributor's local run while only Linux CI fails"
+    )
+
+
+def test_ci_matrix_includes_both_platforms():
+    """Platform-only regressions must not wait for a contributor to hit them."""
+    text = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    assert "ubuntu-latest" in text and "windows-latest" in text, (
+        "the compatibility matrix must cover both Linux and Windows: the "
+        "shebang/exec-bit difference is invisible from a single platform"
+    )
+
+
 def test_repo_floor_is_python_311_or_newer():
     """`datetime.UTC` (used by validate-packs) requires Python 3.11+."""
     pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
