@@ -112,6 +112,17 @@ LLM's pack into verified status.
 We are the **content layer** that SDD tools need and the **open counterpart**
 of what consultancies and cloud vendors keep private.
 
+## Browse online
+
+A generated site renders the whole atlas with **full-text search and filters**
+(search "FEFO", "OEE", "federated login" and land on the right chapter):
+
+**https://embkit.github.io/open-solution-atlas/**
+
+Build it locally with `python tools/build-site.py` (writes `_site/`; the build
+fails if any internal link is broken). It publishes to GitHub Pages on every
+push to `main`.
+
 ## Shelf map
 
 The full taxonomy lives in [`docs/taxonomy.md`](docs/taxonomy.md):

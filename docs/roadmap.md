@@ -73,7 +73,8 @@ and real deployments, which is a community/field task, not an editorial one.
 - [x] External citation-link probe (`check-links.py --check-external`, CI job)
 - [ ] Glossary consistency checking (deferred: needs a term registry first)
 - [ ] Agent consumption guides: Spec Kit, BMAD-METHOD, Kiro, Claude Code, Codex
-- [ ] Pack registry index (generated, searchable static site)
+- [x] Pack registry index — **searchable static site** (`tools/build-site.py`
+  → GitHub Pages), with full-text search, facet filters and a link self-check
 - [ ] Bilingual (EN/zh-CN) parity tracking — `translations: []` across the
   shelf today (key assets are bilingual; full translation is incremental)
 

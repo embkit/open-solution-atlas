@@ -6,6 +6,19 @@ releases (individual packs carry their own `version` in `manifest.yaml`).
 
 ## [Unreleased]
 
+### Added — searchable site
+- `tools/build-site.py` — generates the static catalog into `_site/`: a
+  searchable index page, a page per pack and per document, Mermaid rendering,
+  and a **link self-check that fails the build** on any broken internal link.
+- `tools/site-assets/{style.css,app.js}` — site theme and client-side search
+  (Fuse.js over `search-index.json`) with facet filtering; progressive
+  enhancement means the catalog is fully browsable without JavaScript.
+- `.github/workflows/pages.yml` — publishes the site to GitHub Pages on every
+  push to `main`.
+- `tests/test_build_site.py` — 8 tests covering URL mapping, link rewriting,
+  Markdown/Mermaid rendering and the internal-link checker.
+- `requirements.txt`: `Markdown` added as a tool dependency.
+
 ### Added — trust & governance
 - `docs/pack-standard.v1.md` §8: dual-axis trust model (`maturity` ×
   `verification`), verification ladder, no-self-escalation rules, decay

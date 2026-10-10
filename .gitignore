@@ -25,6 +25,7 @@ desktop.ini
 /build/
 /tmp/
 .cache/
+/_site/
 
 # --- Local env / secrets ---
 .env

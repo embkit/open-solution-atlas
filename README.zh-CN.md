@@ -103,6 +103,14 @@
 我们是 SDD 工具所缺失的**内容层**，也是咨询机构与云厂商私有方案资产的**开放
 对位物**。
 
+## 在线浏览
+
+已生成一个带**全文搜索与筛选**的站点，可检索整个图谱（试试搜 “FEFO”、“OEE”、“联邦登录”，直接落到对应章节）：
+
+**https://embkit.github.io/open-solution-atlas/**
+
+本地构建：`python tools/build-site.py`（输出到 `_site/`；任何内部死链都会导致构建失败）。每次 push 到 `main` 自动发布到 GitHub Pages。
+
 ## 书架地图
 
 完整行业分类见 [`docs/taxonomy.md`](docs/taxonomy.md)：
