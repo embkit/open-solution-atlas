@@ -1,3 +1,5 @@
 # Development/test dependencies (not required to run the validators).
 -r requirements.txt
 pytest>=9.1.1,<10.0
+pytest-cov>=6.0,<7.0    # CI enforces a coverage floor (ci.yml, validate job)
+ruff>=0.6,<1.0          # CI lint (ci.yml, lint job)

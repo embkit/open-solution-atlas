@@ -1,0 +1,40 @@
+name: CodeQL
+
+# Static analysis for the repository's Python tooling. The tools parse
+# untrusted-ish YAML/Markdown from pull requests, so injection and parsing
+# bugs here would be a real supply-chain risk, not a theoretical one.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # Weekly, because code scanning baselines drift as rules improve.
+    - cron: "23 6 * * 1"
+
+jobs:
+  analyze:
+    name: Analyze (python)
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: python
+          # Only scan first-party code. The vendored libraries under
+          # tools/site-assets/vendor are pinned upstream builds; auditing them
+          # is upstream's job, and their findings would be noise here.
+          paths-ignore: tools/site-assets/vendor
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Perform CodeQL analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:python"

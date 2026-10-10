@@ -1,0 +1,34 @@
+# Ruff configuration for the repository tooling (tools/*.py, tests/).
+#
+# The baseline is the default rule set plus the checks that catch real defects
+# in this codebase (unused variables, naive datetimes, redundant nesting).
+# Line length follows the tools' existing 96-column convention.
+
+target-version = "py311"
+
+[lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes: unused imports/variables/redefinitions
+    "I",    # isort: import ordering
+    "B",    # flake8-bugbear: likely bugs and foot-guns
+    "UP",   # pyupgrade: modern syntax
+    "SIM",  # flake8-simplify
+    "RUF",  # Ruff-specific rules
+    "DTZ",  # naive datetime usage (make timezones explicit)
+    "PTH",  # prefer pathlib over os.path
+]
+
+ignore = [
+    # The repository tools are small, linear scripts; docstrings and F-strings
+    # are kept as-is rather than reformatted for length.
+    "E501",
+]
+
+[lint.per-file-ignores]
+# Tests intentionally construct objects, stub modules and alias fixtures.
+"tests/*.py" = [
+    "B011",   # assert False is fine in tests
+    "RUF059", # unpacking unused positionals is idiomatic in assertions
+]

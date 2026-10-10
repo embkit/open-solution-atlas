@@ -16,6 +16,8 @@ and reports:
 
   ERROR  referenced in a pack but defined in no pack (dangling reference)
   INFO   referenced in a pack but defined in another pack (cross-pack ref)
+         — with --strict these become errors, since a self-contained
+         (L2+) pack must not lean on IDs another pack defines
 
 Leading zeros are normalized (FR-001 == FR-1, AC-N01 == AC-N1) so packs with
 different padding conventions compare correctly.
@@ -132,6 +134,14 @@ def main() -> int:
                     f"[INFO]  {pack_id}: {norm} is a cross-pack reference "
                     f"(defined in {', '.join(sorted(all_definitions[norm]))})"
                 )
+                # --strict promotes cross-pack references to failures: a pack
+                # that leans on IDs it does not define is not self-contained,
+                # which is exactly what an L3 "agent-ready" pack must be.
+                if strict:
+                    errors.append(
+                        f"[ERROR] {pack_id}: {norm} is a cross-pack reference "
+                        f"but --strict requires in-pack definitions"
+                    )
             else:
                 errors.append(
                     f"[ERROR] {pack_id}: {norm} referenced but never defined "

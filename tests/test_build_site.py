@@ -8,7 +8,6 @@ from pathlib import Path
 
 import pytest
 
-
 # --------------------------------------------------------------------------- #
 # End-to-end build: every cached run below reads the same artifact.
 # --------------------------------------------------------------------------- #
@@ -193,7 +192,7 @@ def test_rewrite_link_cases(build_site):
 
 def test_render_markdown_keeps_mermaid_intact(build_site):
     src = "# Title\n\n```mermaid\nstateDiagram-v2\n  A --> B: x\n```\n\ntext\n"
-    html_out, plain, _toc = build_site.render_markdown(src)
+    html_out, _plain, _toc = build_site.render_markdown(src)
     assert '<pre class="mermaid">' in html_out
     assert "--&gt; B" in html_out  # escaped, so the browser restores it for mermaid
     assert "A --> B" not in html_out.split('class="mermaid"')[1][:40]

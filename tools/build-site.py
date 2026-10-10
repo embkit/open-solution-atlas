@@ -842,7 +842,6 @@ def build_index(packs: list[Pack], other_docs: list[Doc]) -> list[dict]:
             "n": cjk_ngrams(" ".join([pack.title, pack.title_zh, *pack.tags])),
         })
         for doc in pack.docs:
-            rel_inside = Path(doc.rel).relative_to(pack.rel_dir).as_posix()
             index.append({
                 "k": "doc",
                 "t": doc.title,

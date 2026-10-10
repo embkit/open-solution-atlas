@@ -145,7 +145,9 @@ def validate_manifest(pack: str, data: dict, rep: Report) -> None:
         rep.err(pack, f"last_reviewed must be YYYY-MM-DD, got {lr!r}")
         reviewed = None
     if reviewed is not None:
-        age = (datetime.date.today() - reviewed).days
+        # UTC-normalised: a naive local `today()` would make the 180-day decay
+        # warning shift by a day depending on the contributor's timezone.
+        age = (datetime.datetime.now(datetime.timezone.utc).date() - reviewed).days
         if age > 180 and data.get("verification") != "unverified":
             rep.warn(pack, f"last_reviewed is {age} days old — verification claim may have decayed (standard §8.3 rule 7)")
     for key in ("tags", "sources", "verified_by", "evidence", "maintainers"):
@@ -223,9 +225,8 @@ def validate_lifecycle(pack: str, data: dict, pack_dir: Path, rep: Report) -> No
             rep.err(pack, f"README head must name verification value `{verification}`")
         if re.search(r"verification:\s*`?unverified`?", readme_head):
             rep.err(pack, f"README head claims `verification: unverified` but manifest is {verification}")
-    if VERIFY_RANK.get(verification, 0) >= VERIFY_RANK["practitioner-reviewed"]:
-        if not data.get("verified_by"):
-            rep.err(pack, f"{verification} requires non-empty verified_by (§8.2)")
+    if VERIFY_RANK.get(verification, 0) >= VERIFY_RANK["practitioner-reviewed"] and not data.get("verified_by"):
+        rep.err(pack, f"{verification} requires non-empty verified_by (§8.2)")
     if verification == "field-proven" or maturity == "L4":
         types = {e.get("type") for e in (data.get("evidence") or []) if isinstance(e, dict)}
         if not types & {"deployment", "case-study"}:
