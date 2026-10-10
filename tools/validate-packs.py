@@ -147,7 +147,8 @@ def validate_manifest(pack: str, data: dict, rep: Report) -> None:
     if reviewed is not None:
         # UTC-normalised: a naive local `today()` would make the 180-day decay
         # warning shift by a day depending on the contributor's timezone.
-        age = (datetime.datetime.now(datetime.timezone.utc).date() - reviewed).days
+        # (datetime.UTC needs Python 3.11+, which is this repo's floor.)
+        age = (datetime.datetime.now(datetime.UTC).date() - reviewed).days
         if age > 180 and data.get("verification") != "unverified":
             rep.warn(pack, f"last_reviewed is {age} days old — verification claim may have decayed (standard §8.3 rule 7)")
     for key in ("tags", "sources", "verified_by", "evidence", "maintainers"):
