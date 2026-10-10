@@ -1,3 +1,3 @@
 # Development/test dependencies (not required to run the validators).
 -r requirements.txt
-pytest>=8.0,<10.0
+pytest>=9.1.1,<10.0
