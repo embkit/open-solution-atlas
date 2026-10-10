@@ -326,7 +326,7 @@ def load_packs(summaries: dict[str, str]) -> list[Pack]:
         pack_dir = manifest_path.parent
         try:
             data = yaml.safe_load(manifest_path.read_text(encoding="utf-8"))
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             print(f"[ERROR] {manifest_path}: {exc}", file=sys.stderr)
             continue
         if not isinstance(data, dict):
@@ -482,10 +482,7 @@ def nav_tree(pack: Pack, current_url: str, prefix: str) -> str:
         for doc in sorted(groups[group], key=lambda d: d.rel):
             rel_inside = Path(doc.rel).relative_to(pack.rel_dir).as_posix()
             name = Path(rel_inside).name
-            if name == "README.md":
-                name = "overview"
-            else:
-                name = name[:-3]
+            name = "overview" if name == "README.md" else name[:-3]
             active = ' class="active" aria-current="page"' if doc.url == current_url else ""
             href = prefix + doc.url
             out.append(f'<li><a{active} href="{href}">{html.escape(name)}</a></li>')

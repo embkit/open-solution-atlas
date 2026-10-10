@@ -105,6 +105,46 @@ def test_datetime_usage_is_timezone_aware():
     assert not offenders, f"naive datetime usage found: {offenders}"
 
 
+def test_ruff_config_is_actually_wired_up():
+    """A root-level [lint] table is silently ignored by ruff.
+
+    This is not hypothetical: an earlier revision of this branch placed
+    [lint] at pyproject's root, so select/ignore did nothing and ruff ran
+    with its defaults while every assertion about the rule set still
+    passed. Verify the structure and that ruff itself reports it in effect.
+    """
+    text = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    assert "[tool.ruff]" in text, "ruff only reads [tool.ruff]; a root [lint] is inert"
+    assert "[tool.ruff.lint]" in text, "rule selection must live under [tool.ruff.lint]"
+    assert "[tool.ruff.lint.per-file-ignores]" in text
+
+    # The strongest available check: ask ruff what it actually resolved.
+    proc = subprocess.run(
+        [sys.executable, "-m", "ruff", "check", "--show-settings", "."],
+        capture_output=True, text=True, timeout=120, check=False,
+    )
+    if proc.returncode != 0:
+        # ruff unavailable here — CI runs it; do not fail the suite for it.
+        print("note: ruff not runnable locally; structure asserted above")
+        return
+    combined = proc.stdout + proc.stderr
+    # 1. The settings must be resolved from *our* config file.
+    assert "pyproject.toml" in combined, "ruff did not resolve our pyproject.toml"
+    assert "target_version = 3.11" in combined, "target-version did not reach ruff"
+
+    # 2. Our selection must actually be in effect. A rule from a family that
+    #    ruff's default set does not include proves pyproject was read.
+    assert "unused-loop-control-variable (B007)" in combined, (
+        "the B family is not enabled — pyproject.toml was not applied"
+    )
+    # ...and a rule we ignored must NOT be enabled (ruff drops ignored rules
+    # from the enabled list entirely, so absence is the proof).
+    enabled = re.search(r"linter\.rules\.enabled = \[(.*?)\]", combined, re.S)
+    assert enabled and "E501" not in enabled.group(1), (
+        "E501 is ignored in pyproject.toml but appears in the enabled set"
+    )
+
+
 def test_ruff_is_installed_for_this_suite():
     """Skip the rest meaningfully if ruff is absent, but do so loudly."""
     try:

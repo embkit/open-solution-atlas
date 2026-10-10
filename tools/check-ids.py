@@ -117,7 +117,7 @@ def main() -> int:
         pack_id = f"packs/{pack_dir.parent.name}/{pack_dir.name}"
         defs, refs = scan_pack(pack_dir)
         per_pack[pack_id] = (pack_id, defs, refs)
-        for norm, files in defs.items():
+        for norm in defs:
             all_definitions.setdefault(norm, set()).update({pack_id})
 
     errors: list[str] = []

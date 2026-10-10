@@ -1,12 +1,13 @@
 # Ruff configuration for the repository tooling (tools/*.py, tests/).
 #
-# The baseline is the default rule set plus the checks that catch real defects
-# in this codebase (unused variables, naive datetimes, redundant nesting).
-# Line length follows the tools' existing 96-column convention.
+# Everything here MUST live under [tool.ruff] — a root-level [lint] table is
+# silently ignored by ruff, which then falls back to its default rule set and
+# makes every setting below inert.
 
+[tool.ruff]
 target-version = "py311"
 
-[lint]
+[tool.ruff.lint]
 select = [
     "E",    # pycodestyle errors
     "W",    # pycodestyle warnings
@@ -34,7 +35,7 @@ ignore = [
     "EXE001",
 ]
 
-[lint.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 # Tests intentionally construct objects, stub modules and alias fixtures.
 "tests/*.py" = [
     "B011",   # assert False is fine in tests

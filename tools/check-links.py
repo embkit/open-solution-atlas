@@ -117,7 +117,7 @@ def _probe(url: str, timeout: float) -> tuple[str, str | None]:
         if exc.code in (403, 405):
             return url, None
         return url, f"HTTP {exc.code}"
-    except Exception as exc:  # noqa: BLE001 — network layer, report verbatim
+    except Exception as exc:  # network layer — report the failure verbatim
         return url, type(exc).__name__
 
 
