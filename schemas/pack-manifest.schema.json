@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://open-solution-atlas.dev/schemas/pack-manifest.schema.json",
+  "$id": "https://raw.githubusercontent.com/embkit/open-solution-atlas/main/schemas/pack-manifest.schema.json",
   "title": "OSA Pack Manifest (osa-pack/v1)",
   "description": "Field-level schema for packs/<domain>/<slug>/manifest.yaml. Structural/maturity rules (required files per level, banner rules) are enforced by tools/validate-packs.py.",
   "type": "object",

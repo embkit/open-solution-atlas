@@ -13,7 +13,7 @@ written for human architects and AI coding agents alike.</b><br/>
 </p>
 
 <p align="center">
-<img alt="CI" src="https://github.com/open-solution-atlas/open-solution-atlas/actions/workflows/ci.yml/badge.svg">
+<img alt="CI" src="https://github.com/embkit/open-solution-atlas/actions/workflows/ci.yml/badge.svg">
 <img alt="License: CC BY-SA 4.0 + MIT" src="https://img.shields.io/badge/license-CC%20BY--SA%204.0%20%2B%20MIT-blue">
 <img alt="Pack Standard" src="https://img.shields.io/badge/pack%20standard-v1.0%20draft-orange">
 <img alt="PRs welcome" src="https://img.shields.io/badge/PRs-welcome-brightgreen">

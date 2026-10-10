@@ -15,9 +15,16 @@ issue" here usually means:
 
 ## Reporting a vulnerability
 
-**Do not open a public issue.** Email
-**security@open-solution-atlas.dev** (replace with the real address on
-publication) with:
+**Do not open a public issue.** Use GitHub's **private vulnerability
+reporting** on this repository (Security tab → "Report a vulnerability"),
+which routes only to the repository maintainers.
+
+No dedicated security email alias exists yet — this project is honest that it
+has no named maintainers ([`MAINTAINERS.md`](MAINTAINERS.md)); an address will
+be published here once one is established. Until then the GitHub private
+channel is the only supported route.
+
+Please include:
 
 - file path / pack slug and commit hash
 - description of the issue and why it is unsafe

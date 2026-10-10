@@ -45,10 +45,10 @@ an individual is officially representing the community in public spaces.
 ## Enforcement
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
-reported to the community leaders responsible for enforcement at
-**conduct@open-solution-atlas.dev** (replace with the real address on
-publication). All complaints will be reviewed and investigated promptly and
-fairly.
+reported privately to the repository maintainers via GitHub (see
+[`MAINTAINERS.md`](MAINTAINERS.md)). No dedicated conduct email alias exists
+yet; the reporting channel is the same governance contact described there.
+All complaints will be reviewed and investigated promptly and fairly.
 
 ## Attribution
 
