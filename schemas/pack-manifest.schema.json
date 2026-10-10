@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-solution-atlas.dev/schemas/pack-manifest.schema.json",
+  "title": "OSA Pack Manifest (osa-pack/v1)",
+  "description": "Field-level schema for packs/<domain>/<slug>/manifest.yaml. Structural/maturity rules (required files per level, banner rules) are enforced by tools/validate-packs.py.",
+  "type": "object",
+  "required": [
+    "schema", "slug", "title", "domain", "subdomain", "tags",
+    "maturity", "provenance", "verification", "stack_stance",
+    "language", "maintainers", "version", "last_reviewed",
+    "sources", "verified_by", "evidence"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "schema": { "const": "osa-pack/v1" },
+    "slug": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+    "title": { "type": "string", "minLength": 1 },
+    "title_zh": { "type": "string", "minLength": 1 },
+    "domain": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+    "subdomain": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+    "tags": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "maturity": { "enum": ["L1", "L2", "L3", "L4"] },
+    "provenance": { "enum": ["llm-drafted", "human-authored", "community", "mixed"] },
+    "verification": { "enum": ["unverified", "source-checked", "practitioner-reviewed", "field-proven"] },
+    "stack_stance": { "enum": ["stack-agnostic", "stack-specific"] },
+    "variants": { "type": "array", "items": { "type": "string" } },
+    "regulatory": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "region"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "region": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "language": { "type": "string", "minLength": 2 },
+    "translations": { "type": "array", "items": { "type": "string" } },
+    "maintainers": { "type": "array", "items": { "type": "string" } },
+    "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+    "last_reviewed": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+    "sources": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "verified_by": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["who", "role", "date", "scope"],
+        "properties": {
+          "who": { "type": "string" },
+          "role": { "type": "string" },
+          "date": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+          "scope": { "type": "string" }
+        }
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["type", "ref", "note"],
+        "properties": {
+          "type": { "enum": ["standard", "spec", "oss-implementation", "case-study", "deployment"] },
+          "ref": { "type": "string", "minLength": 1 },
+          "note": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "verification": { "enum": ["source-checked", "practitioner-reviewed", "field-proven"] } } },
+      "then": { "properties": { "sources": { "minItems": 1 } } }
+    },
+    {
+      "if": { "properties": { "verification": { "enum": ["practitioner-reviewed", "field-proven"] } } },
+      "then": { "properties": { "verified_by": { "minItems": 1 } } }
+    },
+    {
+      "if": { "properties": { "verification": { "const": "field-proven" } } },
+      "then": { "properties": { "evidence": { "contains": { "properties": { "type": { "enum": ["deployment", "case-study"] } }, "required": ["type"] } } } }
+    },
+    {
+      "if": { "properties": { "maturity": { "const": "L4" } } },
+      "then": { "properties": { "verification": { "const": "field-proven" } } }
+    }
+  ]
+}

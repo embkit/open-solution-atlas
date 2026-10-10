@@ -1,0 +1,310 @@
+openapi: 3.1.0
+info:
+  title: IAM Platform Core API (subset)
+  version: "0.3.0"
+  description: >
+    Core subset of the IAM operational and protocol contracts (see
+    ../api-overview.md). Pack convention, not a standard (SOURCES §4).
+    Load-bearing: PDP decides alone (ADR-0001/0003); realm isolation is
+    server-side (BR-07); audit records append in the same transaction as
+    administrative state changes (FR-022).
+servers:
+  - url: /
+    description: "Paths are written in full — /api/v1/* (identity plane), /pdp/v1/* (decision plane)"
+tags:
+  - name: identity
+  - name: authn
+  - name: authz
+  - name: governance
+  - name: privacy
+
+paths:
+  /api/v1/identities:
+    post:
+      tags: [identity]
+      summary: Create identity with lifecycle state (FR-001)
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IdentityCreate"
+      responses:
+        "201":
+          description: Created (SM-1 Invited)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Identity"
+        "409":
+          description: Correlation-key uniqueness violation (FR-002)
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "422":
+          $ref: "#/components/responses/Problem"
+
+  /api/v1/identities/{identityId}/transition:
+    parameters:
+      - $ref: "#/components/parameters/IdentityId"
+    post:
+      tags: [identity]
+      summary: Lifecycle transition (FR-001, SM-1)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [toState]
+              properties:
+                toState:
+                  type: string
+                  enum: [provisioned, active, suspended, mover, leaver, disabled, purged]
+                reason: { type: string }
+      responses:
+        "200":
+          description: Transitioned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Identity"
+        "422":
+          description: Invalid SM-1 transition, or leaver/disabled cannot re-authenticate (BR-13)
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+
+  /api/v1/authenticate:
+    post:
+      tags: [authn]
+      summary: Authenticate + risk + required AAL / step-up (FR-007, FR-008, BR-06)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [subject, method]
+              properties:
+                subject: { type: string }
+                method: { type: string, enum: [password, totp, passkey, recovery-code] }
+                clientRef: { type: string }
+                requiredAAL: { type: string, enum: [AAL1, AAL2, AAL3] }
+      responses:
+        "200":
+          description: AAL satisfied — session established (SM-2)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthnResult"
+        "401":
+          description: Uniform failure — never discloses subject existence (BR-06)
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "409":
+          description: Step-up required (obligation names the factor)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthnResult"
+        "429":
+          description: Throttled per subject/source/device (BR-06)
+
+  /pdp/v1/decision:
+    post:
+      tags: [authz]
+      summary: Single decision point — deny-overrides (FR-016, FR-017, BR-14)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DecisionRequest"
+      responses:
+        "200":
+          description: Permit/Deny + obligations + rationale; PEP may not override a deny
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Decision"
+
+  /api/v1/elevations:
+    post:
+      tags: [governance]
+      summary: JIT privileged elevation request → bounded window (FR-020, BR-05, SM-4)
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [subject, scope, reason]
+              properties:
+                subject: { type: string }
+                scope: { type: string }
+                reason: { type: string }
+                windowMinutes: { type: integer, description: "default/ceiling per BR-05 (≤ 8 h, default ≤ 4 h — pack policy)" }
+                breakGlass: { type: boolean }
+      responses:
+        "201":
+          description: "Requested / Approved-Active (break-glass → Active + mandatory post-hoc review)"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Elevation"
+        "409":
+          description: SoD conflict — mitigation approval required (BR-03)
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+
+  /api/v1/consents:
+    post:
+      tags: [privacy]
+      summary: Record immutable consent tuple (FR-024, BR-12)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Consent"
+      responses:
+        "201":
+          description: Consent recorded (append-only; withdrawal is a new record)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Consent"
+
+components:
+  parameters:
+    IdentityId:
+      name: identityId
+      in: path
+      required: true
+      schema: { type: string }
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema: { type: string }
+
+  responses:
+    Problem:
+      description: RFC 9457 problem document
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+
+  schemas:
+    Problem:
+      type: object
+      required: [type, title, status]
+      properties:
+        type: { type: string, format: uri }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+
+    IdentityCreate:
+      type: object
+      required: [correlationKey, realm, source]
+      properties:
+        correlationKey:
+          type: string
+          description: Authoritative correlation key — uniqueness enforced (FR-002)
+        realm: { type: string, description: "Tenant/realm scope (BR-07)" }
+        source: { type: string, description: "Authoritative source reference (CTL-01)" }
+        attributes:
+          type: object
+          additionalProperties: true
+
+    Identity:
+      type: object
+      required: [id, state, realm]
+      properties:
+        id: { type: string }
+        state:
+          type: string
+          enum: [invited, provisioned, active, suspended, mover, leaver, disabled, purged]
+          description: SM-1
+        realm: { type: string }
+        accounts:
+          type: array
+          items:
+            type: object
+            properties:
+              target: { type: string }
+              accountRef: { type: string }
+
+    AuthnResult:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [authenticated, step-up-required, locked-out] }
+        aal: { type: string, enum: [AAL1, AAL2, AAL3] }
+        sessionId: { type: string }
+        obligations:
+          type: array
+          items: { type: object, additionalProperties: true }
+
+    DecisionRequest:
+      type: object
+      required: [subject, resource, action]
+      properties:
+        subject: { type: string }
+        resource: { type: string }
+        action: { type: string }
+        context:
+          type: object
+          additionalProperties: true
+        policyVersion: { type: string, description: "In-flight decisions record the version used (BR-14)" }
+
+    Decision:
+      type: object
+      required: [effect]
+      properties:
+        effect: { type: string, enum: [permit, deny] }
+        obligations:
+          type: array
+          items: { type: object, additionalProperties: true }
+        rationale:
+          type: string
+          description: Machine-readable basis for audit (FR-022)
+        policyVersion: { type: string }
+
+    Elevation:
+      type: object
+      required: [id, state, window]
+      properties:
+        id: { type: string }
+        state: { type: string, enum: [requested, sod-checked, pending-approval, active, expired, revoked, rejected, break-glass, under-review, closed] }
+        window:
+          type: object
+          properties:
+            startsAt: { type: string, format: date-time }
+            expiresAt: { type: string, format: date-time }
+        breakGlass: { type: boolean, description: "Bounded + post-hoc review ≤ 24 h (BR-05)" }
+
+    Consent:
+      type: object
+      required: [subject, purpose, scope, grantedAt, method]
+      properties:
+        subject: { type: string }
+        purpose: { type: string }
+        scope: { type: array, items: { type: string } }
+        policyVersion: { type: string }
+        grantedAt: { type: string, format: date-time }
+        method: { type: string, description: "How consent was captured (BR-12 tuple)" }
+        withdrawnAt: { type: string, format: date-time, description: "Present only on a withdrawal record — never an update (BR-12)" }

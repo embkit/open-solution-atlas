@@ -1,0 +1,31 @@
+schema: osa-pack/v1
+slug: data-exchange
+title: Government Data Sharing & Exchange Platform
+title_zh: 政务数据共享交换平台
+domain: government-public
+subdomain: data-exchange
+tags: [government-data, data-exchange, data-catalog, data-sharing, approval-workflow, lineage, data-quality, open-data, dcat, data-classification, mlps]
+maturity: L1
+provenance: llm-drafted
+verification: unverified
+stack_stance: stack-agnostic
+variants: []
+regulatory:
+  - id: mlps-2-0
+    region: cn
+  - id: data-security-law
+    region: cn
+  - id: pipl
+    region: cn
+  - id: dcat
+    region: global
+language: en
+translations: []                           # no full translation yet (key assets bilingual; see standard §5)
+maintainers: []
+version: 0.1.0
+last_reviewed: 2026-10-08
+sources:
+  - https://www.w3.org/TR/vocab-dcat-3/
+  - https://www.gov.cn/zhengce/
+verified_by: []
+evidence: []

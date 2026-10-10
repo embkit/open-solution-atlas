@@ -1,0 +1,71 @@
+# Changelog
+
+All notable changes to Open Solution Atlas. Format loosely follows
+[Keep a Changelog](https://keepachangelog.com/); versions are repository-wide
+releases (individual packs carry their own `version` in `manifest.yaml`).
+
+## [Unreleased]
+
+### Added — trust & governance
+- `docs/pack-standard.v1.md` §8: dual-axis trust model (`maturity` ×
+  `verification`), verification ladder, no-self-escalation rules, decay
+  mechanics (§8.3 rules 1–7).
+- `schemas/pack-manifest.schema.json` — field-level manifest schema.
+- `tools/validate-packs.py` — machine enforcement of level checklists,
+  verification-ladder honesty, banner rules, ADR counts, OpenAPI parseability,
+  translation honesty, staleness warning.
+- `tools/check-links.py` — repository-wide relative Markdown link check, plus
+  an informational `--check-external` probe over cited URLs.
+- `tools/check-ids.py` — **ID cross-reference check** (the roadmap's
+  "packlint advanced"): dangling FR/NFR/CTL/BR/AC/ADR/SM/CAP/BC references
+  fail CI; cross-pack references are reported as info.
+- `tests/` — pytest suite covering all three tools (`python -m pytest tests/`).
+- `requirements.txt` / `requirements-dev.txt` — pinned tool dependencies.
+- `.github/workflows/ci.yml` — validate + ID check + link check + tests on
+  every PR; non-blocking external-link probe job.
+- `.github/ISSUE_TEMPLATE/practitioner-review.yml` — the rung-3 review
+  workflow feeding `verified_by`.
+- `.gitignore`, `MAINTAINERS.md`, `.github/CODEOWNERS` (placeholder until real
+  handles exist).
+
+### Added — packs
+- `manufacturing/wms` — L3, source-checked.
+- `manufacturing/mes` — L2→L3, source-checked (ISO 22400-2 traced for OEE;
+  genealogy honestly declared a pack extension over IEC 62264-3).
+- `manufacturing/tms` — L1→L2→L3, source-checked (ADR 2025 / IMDG 2024
+  A42-24 / IATA DGR 67 / JT-T 617 + GB 6944-2025 edition-pinned; EPCIS
+  1.2 ISO/PAS citations corrected to GS1 EPCIS/CBV 2.0).
+- `horizontal/iam-platform` — L2→**L3**, source-checked (SP 800-63-3→63-4,
+  ISO 27002 clause corrections; contracts C-01..C-24, AC-001..025, T-01..T-32).
+- `horizontal/itsm-helpdesk` — L1→**L2**, source-checked (ISO/IEC 20000-1:2018
+  cl. 8.3/8.5/8.6.1-3/8.7 and ISO/IEC 27001:2022 Annex A controls pinned; ITIL 4
+  kept as licensed vocabulary only; SM-S1..S3 state machines).
+- `horizontal/personal-blog` — **source-checked** (LCP 2.5 s traced to Core
+  Web Vitals; EN 301 549 pinned to v3.2.1; PIPL / 17 U.S.C. §512(c) / ICP
+  国务院令第292号 art. 4 cited at instrument level).
+
+### Fixed
+- `packs/manufacturing/wms`: `BR-08b/c/d` were referenced but never defined —
+  the scan control points now carry stable sub-IDs (`BR-08a`..`BR-08d`)
+  (found by the new `check-ids.py`).
+- `packs/manufacturing/mes`: process references corrected `P-01..P-06` →
+  `BP-01..BP-06` to match the defined process headings.
+- `packs/horizontal/itsm-helpdesk`: `SM-T1/SM-T2` renamed to `SM-S1/SM-S2`
+  (collided with `manufacturing/tms`) and formally defined.
+- 17 pack manifests declared `translations: [zh-CN]` with no translation
+  file — corrected to `[]`; the validator now rejects the false claim.
+
+### Changed
+- `templates/pack-template` completed to a full L3 skeleton; smoke-tested
+  against the validator.
+- `docs/pack-standard.v1.md` §5: `translations` semantics pinned (a locale
+  requires `README.<locale>.md` or `translations/<locale>/`); §3/§6: optional
+  chapters declared; checklists bound to `tools/validate-packs.py`.
+- Fixed 17 broken `pack-standard` links in pack `SOURCES.md` files
+  (one directory short).
+
+## [0.1.0] — 2026-10-08
+
+Initial repository state: pack standard draft, taxonomy, roadmap, 17-pack
+shelf (1× L3, 1× L2, 15× L1 at that point), contribution guides, issue/PR
+templates, dual license (CC BY-SA 4.0 content / MIT code).

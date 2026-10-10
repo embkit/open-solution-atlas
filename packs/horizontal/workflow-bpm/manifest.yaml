@@ -1,0 +1,29 @@
+schema: osa-pack/v1
+slug: workflow-bpm
+title: Workflow, BPM & Office Automation Platform
+title_zh: 工作流/BPM与协同办公审批平台（OA）
+domain: horizontal
+subdomain: collaboration
+tags: [bpm, workflow, oa, approval, bpmn, process-engine, form-engine, dms]
+maturity: L1
+provenance: llm-drafted
+verification: unverified
+stack_stance: stack-agnostic
+variants: []
+regulatory:
+  - id: iso-iec-27001
+    region: global
+  - id: mlps-2-0
+    region: cn
+  - id: electronic-signature-law
+    region: cn
+language: en
+translations: []                           # no full translation yet (key assets bilingual; see standard §5)
+maintainers: []
+version: 0.1.0
+last_reviewed: 2026-10-08
+sources:
+  - https://www.omg.org/spec/BPMN/2.0.2/
+  - https://www.w3.org/TR/vc-data-model/
+verified_by: []
+evidence: []

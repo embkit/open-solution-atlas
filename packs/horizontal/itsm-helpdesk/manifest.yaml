@@ -1,0 +1,61 @@
+schema: osa-pack/v1
+slug: itsm-helpdesk
+title: IT Service Desk & ITSM Platform
+title_zh: IT 服务台与 ITSM 工单管理系统
+domain: horizontal
+subdomain: service-management
+tags:
+  - itsm
+  - service-desk
+  - ticketing
+  - incident
+  - problem
+  - change
+  - cmdb
+  - sla
+  - service-catalog
+  - itil
+maturity: L2
+provenance: llm-drafted
+verification: source-checked           # claims traced to sources 2026-10-09; not field-proven
+stack_stance: stack-agnostic
+variants: []                # planned: customer-service-helpdesk, itam-asset, xinchuang-cn
+regulatory:
+  - id: iso-iec-20000-1
+    region: global
+  - id: iso-iec-27001
+    region: global
+  - id: itil-4
+    region: global
+  - id: gdpr
+    region: eu
+  - id: mlps-2-0
+    region: cn
+language: en
+translations: []                           # no full translation yet (key assets bilingual; see standard §5)
+maintainers: []
+version: 0.2.0
+last_reviewed: 2026-10-09
+sources:
+  - https://www.iso.org/standard/70636.html        # ISO/IEC 20000-1:2018
+  - https://www.iso.org/standard/27001             # ISO/IEC 27001:2022 (Annex A)
+  - https://www.axelos.com/best-practice-solutions/itil # ITIL 4 (licensed vocabulary)
+  - https://csrc.nist.gov/pubs/sp/800/61/r2/final  # SP 800-61r2
+  - https://www.rfc-editor.org/rfc/rfc5322         # email intake
+  - https://www.rfc-editor.org/rfc/rfc7515         # JWS webhook authenticity
+  - https://www.w3.org/TR/WCAG21/                  # portal accessibility
+  - https://gdpr-info.eu/                          # GDPR
+verified_by: []                       # empty: practitioner review still pending
+evidence:
+  - type: standard
+    ref: SOURCES.md#1-standards--specifications
+    note: ISO/IEC 20000-1:2018 clause numbers (8.3/8.5/8.6.1/8.6.2/8.6.3/8.7) and ISO/IEC 27001:2022 Annex A controls (A.5.15/A.5.18/A.5.24/A.8.13/A.8.15/A.8.16/A.8.32) pinned per claim, verified 2026-10-09
+  - type: standard
+    ref: https://www.axelos.com/best-practice-solutions/itil
+    note: ITIL 4 kept strictly as licensed vocabulary — practice names cited, never paraphrased as fact; obligations traced to ISO/IEC 20000-1 instead
+  - type: spec
+    ref: SOURCES.md#4-declared-assumptions-not-traceable-to-a-source
+    note: SLA clock mechanics, priority matrix, thresholds and all NFR numbers declared as assumptions; P-01..P-06 / SM drafts / data model declared as pack design
+  - type: oss-implementation
+    ref: https://www.combodo.com/itop
+    note: problem/change/CMDB linkage observable in a real open-source ITSM; illustrative, not a deployment proof

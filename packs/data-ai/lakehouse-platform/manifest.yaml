@@ -1,0 +1,30 @@
+schema: osa-pack/v1
+slug: lakehouse-platform
+title: Enterprise Data Warehouse & Lakehouse Platform
+title_zh: 企业数据仓库与湖仓平台
+domain: data-ai
+subdomain: data-platform
+tags: [data-warehouse, lakehouse, data-modeling, ingestion, etl, elt, data-quality, data-governance, lineage, data-mart]
+maturity: L1
+provenance: llm-drafted
+verification: unverified
+stack_stance: stack-agnostic
+variants: []
+regulatory:
+  - id: data-security-law
+    region: cn
+  - id: gbt-43697
+    region: cn
+  - id: mlps-2-0
+    region: cn
+  - id: gdpr
+    region: eu
+language: en
+translations: []                           # no full translation yet (key assets bilingual; see standard §5)
+maintainers: []
+version: 0.1.0
+last_reviewed: 2026-10-08
+sources:
+  - https://www.iso.org/standard/56737.html
+verified_by: []
+evidence: []

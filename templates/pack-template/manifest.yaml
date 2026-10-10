@@ -1,0 +1,23 @@
+schema: osa-pack/v1
+slug: example-pack-slug
+title: Example Pack Title
+title_zh: 示例方案名称
+domain: horizontal                    # see docs/taxonomy.md
+subdomain: content-publishing
+tags: []
+maturity: L1                          # L1 | L2 | L3 | L4  (completeness)
+provenance: llm-drafted               # llm-drafted | human-authored | community | mixed
+verification: unverified              # unverified | source-checked
+                                      #   | practitioner-reviewed | field-proven
+                                      #   (see pack-standard §8; raise only with evidence)
+stack_stance: stack-agnostic          # stack-agnostic | stack-specific
+variants: []
+regulatory: []                        # e.g. [{id: pci-dss, region: global}]
+language: en
+translations: []
+maintainers: []
+version: 0.1.0
+last_reviewed: 2026-10-08
+sources: []                           # public references, required from L1 up
+verified_by: []                       # [{who, role, date, scope}] for practitioner-reviewed+
+evidence: []                          # [{type, ref, note}] standard|spec|oss-implementation|case-study|deployment

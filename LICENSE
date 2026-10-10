@@ -1,0 +1,23 @@
+Copyright (c) 2026 Open Solution Atlas contributors
+
+Documentation and blueprint content in this repository (the "Content",
+including all Markdown, diagrams, and data files outside the `templates/code`
+directory) is licensed under the Creative Commons Attribution-ShareAlike 4.0
+International License (CC BY-SA 4.0):
+
+    https://creativecommons.org/licenses/by-sa/4.0/
+
+Code, templates, and machine-readable files (the "Code") are licensed under
+the MIT License:
+
+    https://opensource.org/license/mit
+
+Unless required by applicable law or agreed to in writing, software distributed
+under the MIT License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+CONDITIONS OF ANY KIND, either express or implied.
+
+By contributing to this repository, contributors agree that their contributions
+are licensed under the same dual-license terms above.
+
+This repository contains only generalized, publicly sourced knowledge. It must
+never contain proprietary, confidential, or customer-identifiable material.

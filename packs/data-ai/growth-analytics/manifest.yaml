@@ -1,0 +1,25 @@
+schema: osa-pack/v1
+slug: growth-analytics
+title: Growth Analytics & Experimentation Platform
+title_zh: 增长分析与实验平台（Growth Analytics）
+domain: data-ai
+subdomain: growth-marketing-analytics
+tags: [growth, analytics, event-tracking, funnel, retention, attribution, ab-test, cdp, cohort, messaging]
+maturity: L1
+provenance: llm-drafted
+verification: unverified
+stack_stance: stack-agnostic
+variants: []
+regulatory:
+  - id: pipl
+    region: cn
+  - id: gdpr
+    region: eu
+language: en
+translations: []                           # no full translation yet (key assets bilingual; see standard §5)
+maintainers: []
+version: 0.1.0
+last_reviewed: 2026-10-08
+sources: []
+verified_by: []
+evidence: []

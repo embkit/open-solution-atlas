@@ -1,0 +1,35 @@
+schema: osa-pack/v1
+slug: his-emr
+title: Hospital Information System & EMR
+title_zh: 医院信息系统与电子病历（HIS/EMR）
+domain: healthcare
+subdomain: his-emr
+tags: [his, emr, empi, fhir, hl7, dicom, icd, cpoe, lis, ris, pharmacy, medical-insurance, adt]
+maturity: L1
+provenance: llm-drafted
+verification: unverified
+stack_stance: stack-agnostic
+variants: []
+regulatory:
+  - id: hl7-fhir
+    region: global
+  - id: dicom
+    region: global
+  - id: icd-10-11
+    region: global
+  - id: hipaa
+    region: us
+  - id: mlps-2-0
+    region: cn
+language: en
+translations: []                           # no full translation yet (key assets bilingual; see standard §5)
+maintainers: []
+version: 0.1.0
+last_reviewed: 2026-10-08
+sources:
+  - https://www.hl7.org/fhir/
+  - https://www.dicomstandard.org/
+  - https://icd.who.int/
+  - https://www.hhs.gov/hipaa/index.html
+verified_by: []
+evidence: []

@@ -1,0 +1,87 @@
+name: 📦 Solution Pack proposal
+description: Propose a new industry/system solution pack
+title: "[Pack Proposal] "
+labels: ["pack-proposal", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for proposing a Solution Pack. Read
+        [CONTRIBUTING.md](../../blob/main/CONTRIBUTING.md) and the
+        [Pack Standard](../../blob/main/docs/pack-standard.v1.md) first.
+
+        **Hard rule:** only generalized, publicly sourced knowledge. No
+        client names, internal documents, proprietary numbers, or anything
+        that identifies a current or former employer.
+  - type: input
+    id: title
+    attributes:
+      label: System name (EN + 中文)
+      placeholder: e.g. Manufacturing Execution System / 制造执行系统
+    validations:
+      required: true
+  - type: dropdown
+    id: domain
+    attributes:
+      label: Domain / subdomain
+      description: See docs/taxonomy.md. Propose a new subdomain in the description if needed.
+      options:
+        - horizontal — identity & access
+        - horizontal — collaboration / workflow
+        - horizontal — customer / service desk
+        - horizontal — content publishing
+        - retail-commerce
+        - manufacturing
+        - energy-utilities
+        - government-public
+        - telecom
+        - healthcare
+        - data-ai
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What system is this, and who builds/buys it?
+      description: The business problem, typical organization, deployment context.
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: In scope / out of scope
+      placeholder: |
+        In: ...
+        Out: ... (explicit boundaries)
+    validations:
+      required: true
+  - type: textarea
+    id: regulation
+    attributes:
+      label: Public regulations / standards involved
+      description: Laws, national/industry standards, public reference architectures — with links where possible.
+    validations:
+      required: true
+  - type: dropdown
+    id: maturity
+    attributes:
+      label: Maturity level you can commit to
+      options:
+        - L1 — Brief
+        - L2 — Blueprint
+        - L3 — Agent-ready
+        - L4 — Proven
+      default: 0
+    validations:
+      required: true
+  - type: checkboxes
+    id: declarations
+    attributes:
+      label: Declarations
+      options:
+        - label: This proposal contains no confidential, client-identifiable, or employer-proprietary information.
+          required: true
+        - label: I can act as a named maintainer/reviewer for accuracy, or will nominate one.
+          required: true
+        - label: I agree content is contributed under CC BY-SA 4.0 (code/templates under MIT).
+          required: true

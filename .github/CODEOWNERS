@@ -1,0 +1,15 @@
+# CODEOWNERS — see MAINTAINERS.md for role definitions.
+#
+# GitHub requires real handles to enforce review rules; none are published
+# yet. When the repository maintainer and domain maintainers are announced,
+# uncomment and fill in — e.g.:
+#
+#   *                          @<repo-maintainer>
+#   /docs/                    @<repo-maintainer>
+#   /tools/                   @<repo-maintainer>
+#   /schemas/                 @<repo-maintainer>
+#   /packs/manufacturing/     @<domain-maintainer-manufacturing>
+#   /packs/horizontal/        @<domain-maintainer-horizontal>
+#
+# Until then this file is a placeholder: review expectations are governed by
+# CONTRIBUTING.md and MAINTAINERS.md, not yet by enforced code owners.

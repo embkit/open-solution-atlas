@@ -1,0 +1,505 @@
+openapi: 3.1.0
+info:
+  title: WMS — Core Operations API
+  version: 0.3.0
+  description: >
+    Core contract subset for the WMS Solution Pack (06-contracts). Covers ASN
+    ingest, directed putaway confirmation, wave allocation/release, pick
+    confirmation, unified task confirm, equipment task dispatch & device event
+    receipt, cycle-count entry, stock query and atomic reservation.
+
+    Only the Inventory service (BC-4) mutates stock, and only as validated
+    StockEvents (ADR-0002). Equipment/device messages drive task state only and
+    never write quantities directly (ADR-0003, BR-14). All mutating POSTs
+    accept an Idempotency-Key header (NFR-010). Errors use RFC 9457
+    application/problem+json.
+servers:
+  - url: https://wms.example.com
+security:
+  - bearerAuth: []
+tags:
+  - name: inbound
+    description: ASN ingest, receiving, putaway
+  - name: outbound
+    description: Waves, allocation, picking, packing, shipping
+  - name: execution
+    description: Canonical warehouse tasks (human/device)
+  - name: equipment
+    description: IT/OT task gateway (allow-listed, task-based only)
+  - name: inventory
+    description: Stock query and atomic reservations (sole stock writer)
+  - name: counting
+    description: Cycle counts and adjustment entry
+
+paths:
+  /api/v1/asns:
+    post:
+      tags: [inbound]
+      summary: Ingest an ASN (EDI 856 / API) and validate against an open PO
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AsnCreate' }
+      responses:
+        '201':
+          description: ASN accepted for dock scheduling and receiving
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Asn' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /api/v1/putaway-tasks/{taskId}/confirm:
+    parameters:
+      - { in: path, name: taskId, required: true, schema: { type: string, format: uuid } }
+    post:
+      tags: [inbound]
+      summary: Confirm directed putaway by scanning bin + license plate (BR-08a)
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PutawayConfirm' }
+      responses:
+        '200':
+          description: Stock available at bin; goods-receipt event emitted
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Task' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /api/v1/waves/{waveId}/release:
+    parameters:
+      - { in: path, name: waveId, required: true, schema: { type: string, format: uuid } }
+    post:
+      tags: [outbound]
+      summary: Release a wave — allocate, hard-reserve atomically, generate picks
+      description: >
+        Converts soft reservations to hard reservations by an atomic
+        conditional mutation (FR-018/FR-019, BR-05). On any reservation
+        conflict the whole release is rejected with 409 and no partial state.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '202':
+          description: Wave released; allocation and pick-task generation started
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WaveReleaseResult' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /api/v1/pick-lines/{pickLineId}/confirm:
+    parameters:
+      - { in: path, name: pickLineId, required: true, schema: { type: string, format: uuid } }
+    post:
+      tags: [outbound]
+      summary: Confirm a pick with scan verification (BR-08b)
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PickConfirm' }
+      responses:
+        '200':
+          description: Pick accepted; shortage triggers re-allocation/back-order
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Task' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /api/v1/tasks:
+    get:
+      tags: [execution]
+      summary: List tasks assigned to the caller / device channel
+      parameters:
+        - { in: query, name: type, schema: { $ref: '#/components/schemas/TaskType' } }
+        - { in: query, name: status, schema: { $ref: '#/components/schemas/TaskState' } }
+        - { in: query, name: limit, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+      responses:
+        '200':
+          description: Page of tasks
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items: { type: array, items: { $ref: '#/components/schemas/Task' } }
+                  nextCursor: { type: [string, 'null'] }
+
+  /api/v1/tasks/{taskId}/confirm:
+    parameters:
+      - { in: path, name: taskId, required: true, schema: { type: string, format: uuid } }
+    post:
+      tags: [execution]
+      summary: Idempotent task confirmation (same path for human and device, BR-14)
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TaskConfirm' }
+      responses:
+        '200':
+          description: Task completed; exactly one stock mutation applied
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Task' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /api/v1/equipment/tasks:
+    post:
+      tags: [equipment]
+      summary: Publish an equipment-eligible business task to WCS/WES (ADR-0003)
+      description: >
+        Source/destination/priority/HU only — no motion or IO primitives.
+        Allow-listed, authenticated conduit (CTL-07/NFR-012).
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EquipmentTask' }
+      responses:
+        '202':
+          description: Task accepted for equipment execution
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EquipmentTask' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /webhooks/equipment/events:
+    post:
+      tags: [equipment]
+      summary: Receive WCS/WES task lifecycle / fault events (device drives task state)
+      security:
+        - mtls: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EquipmentEvent' }
+      responses:
+        '202': { description: Event accepted; applied to task state only }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /api/v1/counts/{countId}/entries:
+    parameters:
+      - { in: path, name: countId, required: true, schema: { type: string, format: uuid } }
+    post:
+      tags: [counting]
+      summary: Record a (blind) cycle-count entry; variance drives SM-6
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CountEntry' }
+      responses:
+        '200':
+          description: Count recorded; auto-adjust within tolerance or route to recount
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CountResult' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /api/v1/stock:
+    get:
+      tags: [inventory]
+      summary: Query real-time on-hand by SKU/lot/bin/owner/status (owner-scoped)
+      parameters:
+        - { in: query, name: ownerId, schema: { type: string } }
+        - { in: query, name: sku, schema: { type: string } }
+        - { in: query, name: locationId, schema: { type: string } }
+        - { in: query, name: lotId, schema: { type: string } }
+        - { in: query, name: limit, schema: { type: integer, minimum: 1, maximum: 200, default: 50 } }
+      responses:
+        '200':
+          description: Stock positions (owner-filtered by RLS)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items: { type: array, items: { $ref: '#/components/schemas/StockPosition' } }
+                  nextCursor: { type: [string, 'null'] }
+
+  /api/v1/reservations:
+    post:
+      tags: [inventory]
+      summary: Grant a soft/hard reservation atomically (internal; prevents oversell)
+      description: >
+        Granted only by a compare-and-set on available quantity / StockLine
+        version (FR-019/BR-05, ADR-0002). A unit is never reserved twice;
+        conflict → 409 with no partial effect.
+      security:
+        - mtls: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReservationCreate' }
+      responses:
+        '201':
+          description: Reservation granted
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Reservation' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+components:
+  parameters:
+    IdempotencyKey:
+      in: header
+      name: Idempotency-Key
+      required: false
+      schema: { type: string, maxLength: 128 }
+      description: Dedupe key for safe redelivery (NFR-010)
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    mtls:
+      type: mutualTLS
+
+  schemas:
+    QuantityBuckets:
+      type: object
+      description: BR-01 decomposition; every mutation names source/target buckets.
+      required: [onHand, available]
+      properties:
+        onHand: { type: number, minimum: 0 }
+        available: { type: number, minimum: 0 }
+        reserved: { type: number, minimum: 0, default: 0 }
+        hold: { type: number, minimum: 0, default: 0 }
+        qcPending: { type: number, minimum: 0, default: 0 }
+        inTransitIntra: { type: number, minimum: 0, default: 0 }
+
+    StockKey:
+      type: object
+      required: [warehouseId, locationId, productId, ownerId]
+      properties:
+        warehouseId: { type: string }
+        locationId: { type: string }
+        productId: { type: string }
+        lotId: { type: [string, 'null'] }
+        serialNo: { type: [string, 'null'] }
+        huId: { type: [string, 'null'] }
+        ownerId: { type: string }
+
+    StockPosition:
+      type: object
+      properties:
+        stockId: { type: string, format: uuid }
+        key: { $ref: '#/components/schemas/StockKey' }
+        buckets: { $ref: '#/components/schemas/QuantityBuckets' }
+        uom: { type: string }
+        status: { $ref: '#/components/schemas/StockStatus' }
+        version: { type: integer }
+        lastEventId: { type: string }
+        updatedAt: { type: string, format: date-time }
+
+    StockStatus:
+      type: string
+      enum: [available, hold, quarantine, frozen, expired-blocked, scrapped]
+
+    AsnCreate:
+      type: object
+      required: [ownerId, supplierId, poRef, lines]
+      properties:
+        ownerId: { type: string }
+        supplierId: { type: string }
+        poRef: { type: string }
+        expectedAt: { type: [string, 'null'], format: date-time }
+        dockAppointmentId: { type: [string, 'null'] }
+        lines:
+          type: array
+          minItems: 1
+          items: { $ref: '#/components/schemas/AsnLine' }
+
+    AsnLine:
+      type: object
+      required: [productId, expectedQty]
+      properties:
+        productId: { type: string }
+        gtin: { type: [string, 'null'], pattern: '^[0-9]{8,14}$' }
+        expectedQty: { type: number, exclusiveMinimum: 0 }
+        uom: { type: string }
+        lotCode: { type: [string, 'null'] }
+        expiryDate: { type: [string, 'null'], format: date }
+        ssccList: { type: array, items: { type: string, pattern: '^[0-9]{18}$' } }
+
+    Asn:
+      type: object
+      properties:
+        asnId: { type: string, format: uuid }
+        ownerId: { type: string }
+        supplierId: { type: string }
+        poRef: { type: string }
+        status: { type: string, enum: [expected, arrived, receiving, received, discrepancy-hold, qc-pending, putaway, closed] }
+        expectedAt: { type: [string, 'null'], format: date-time }
+        lines: { type: array, items: { $ref: '#/components/schemas/AsnLine' } }
+
+    PutawayConfirm:
+      type: object
+      required: [locationBarcode, huId]
+      properties:
+        locationBarcode: { type: string }
+        huId: { type: string }
+        strategyVersion: { type: [string, 'null'] }
+        overrideReason: { type: [string, 'null'], maxLength: 300 }
+
+    PickConfirm:
+      type: object
+      required: [sourceLocationBarcode, productId, pickedQty]
+      properties:
+        sourceLocationBarcode: { type: string }
+        productId: { type: string }
+        huId: { type: [string, 'null'] }
+        lotCode: { type: [string, 'null'] }
+        pickedQty: { type: number, minimum: 0 }
+        shortageReason: { type: [string, 'null'], maxLength: 200 }
+
+    TaskConfirm:
+      type: object
+      required: [step]
+      properties:
+        step: { type: string, enum: [source, destination, complete] }
+        huId: { type: [string, 'null'] }
+        locationBarcode: { type: [string, 'null'] }
+        qty: { type: [number, 'null'] }
+        occurrenceTs: { type: [string, 'null'], format: date-time }
+
+    Task:
+      type: object
+      properties:
+        taskId: { type: string, format: uuid }
+        type: { $ref: '#/components/schemas/TaskType' }
+        state: { $ref: '#/components/schemas/TaskState' }
+        warehouseId: { type: string }
+        ownerId: { type: string }
+        sourceLocationId: { type: [string, 'null'] }
+        destLocationId: { type: [string, 'null'] }
+        huId: { type: [string, 'null'] }
+        productId: { type: [string, 'null'] }
+        qty: { type: [number, 'null'] }
+        uom: { type: [string, 'null'] }
+        executorType: { type: string, enum: [human, device] }
+        assignedTo: { type: [string, 'null'] }
+        strategyVersion: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+        completedAt: { type: [string, 'null'], format: date-time }
+
+    TaskType:
+      type: string
+      enum: [putaway, move, replenish, pick, pack, count, equipment]
+
+    TaskState:
+      type: string
+      enum: [created, released, assigned, in-progress, in-transit, waiting-equipment, completed, exception, cancelled]
+
+    EquipmentTask:
+      type: object
+      required: [taskId, sourceLocationId, destLocationId, huId]
+      properties:
+        taskId: { type: string, format: uuid }
+        sourceLocationId: { type: string }
+        destLocationId: { type: string }
+        huId: { type: string }
+        priority: { type: integer, minimum: 1, maximum: 9, default: 5 }
+        kind: { type: string, enum: [transport, retrieve, stow] }
+
+    EquipmentEvent:
+      type: object
+      required: [taskId, eventType, occurredAt]
+      properties:
+        taskId: { type: string, format: uuid }
+        eventType: { type: string, enum: [accepted, arrived, picked, placed, faulted] }
+        huId: { type: [string, 'null'] }
+        stationId: { type: [string, 'null'] }
+        faultCode: { type: [string, 'null'] }
+        occurredAt: { type: string, format: date-time }
+
+    WaveReleaseResult:
+      type: object
+      properties:
+        waveId: { type: string, format: uuid }
+        status: { type: string, enum: [released, allocating, failed] }
+        allocationRunId: { type: string, format: uuid }
+        pickTasksCreated: { type: integer, minimum: 0 }
+        replenishmentTasksCreated: { type: integer, minimum: 0 }
+
+    CountEntry:
+      type: object
+      required: [countedQty]
+      properties:
+        countedQty: { type: number, minimum: 0 }
+        recountedQty: { type: [number, 'null'], minimum: 0 }
+        uom: { type: [string, 'null'] }
+        deviceId: { type: [string, 'null'] }
+
+    CountResult:
+      type: object
+      properties:
+        countId: { type: string, format: uuid }
+        status: { type: string, enum: [counting, auto-adjusted, recount, pending-approval, adjusted, rejected] }
+        bookQty: { type: [number, 'null'] }
+        varianceQty: { type: [number, 'null'] }
+        withinTolerance: { type: boolean }
+        adjustmentId: { type: [string, 'null'], format: uuid }
+
+    ReservationCreate:
+      type: object
+      required: [orderLineId, stockId, qty, reservationType]
+      properties:
+        orderLineId: { type: string, format: uuid }
+        stockId: { type: string, format: uuid }
+        qty: { type: number, exclusiveMinimum: 0 }
+        reservationType: { type: string, enum: [soft, hard] }
+        expiresAt: { type: [string, 'null'], format: date-time }
+
+    Reservation:
+      type: object
+      properties:
+        reservationId: { type: string, format: uuid }
+        orderLineId: { type: string, format: uuid }
+        stockId: { type: string, format: uuid }
+        ownerId: { type: string }
+        reservationType: { type: string, enum: [soft, hard] }
+        qty: { type: number }
+        status: { type: string, enum: [soft, hard, consumed, released, expired] }
+        expiresAt: { type: [string, 'null'], format: date-time }
+
+    Problem:
+      type: object
+      properties:
+        type: { type: string }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+
+  responses:
+    Conflict:
+      description: Lifecycle or reservation conflict; no partial effect (FR-019)
+      content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
+    ValidationError:
+      description: Validation failure (incl. malformed GS1/SSCC, CTL-02)
+      content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }

@@ -1,0 +1,30 @@
+schema: osa-pack/v1
+slug: one-stop-service
+title: One-Stop Government Service Platform
+title_zh: 政务服务一网通办平台
+domain: government-public
+subdomain: government-services
+tags: [one-stop, government-services, approval, e-license, unified-portal, inter-department, government-services]
+maturity: L1
+provenance: llm-drafted
+verification: unverified
+stack_stance: stack-agnostic
+variants: []
+regulatory:
+  - id: cybersecurity-law
+    region: cn
+  - id: data-security-law
+    region: cn
+  - id: pipl
+    region: cn
+  - id: mlps-2-0
+    region: cn
+language: en
+translations: []                           # no full translation yet (key assets bilingual; see standard §5)
+maintainers: []
+version: 0.1.0
+last_reviewed: 2026-10-08
+sources:
+  - https://www.gov.cn/zhengce/
+verified_by: []
+evidence: []

@@ -1,0 +1,371 @@
+openapi: 3.1.0
+info:
+  title: MES Core API (subset)
+  version: "0.3.0"
+  description: >
+    Core subset of the MES operational and partner contracts (see
+    ../api-overview.md). Pack convention, not a standard (SOURCES §4).
+    All execution facts are append-only; corrections are compensating
+    events (BR-07). Plans freeze at release (BR-13).
+servers:
+  - url: /api/v1
+tags:
+  - name: planning
+  - name: execution
+  - name: quality
+  - name: equipment
+  - name: reporting
+
+paths:
+  /partners/erp/production-orders:
+    post:
+      tags: [planning]
+      summary: ERP production-order intake (FR-002) — partner surface, mTLS
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductionOrderCommand"
+      responses:
+        "201":
+          description: Work orders created/reconciled within authorized qty
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WorkOrder"
+        "422":
+          description: Exceeds authorized quantity or unknown material version
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "409":
+          description: Duplicate of an applied ERP command (idempotency)
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+
+  /work-orders/{woId}/release:
+    parameters:
+      - $ref: "#/components/parameters/WoId"
+    post:
+      tags: [planning]
+      summary: Release gate — staged materials, routing validity, no quality holds (FR-004, BR-02)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [releasedWith]
+              properties:
+                releasedWith:
+                  type: object
+                  description: Frozen version refs (BR-13)
+                  required: [bomVersion, routingVersion]
+                  properties:
+                    bomVersion: { type: string }
+                    routingVersion: { type: string }
+                    inspectionPlans:
+                      type: array
+                      items: { type: string }
+      responses:
+        "200":
+          description: Released; versions frozen (SM-01 CREATED → RELEASED)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkOrder"
+        "422":
+          description: Gate failed; every failed condition listed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+
+  /stations/{stationId}/actions:
+    parameters:
+      - name: stationId
+        in: path
+        required: true
+        schema: { type: string }
+    post:
+      tags: [execution]
+      summary: Station action — validated against readiness state (FR-005, BR-02, SM-02)
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StationAction"
+      responses:
+        "201":
+          description: Execution event appended
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExecutionEvent"
+        "422":
+          description: Operation not ready, or completion blocked by an open inspection gate (BR-05)
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+
+  /events:
+    post:
+      tags: [execution]
+      summary: Append an execution event (params/counts) (FR-006, BR-10)
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExecutionEvent"
+      responses:
+        "201":
+          description: Appended (append-only; corrections are compensating events)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExecutionEvent"
+
+  /inspections/{inspectionId}/results:
+    parameters:
+      - name: inspectionId
+        in: path
+        required: true
+        schema: { type: string }
+    post:
+      tags: [quality]
+      summary: Record blocking inspection gate result (FR-013, BR-05)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InspectionResult"
+      responses:
+        "201":
+          description: Result recorded; gate unlocks next operation on OK, NCR raised on NOK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InspectionResult"
+        "422":
+          description: Result not applicable / already recorded
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+
+  /equipment/{equipmentId}/state-events:
+    parameters:
+      - name: equipmentId
+        in: path
+        required: true
+        schema: { type: string }
+    post:
+      tags: [equipment]
+      summary: Record equipment state/downtime event (FR-017, BR-08, SM-05)
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EquipmentStateEvent"
+      responses:
+        "201":
+          description: Appended; feeds OEE only via validated events (BR-09)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EquipmentStateEvent"
+
+  /genealogy/{unitOrLotId}:
+    parameters:
+      - name: unitOrLotId
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      tags: [reporting]
+      summary: Backward/forward genealogy traversal (FR-011, BR-06)
+      parameters:
+        - name: depth
+          in: query
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: Dossier edges within retention window
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenealogyGraph"
+
+components:
+  parameters:
+    WoId:
+      name: woId
+      in: path
+      required: true
+      schema: { type: string }
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema: { type: string }
+
+  schemas:
+    Problem:
+      type: object
+      required: [type, title, status]
+      properties:
+        type: { type: string, format: uri }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        failedConditions:
+          type: array
+          description: Gate failures etc. (release lists every failed condition)
+          items: { type: object }
+
+    ProductionOrderCommand:
+      type: object
+      required: [erpOrderId, material, authorizedQty, command]
+      properties:
+        erpOrderId: { type: string }
+        command: { type: string, enum: [create, change, cancel] }
+        material: { type: string }
+        authorizedQty: { type: number, exclusiveMinimum: 0 }
+        bomVersion: { type: string }
+        routingVersion: { type: string }
+        note: Planned qty may never exceed authorizedQty (BR-01); changes affect CREATED work orders only (FR-002)
+
+    WorkOrder:
+      type: object
+      required: [woId, erpOrderRef, state, plannedQty]
+      properties:
+        woId: { type: string }
+        erpOrderRef: { type: string }
+        state:
+          type: string
+          enum: [CREATED, RELEASED, IN_PROGRESS, ON_HOLD, COMPLETED, CANCELLED]
+          description: SM-01
+        plannedQty: { type: number }
+        completedQty: { type: number }
+        scrappedQty: { type: number }
+        releasedWith:
+          type: object
+          description: Frozen versions (BR-13); present from RELEASED
+
+    StationAction:
+      type: object
+      required: [action, ts, operatorId]
+      properties:
+        action:
+          type: string
+          enum: [start, pause, resume, complete, count]
+        woId: { type: string }
+        opSeq: { type: integer }
+        goodCount: { type: number, minimum: 0 }
+        scrapCount: { type: number, minimum: 0 }
+        reworkCount: { type: number, minimum: 0 }
+        ts: { type: string, format: date-time }
+        operatorId:
+          type: string
+          description: Session identity (FR-008, CTL-04)
+
+    ExecutionEvent:
+      type: object
+      required: [eventId, source, sourceTs, ingestionTs]
+      properties:
+        eventId: { type: string }
+        type:
+          type: string
+          description: e.g. parameter, count, consumption, state
+        source: { type: string, enum: [station, equipment, system] }
+        woId: { type: string }
+        opSeq: { type: integer }
+        unitRef: { type: string }
+        lotRef: { type: string }
+        equipmentRef: { type: string }
+        operatorRef: { type: string }
+        params:
+          type: object
+          additionalProperties: true
+        sourceTs: { type: string, format: date-time }
+        ingestionTs: { type: string, format: date-time }
+        compensates:
+          type: string
+          description: Original event id when this is a compensating event (BR-07)
+
+    InspectionResult:
+      type: object
+      required: [inspectionId, verdict, recordedAt]
+      properties:
+        inspectionId: { type: string }
+        verdict: { type: string, enum: [OK, NOK] }
+        characteristicValues:
+          type: array
+          items:
+            type: object
+            properties:
+              characteristic: { type: string }
+              value: { type: number }
+        recordedAt: { type: string, format: date-time }
+        inspectorId: { type: string }
+        ncrRef:
+          type: string
+          description: Present when verdict = NOK (FR-015)
+
+    EquipmentStateEvent:
+      type: object
+      required: [equipmentRef, state, sourceTs, ingestionTs]
+      properties:
+        eventId: { type: string }
+        equipmentRef: { type: string }
+        state: { type: string, enum: [RUNNING, IDLE, SETUP, DOWN, PM] }
+        downtimeReason:
+          type: string
+          description: Required when state = DOWN (BR-08); UNCODED auto-coding before shift close
+        source: { type: string, enum: [signal, manual, system] }
+        sourceTs: { type: string, format: date-time }
+        ingestionTs: { type: string, format: date-time }
+
+    GenealogyGraph:
+      type: object
+      required: [root, backward, forward]
+      properties:
+        root: { type: string }
+        backward:
+          type: array
+          description: Components/lots consumed
+          items:
+            type: object
+            properties:
+              lotRef: { type: string }
+              material: { type: string }
+              qty: { type: number }
+              operationRef: { type: string }
+        forward:
+          type: array
+          description: Units/outputs produced
+          items:
+            type: object
+            properties:
+              unitRef: { type: string }
+              operationRef: { type: string }
+              disposition: { type: string }

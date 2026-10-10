@@ -1,0 +1,10 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 Questions & discussion
+    url: https://github.com/USERNAME/open-solution-atlas/discussions
+    with:
+      about: Ask questions about using a Solution Pack or the pack standard.
+  - name: 📖 Pack Standard v1
+    url: https://github.com/USERNAME/open-solution-atlas/blob/main/docs/pack-standard.v1.md
+    with:
+      about: Read the standard before proposing a pack.

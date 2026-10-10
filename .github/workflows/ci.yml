@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  validate:
+    name: Validate packs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+      - name: Validate pack manifests (structure + trust ladder)
+        run: python tools/validate-packs.py
+      - name: Check ID cross-references (FR/BR/AC/CTL/NFR/ADR)
+        run: python tools/check-ids.py
+      - name: Check relative Markdown links
+        run: python tools/check-links.py
+      - name: Tooling tests
+        run: python -m pytest tests/ -q
+
+  schema:
+    name: Schema is valid JSON
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parse pack-manifest schema
+        run: python -c "import json; json.load(open('schemas/pack-manifest.schema.json')); print('schema OK')"
+
+  external-links:
+    name: External citation links (non-blocking)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Probe cited external URLs (HEAD; informational)
+        run: python tools/check-links.py --check-external --timeout 8

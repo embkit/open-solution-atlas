@@ -1,0 +1,377 @@
+openapi: 3.1.0
+info:
+  title: TMS Core API (subset)
+  version: "0.3.0"
+  description: >
+    Core subset of the TMS operational and partner contracts (see
+    ../api-overview.md). Pack convention, not a standard (SOURCES §4).
+    All facts are append-only; corrections are compensating events (BR-11).
+servers:
+  - url: /api/v1
+tags:
+  - name: orders
+  - name: dispatch
+  - name: visibility
+  - name: settlement
+  - name: compliance
+
+paths:
+  /transport-orders:
+    post:
+      tags: [orders]
+      summary: Ingest transport-order lines from ERP/WMS demand (FR-001)
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [demandSource, lines]
+              properties:
+                demandSource:
+                  $ref: "#/components/schemas/DemandSource"
+                lines:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/TransportOrderLine"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TransportOrderLine"
+        "422":
+          $ref: "#/components/responses/Problem"
+    get:
+      tags: [orders]
+      summary: Read transport order (FR-001)
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransportOrderLine"
+
+  /legs/{legId}/tenders:
+    parameters:
+      - $ref: "#/components/parameters/LegId"
+    post:
+      tags: [dispatch]
+      summary: Issue a tender round (FR-009, BR-03)
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [carrierId, deadline]
+              properties:
+                carrierId: { type: string }
+                deadline: { type: string, format: date-time }
+      responses:
+        "201":
+          description: Tender round recorded (SM-T2 Offered)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Tender"
+        "409":
+          $ref: "#/components/responses/Problem"
+
+  /legs/{legId}/milestones:
+    parameters:
+      - $ref: "#/components/parameters/LegId"
+    post:
+      tags: [visibility]
+      summary: Append a milestone fact (FR-011, BR-11) — operational alias of the partner surface
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MilestoneEvent"
+      responses:
+        "201":
+          description: Appended
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MilestoneEvent"
+        "422":
+          $ref: "#/components/responses/Problem"
+
+  /legs/{legId}/pod:
+    parameters:
+      - $ref: "#/components/parameters/LegId"
+    post:
+      tags: [visibility]
+      summary: Capture proof of delivery — only path to DELIVERED (FR-013, BR-06)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Pod"
+      responses:
+        "201":
+          description: POD recorded; leg transitions to Delivered (SM-T1)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Pod"
+        "422":
+          $ref: "#/components/responses/Problem"
+
+  /legs/{legId}/invoices:
+    parameters:
+      - $ref: "#/components/parameters/LegId"
+    post:
+      tags: [settlement]
+      summary: Carrier invoice ingest (partner surface equivalent) (FR-015)
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CarrierInvoice"
+      responses:
+        "201":
+          description: Received; match run queued (SM-T3)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CarrierInvoice"
+        "409":
+          description: Duplicate invoice number (idempotency)
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+
+  /invoices/{invoiceId}/match:
+    parameters:
+      - name: invoiceId
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      tags: [settlement]
+      summary: Three-way match result (FR-015, BR-05)
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MatchResult"
+
+  /dg/declarations:validate:
+    post:
+      tags: [compliance]
+      summary: Validate DG declaration against in-force regulation edition (FR-017, BR-07, NFR-010)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DgDeclaration"
+      responses:
+        "200":
+          description: Validation verdict (pass/fail with violated constraint)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationResult"
+        "409":
+          description: No in-force edition loaded for the transport date (NFR-010)
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+
+components:
+  parameters:
+    LegId:
+      name: legId
+      in: path
+      required: true
+      schema: { type: string }
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema: { type: string }
+
+  responses:
+    Problem:
+      description: RFC 9457 problem document
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+
+  schemas:
+    Problem:
+      type: object
+      required: [type, title, status]
+      properties:
+        type: { type: string, format: uri }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        invalidParams:
+          type: array
+          items: { type: object }
+
+    DemandSource:
+      type: object
+      required: [system, sourceId, authorizedQty, incotermsRule]
+      properties:
+        system: { type: string, enum: [erp, wms] }
+        sourceId: { type: string }
+        authorizedQty: { type: number, exclusiveMinimum: 0 }
+        incotermsRule:
+          type: string
+          enum: [EXW, FCA, CPT, CIP, DAP, DPU, DDP, FAS, FOB, CFR, CIF]
+          description: ICC Incoterms 2020 rule, consumed verbatim (BR-12, CTL-08)
+
+    TransportOrderLine:
+      type: object
+      required: [lineId, demandSourceRef, quantity, window]
+      properties:
+        lineId: { type: string }
+        demandSourceRef: { type: string }
+        quantity: { type: number, exclusiveMinimum: 0, description: "≤ authorized qty (BR-01)" }
+        window:
+          type: object
+          properties:
+            notBefore: { type: string, format: date-time }
+            notAfter: { type: string, format: date-time }
+        dgFlag: { type: boolean }
+
+    Tender:
+      type: object
+      required: [legId, round, carrierId, outcome]
+      properties:
+        legId: { type: string }
+        round: { type: integer, minimum: 1 }
+        carrierId: { type: string }
+        outcome:
+          type: string
+          enum: [OFFERED, ACCEPTED, REJECTED, TIMEOUT]
+          description: SM-T2; ACCEPTED freezes the rate snapshot (BR-04)
+        rateSnapshotRef:
+          type: string
+          description: Present only when outcome = ACCEPTED
+        respondedAt: { type: string, format: date-time }
+
+    MilestoneEvent:
+      type: object
+      required: [eventId, source, sourceTs, ingestionTs]
+      properties:
+        eventId: { type: string }
+        businessStep:
+          type: string
+          description: GS1 CBV 2.0 business step vocabulary value (FR-021)
+        disposition:
+          type: string
+          description: GS1 CBV 2.0 disposition vocabulary value
+        position:
+          type: object
+          properties:
+            lat: { type: number }
+            lon: { type: number }
+        source: { type: string, enum: [telematics, edi, manual, system] }
+        sourceTs: { type: string, format: date-time }
+        ingestionTs: { type: string, format: date-time }
+        payload: { type: object, additionalProperties: true }
+
+    Pod:
+      type: object
+      required: [capturedAt, method]
+      properties:
+        capturedAt: { type: string, format: date-time }
+        method: { type: string, enum: [signature, photo, e-pod-ref] }
+        ref: { type: string }
+        receivedBy: { type: string }
+
+    CarrierInvoice:
+      type: object
+      required: [invoiceId, carrierId, lines, total]
+      properties:
+        invoiceId: { type: string }
+        carrierId: { type: string }
+        lines:
+          type: array
+          items:
+            type: object
+            required: [legRef, amount]
+            properties:
+              legRef: { type: string }
+              amount: { type: number }
+              currency: { type: string }
+        total: { type: number }
+        documentRef: { type: string }
+
+    MatchResult:
+      type: object
+      required: [invoiceId, status, verdicts]
+      properties:
+        invoiceId: { type: string }
+        status: { type: string, enum: [AUTO_APPROVED, DISPUTED] }
+        verdicts:
+          type: object
+          properties:
+            orderTender: { type: string, enum: [match, mismatch] }
+            execution: { type: string, enum: [match, mismatch] }
+            invoice: { type: string, enum: [match, mismatch] }
+        deltas:
+          type: array
+          items:
+            type: object
+            properties:
+              field: { type: string }
+              agreed: { type: number }
+              invoiced: { type: number }
+
+    DgDeclaration:
+      type: object
+      required: [declarationId, transportDate, regime, unNumber, psn, classDivision, qty]
+      properties:
+        declarationId: { type: string }
+        transportDate: { type: string, format: date }
+        regime: { type: string, enum: [adr, imdg, iata_dgr, jt617, gb6944] }
+        unNumber: { type: string, pattern: "^[0-9]{4}$" }
+        psn: { type: string, description: Proper shipping name }
+        classDivision: { type: string }
+        packingGroup: { type: string, enum: [I, II, III, none] }
+        qty: { type: number, exclusiveMinimum: 0 }
+
+    ValidationResult:
+      type: object
+      required: [declarationId, verdict, editionRef]
+      properties:
+        declarationId: { type: string }
+        verdict: { type: string, enum: [pass, fail] }
+        editionRef:
+          type: string
+          description: regulation_edition key used for the check (SM-T5)
+        violations:
+          type: array
+          items:
+            type: object
+            properties:
+              constraint: { type: string }
+              detail: { type: string }

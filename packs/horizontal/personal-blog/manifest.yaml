@@ -1,0 +1,49 @@
+schema: osa-pack/v1
+slug: personal-blog
+title: Personal Blog & Content Publishing
+title_zh: 个人博客与内容发布系统
+domain: horizontal
+subdomain: content-publishing
+tags: [cms, blog, content, seo, static-site, self-hosted, webmention, indieweb]
+maturity: L3
+provenance: llm-drafted
+verification: source-checked           # claims traced to sources 2026-10-09; not field-proven
+stack_stance: stack-agnostic
+variants: []
+regulatory:
+  - id: gdpr
+    region: eu
+  - id: ccpa
+    region: us
+  - id: pipl
+    region: cn
+  - id: wcag-2.1-aa
+    region: global
+language: en
+translations: []                           # no full translation yet (key assets bilingual; see standard §5)
+maintainers: []
+version: 1.0.1
+last_reviewed: 2026-10-09
+sources:
+  - https://indieweb.org/
+  - https://www.w3.org/TR/webmention/
+  - https://www.w3.org/TR/activitypub/
+  - https://www.rssboard.org/rss-specification
+  - https://datatracker.ietf.org/doc/html/rfc4287
+  - https://www.w3.org/WAI/standards-guidelines/wcag/
+  - https://web.dev/vitals/                        # Core Web Vitals (LCP 2.5s / CLS 0.1)
+  - https://digital-strategy.ec.europa.eu/en/policies/web-accessibility-directive-standards-and-harmonisation # EN 301 549 v3.2.1
+verified_by: []                       # empty: practitioner review still pending
+evidence:
+  - type: spec
+    ref: SOURCES.md#1-standards--specifications
+    note: Webmention/ActivityPub/RSS/Atom/sitemap/OG/schema.org/WCAG claims traced per claim, verified 2026-10-09
+  - type: spec
+    ref: https://web.dev/vitals/
+    note: LCP ≤ 2.5 s adopted from Core Web Vitals guidance; pack's stricter CLS ≤ 0.05 and TTFB ≤ 200 ms explicitly declared as assumptions (SOURCES §4)
+  - type: standard
+    ref: https://digital-strategy.ec.europa.eu/en/policies/web-accessibility-directive-standards-and-harmonisation
+    note: EN 301 549 pinned to harmonised v3.2.1 (2021-08-18); ICP filing (国务院令第292号 art. 4) and DMCA 17 U.S.C. §512(c) given instrument-level citations
+  - type: oss-implementation
+    ref: https://gohugo.io/
+    note: static-first build/deploy observable in a mature real project; illustrative of ADR-0001/0002, not a deployment proof

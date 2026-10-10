@@ -1,0 +1,345 @@
+openapi: 3.1.0
+info:
+  title: Personal Blog — Management & Ingestion API
+  version: 1.0.0
+  description: >
+    Core contract for the personal-blog Solution Pack. Management endpoints
+    require a bearer token for the single author identity. Ingestion
+    endpoints are public and untrusted. Static artifacts (pages, RSS/Atom,
+    sitemap, search index) are outside this API surface.
+servers:
+  - url: https://admin.example.com
+security:
+  - bearerAuth: []
+tags:
+  - name: posts
+  - name: media
+  - name: moderation
+  - name: ingestion
+    description: Unauthenticated, hardened endpoints
+  - name: ops
+
+paths:
+  /api/v1/posts:
+    get:
+      tags: [posts]
+      summary: List posts (includes drafts for the author)
+      parameters:
+        - { in: query, name: status, schema: { $ref: '#/components/schemas/PostStatus' } }
+        - { in: query, name: limit, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+        - { in: query, name: cursor, schema: { type: string } }
+      responses:
+        '200':
+          description: Page of posts
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items: { type: array, items: { $ref: '#/components/schemas/Post' } }
+                  nextCursor: { type: [string, 'null'] }
+    post:
+      tags: [posts]
+      summary: Create a draft
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PostCreate' }
+      responses:
+        '201':
+          description: Draft created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Post' }
+        '409': { $ref: '#/components/responses/SlugConflict' }
+
+  /api/v1/posts/{postId}:
+    parameters:
+      - { in: path, name: postId, required: true, schema: { type: string, format: uuid } }
+    get:
+      tags: [posts]
+      responses:
+        '200': { description: Post with current revision, content: { application/json: { schema: { $ref: '#/components/schemas/Post' } } } }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [posts]
+      summary: Autosave update (title/body/tags/slug-before-publish/etc.)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PostUpdate' }
+      responses:
+        '200': { description: Saved; returns new revision number, content: { application/json: { schema: { $ref: '#/components/schemas/Post' } } } }
+        '422': { $ref: '#/components/responses/ValidationError' }
+    delete:
+      tags: [posts]
+      summary: Delete a DRAFT only (published posts must be unpublished → 410)
+      responses:
+        '204': { description: Deleted }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /api/v1/posts/{postId}/publish:
+    parameters:
+      - { in: path, name: postId, required: true, schema: { type: string, format: uuid } }
+    post:
+      tags: [posts]
+      summary: Publish now; runs completeness, alt-text, build gates
+      responses:
+        '202':
+          description: Release job accepted
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReleaseJob' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /api/v1/posts/{postId}/schedule:
+    parameters:
+      - { in: path, name: postId, required: true, schema: { type: string, format: uuid } }
+    post:
+      tags: [posts]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [publishAt]
+              properties:
+                publishAt: { type: string, format: date-time }
+      responses:
+        '200': { description: Scheduled, content: { application/json: { schema: { $ref: '#/components/schemas/Post' } } } }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /api/v1/posts/{postId}/unpublish:
+    parameters:
+      - { in: path, name: postId, required: true, schema: { type: string, format: uuid } }
+    post:
+      tags: [posts]
+      summary: Transition published post to UNPUBLISHED; URL serves 410
+      responses:
+        '202': { description: Release job accepted, content: { application/json: { schema: { $ref: '#/components/schemas/ReleaseJob' } } } }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /api/v1/media:
+    post:
+      tags: [media]
+      summary: Upload an image (multipart)
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+                altText: { type: string, maxLength: 300 }
+                decorative: { type: boolean, default: false }
+      responses:
+        '201': { description: Stored, content: { application/json: { schema: { $ref: '#/components/schemas/MediaAsset' } } } }
+        '413': { $ref: '#/components/responses/Problem' }
+        '415': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /api/v1/mentions:
+    get:
+      tags: [moderation]
+      summary: Moderation queue
+      parameters:
+        - { in: query, name: status, schema: { type: string, enum: [PENDING, APPROVED, REJECTED, BLOCKED] }, required: true }
+      responses:
+        '200':
+          description: Queue
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Mention' } }
+
+  /api/v1/mentions/{mentionId}/approve:
+    post:
+      tags: [moderation]
+      parameters:
+        - { in: path, name: mentionId, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200': { description: Approved; included in next release rebuild }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/v1/mentions/{mentionId}/reject:
+    post:
+      tags: [moderation]
+      parameters:
+        - { in: path, name: mentionId, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200': { description: Rejected }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/v1/mentions/{mentionId}/block:
+    post:
+      tags: [moderation]
+      parameters:
+        - { in: path, name: mentionId, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200': { description: Source blocked }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/v1/export:
+    post:
+      tags: [ops]
+      summary: Build an ExportBundle (content + media + mentions + manifest)
+      responses:
+        '202':
+          description: Export job accepted
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExportJob' }
+    get:
+      tags: [ops]
+      summary: Latest export jobs
+      responses:
+        '200': { description: Jobs, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/ExportJob' } } } } }
+
+  /webmention:
+    post:
+      tags: [ingestion]
+      security: []
+      summary: W3C Webmention receiver (FR-013)
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [source, target]
+              properties:
+                source: { type: string, format: uri, maxLength: 2048 }
+                target: { type: string, format: uri, maxLength: 2048 }
+      responses:
+        '202': { description: Accepted for asynchronous verification }
+        '400': { $ref: '#/components/responses/Problem' }
+        '429': { $ref: '#/components/responses/Problem' }
+
+  /posts/{slug}/comments:
+    post:
+      tags: [ingestion]
+      security: []
+      summary: Optional native comment, held for moderation (FR-015)
+      parameters:
+        - { in: path, name: slug, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, body]
+              properties:
+                name: { type: string, maxLength: 60 }
+                url: { type: string, format: uri, maxLength: 2048 }
+                body: { type: string, minLength: 1, maxLength: 4000 }
+      responses:
+        '202': { description: Held in moderation queue }
+        '403': { description: Comments disabled on this post }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '429': { $ref: '#/components/responses/Problem' }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    PostStatus:
+      type: string
+      enum: [DRAFT, SCHEDULED, PUBLISHED, UNPUBLISHED]
+    Post:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string, maxLength: 150 }
+        slug: { type: string, pattern: '^[a-z0-9]+(-[a-z0-9]+)*$', maxLength: 80 }
+        summary: { type: string, maxLength: 300 }
+        bodyMarkdown: { type: string }
+        status: { $ref: '#/components/schemas/PostStatus' }
+        tags: { type: array, items: { type: string }, maxItems: 8 }
+        seriesSlug: { type: [string, 'null'] }
+        licenseId: { type: string }
+        revisionNo: { type: integer }
+        createdAt: { type: string, format: date-time }
+        publishedAt: { type: [string, 'null'], format: date-time }
+        updatedAt: { type: string, format: date-time }
+        canonicalUrl: { type: [string, 'null'], format: uri }
+    PostCreate:
+      type: object
+      required: [title]
+      properties:
+        title: { type: string, maxLength: 150 }
+        slug: { type: string, pattern: '^[a-z0-9]+(-[a-z0-9]+)*$', maxLength: 80 }
+        bodyMarkdown: { type: string }
+    PostUpdate:
+      type: object
+      properties:
+        title: { type: string, maxLength: 150 }
+        slug: { type: string, pattern: '^[a-z0-9]+(-[a-z0-9]+)*$', maxLength: 80 }
+        summary: { type: string, maxLength: 300 }
+        bodyMarkdown: { type: string }
+        tags: { type: array, items: { type: string }, maxItems: 8 }
+        licenseId: { type: string }
+    MediaAsset:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        sha256: { type: string }
+        contentType: { type: string, enum: [image/png, image/jpeg, image/webp, image/gif, image/svg+xml] }
+        bytes: { type: integer, maximum: 5242880 }
+        altText: { type: [string, 'null'], maxLength: 300 }
+        decorative: { type: boolean }
+        url: { type: string, format: uri }
+    Mention:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        sourceUrl: { type: string, format: uri }
+        targetPostId: { type: string, format: uuid }
+        type: { type: string, enum: [REPLY, LIKE, REPOST, BOOKMARK, MENTION] }
+        status: { type: string, enum: [PENDING, APPROVED, REJECTED, BLOCKED] }
+        authorName: { type: [string, 'null'] }
+        authorUrl: { type: [string, 'null'], format: uri }
+        contentSafe: { type: string }
+        receivedAt: { type: string, format: date-time }
+        verifiedAt: { type: [string, 'null'], format: date-time }
+    ReleaseJob:
+      type: object
+      properties:
+        releaseId: { type: string, format: uuid }
+        status: { type: string, enum: [BUILDING, READY, DEPLOYED, FAILED] }
+    ExportJob:
+      type: object
+      properties:
+        jobId: { type: string, format: uuid }
+        status: { type: string, enum: [QUEUED, RUNNING, DONE, FAILED] }
+        downloadUrl: { type: [string, 'null'], format: uri }
+    Problem:
+      type: object
+      properties:
+        type: { type: string }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+  responses:
+    NotFound:
+      description: Not found
+      content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
+    Conflict:
+      description: Lifecycle conflict
+      content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
+    SlugConflict:
+      description: Slug already exists
+      content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
+    ValidationError:
+      description: Validation failure with field details
+      content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
+    Problem:
+      description: RFC 9457 problem
+      content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }

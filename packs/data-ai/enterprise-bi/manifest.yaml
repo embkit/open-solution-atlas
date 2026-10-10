@@ -1,0 +1,26 @@
+schema: osa-pack/v1
+slug: enterprise-bi
+title: Enterprise BI & Self-Service Analytics Platform
+title_zh: 企业BI与自助分析平台
+domain: data-ai
+subdomain: bi-analytics
+tags: [bi, reporting, dashboard, semantic-layer, metrics-store, olap, self-service, data-apps, row-level-security]
+maturity: L1
+provenance: llm-drafted
+verification: unverified
+stack_stance: stack-agnostic
+variants: []
+regulatory:
+  - id: iso-iec-27001
+    region: global
+  - id: pipl
+    region: cn
+language: en
+translations: []                           # no full translation yet (key assets bilingual; see standard §5)
+maintainers: []
+version: 0.1.0
+last_reviewed: 2026-10-08
+sources:
+  - https://www.getdbt.com/analytics-engineering
+verified_by: []
+evidence: []

@@ -1,0 +1,77 @@
+schema: osa-pack/v1
+slug: iam-platform
+title: Enterprise Identity & Access Management Platform
+title_zh: 企业统一身份与权限管理平台（IAM/SSO）
+domain: horizontal
+subdomain: identity-access
+tags:
+  - iam
+  - sso
+  - oidc
+  - oauth2
+  - saml
+  - scim
+  - rbac
+  - abac
+  - pdp
+  - mfa
+  - webauthn
+  - fido2
+  - pam
+  - zero-trust
+maturity: L3
+provenance: llm-drafted
+verification: source-checked           # claims traced to sources 2026-10-08; L3 artifacts added 2026-10-09; not field-proven
+stack_stance: stack-agnostic
+variants: []                # planned: ciam-customer, pam-privileged, xinchuang-cn
+regulatory:
+  - id: oidc
+    region: global
+  - id: oauth2
+    region: global
+  - id: saml2
+    region: global
+  - id: scim2
+    region: global
+  - id: webauthn-fido2
+    region: global
+  - id: xacml
+    region: global
+  - id: nist-sp800-63
+    region: global
+  - id: iso-iec-27001
+    region: global
+  - id: gdpr
+    region: eu
+  - id: mlps-2-0
+    region: cn
+language: en
+translations: []                           # no full translation yet (key assets bilingual; see standard §5)
+maintainers: []
+version: 0.3.0
+last_reviewed: 2026-10-09
+sources:
+  - https://openid.net/connect/                    # OpenID Connect Core 1.0
+  - https://oauth.net/2/                           # OAuth 2.0 (RFC 6749/6750/7636/7009/7662)
+  - https://docs.oasis-open.org/security/saml/v2.0/ # SAML 2.0
+  - https://www.rfc-editor.org/rfc/rfc7642         # SCIM 2.0 (RFC 7642/7643/7644)
+  - https://www.w3.org/TR/webauthn-2/              # WebAuthn Level 2 (FIDO2)
+  - https://www.oasis-open.org/standard/xacml/     # XACML 3.0
+  - https://csrc.nist.gov/pubs/sp/800/63/4/final  # NIST SP 800-63-4 (supersedes 800-63-3, withdrawn 2025-08-01)
+  - https://www.iso.org/standard/27001             # ISO/IEC 27001:2022 (Annex A clause numbers)
+  - https://gdpr-info.eu/                          # GDPR (EU 2016/679)
+  - https://www.gov.cn/zhengce/2019-05/13/content_5416105.htm # 网络安全等级保护 2.0
+verified_by: []                       # empty: practitioner review still pending
+evidence:
+  - type: standard
+    ref: SOURCES.md#1-standards--specifications
+    note: OIDC / OAuth 2.0 / SAML 2.0 / SCIM 2.0 / WebAuthn / XACML claims traced per claim, verified 2026-10-08
+  - type: spec
+    ref: https://csrc.nist.gov/pubs/sp/800/63/4/final
+    note: SP 800-63-4 confirmed as the current NIST digital identity guidance; prior SP 800-63-3 reference corrected
+  - type: standard
+    ref: https://www.iso.org/standard/27001
+    note: ISO/IEC 27001:2022 Annex A clause numbers confirmed (5.3, 5.15-5.18, 5.33, 8.2, 8.3, 8.5, 8.15, 8.24)
+  - type: oss-implementation
+    ref: https://www.keycloak.org/
+    note: realm/isolation and OIDC/SAML/SAML interop observable in a real platform; illustrative, not a deployment proof

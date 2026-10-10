@@ -1,0 +1,29 @@
+schema: osa-pack/v1
+slug: omnichannel-commerce
+title: Omnichannel Commerce & Order Platform
+title_zh: 全渠道电商交易与订单履约平台
+domain: retail-commerce
+subdomain: commerce-platform
+tags: [ecommerce, pim, cart, checkout, oms, inventory, promotion, loyalty, payments-abstraction]
+maturity: L1
+provenance: llm-drafted
+verification: unverified
+stack_stance: stack-agnostic
+variants: []
+regulatory:
+  - id: e-commerce-law
+    region: cn
+  - id: pipl
+    region: cn
+  - id: pci-dss
+    region: global
+language: en
+translations: []                           # no full translation yet (key assets bilingual; see standard §5)
+maintainers: []
+version: 0.1.0
+last_reviewed: 2026-10-08
+sources:
+  - https://www.pcisecuritystandards.org/
+  - https://www.gs1.org/standards
+verified_by: []
+evidence: []

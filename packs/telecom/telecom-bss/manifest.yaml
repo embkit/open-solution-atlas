@@ -1,0 +1,32 @@
+schema: osa-pack/v1
+slug: telecom-bss
+title: Telecom BSS/OSS Suite
+title_zh: 电信业务支撑系统（BSS/OSS）
+domain: telecom
+subdomain: bss-oss
+tags: [telecom, bss, oss, tmforum, oda, open-api, product-catalog, order-orchestration, rating, billing, dunning, number-inventory, provisioning]
+maturity: L1
+provenance: llm-drafted
+verification: unverified
+stack_stance: stack-agnostic
+variants: []
+regulatory:
+  - id: tmforum-oda
+    region: global
+  - id: tmforum-open-api
+    region: global
+  - id: itu-t
+    region: global
+  - id: gdpr
+    region: eu
+language: en
+translations: []                           # no full translation yet (key assets bilingual; see standard §5)
+maintainers: []
+version: 0.1.0
+last_reviewed: 2026-10-08
+sources:
+  - https://www.tmforum.org/
+  - https://www.itu.int/
+  - https://eur-lex.europa.eu/
+verified_by: []
+evidence: []

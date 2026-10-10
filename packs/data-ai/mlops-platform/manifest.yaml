@@ -1,0 +1,30 @@
+schema: osa-pack/v1
+slug: mlops-platform
+title: MLOps & Model Lifecycle Platform
+title_zh: 机器学习工程与模型生命周期平台（MLOps）
+domain: data-ai
+subdomain: ml-platforms
+tags: [mlops, feature-store, experiment-tracking, model-registry, model-serving, drift-detection, lineage, reproducibility, ai-governance, model-card]
+maturity: L1
+provenance: llm-drafted
+verification: unverified
+stack_stance: stack-agnostic
+variants: []
+regulatory:
+  - id: nist-ai-rmf
+    region: global
+  - id: iso-iec-42001
+    region: global
+  - id: eu-ai-act
+    region: eu
+language: en
+translations: []                           # no full translation yet (key assets bilingual; see standard §5)
+maintainers: []
+version: 0.1.0
+last_reviewed: 2026-10-08
+sources:
+  - https://www.nist.gov/itl/ai-risk-management-framework
+  - https://www.iso.org/
+  - https://eur-lex.europa.eu/
+verified_by: []
+evidence: []

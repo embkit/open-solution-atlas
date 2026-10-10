@@ -1,0 +1,62 @@
+name: Practitioner review request
+description: Request practitioner-reviewed verification for a pack (standard §8.2 rung 3)
+title: "[review] pack: <slug> — <scope>"
+labels: ["verification", "practitioner-review"]
+body:
+  - type: input
+    id: pack
+    attributes:
+      label: Pack
+      description: Path to the pack under review (e.g. packs/manufacturing/wms)
+      placeholder: packs/<domain>/<slug>
+    validations:
+      required: true
+  - type: dropdown
+    id: reviewer-role
+    attributes:
+      label: Reviewer role
+      options:
+        - Domain practitioner (first-hand operations experience)
+        - Domain practitioner (first-hand implementation experience)
+        - Auditor / compliance reviewer
+        - Other (describe below)
+    validations:
+      required: true
+  - type: input
+    id: reviewer-name
+    attributes:
+      label: Reviewer name / handle
+      description: Will be recorded in manifest `verified_by[].who`
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Review scope
+      description: Which chapters/rules/claims were reviewed (be specific, e.g. "01-business/business-rules.md BR-01..BR-13, 02-requirements/non-functional.md targets")
+    validations:
+      required: true
+  - type: textarea
+    id: findings
+    attributes:
+      label: Findings
+      description: What did not survive contact with real practice? Cite chapter + ID for each finding.
+    validations:
+      required: true
+  - type: checkboxes
+    id: attestations
+    attributes:
+      label: Attestations
+      options:
+        - label: I have first-hand experience in the domain scoped above, independent of the pack's authors.
+          required: true
+        - label: I understand this review will be recorded publicly (name/handle, role, date, scope) in the pack manifest.
+          required: true
+
+# Merge rules (standard §8.3):
+#   - Verification may only be raised to practitioner-reviewed when one or more
+#     named practitioners complete this form and their entries land in
+#     manifest.yaml `verified_by` (with who/role/date/scope) in the same PR.
+#   - The pack's author may not be its sole approver.
+#   - CI (tools/validate-packs.py) rejects practitioner-reviewed with empty
+#     verified_by, and rejects verified_by entries missing any required field.

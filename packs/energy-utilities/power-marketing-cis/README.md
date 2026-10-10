@@ -1,0 +1,65 @@
+# Power Marketing & Customer Information System / 电力营销与客户服务信息系统
+
+| | |
+|---|---|
+| Maturity | 🟡 L1 — Brief (target L3) |
+| Domain | energy-utilities / power-marketing |
+| Stack stance | Vendor-neutral |
+| Regulatory context | 电力法及供电监管规则（电价、供电服务规范、95598 服务标准）; 等保2.0 |
+
+> ⚠️ **DRAFT — not field-verified.** Provenance: `llm-drafted` · Verification: `unverified`.
+> Drafted with LLM assistance from public standards; **not** validated in a real
+> deployment. Treat specific claims as hypotheses until [`SOURCES.md`](./SOURCES.md)
+> and independent review raise the verification level (see standard §8).
+
+## What this pack covers
+
+The IT-side marketing and service core of a power utility (电网企业营销侧):
+customer & account management, contract & meter archives, meter reading and
+billing under regulated tariffs, payment and arrears, service requests and
+fault repair dispatch, line-loss data support, and the 95598 omnichannel
+service hub. It explicitly stops at SCADA/distribution automation — only the
+business/integration surface is in scope.
+
+## In scope
+
+- Customer domain: households/non-household customers, accounts, service
+  points (用电户), contracts, capacity (报装容量), industry classification
+- Meter archives: meter ledger, change/replacement/sealing records,
+  transformer/general industrial customer档案, reading points
+- Meter reading: collection routes (AMR/集中器/人工), exception handling
+  (估抄/补抄/零度户), reading audit
+- Billing: regulated tariff tables (居民阶梯/合表/工商业目录电价), charge
+  calculation, bill generation, adjustments/退补 with approval, government
+  funds & surcharges breakdown
+- Payment: multi-channel collection, prepayment (预付费) variant,
+  reconciliation, arrears & dunning workflow, disconnection/reconnection
+  service orders (regulated procedures)
+- Service & operations: 业扩报装 (new connection) workflow, 95598
+  consultation/fault/repair orders, dispatch to field crews, satisfaction
+  callbacks
+- Supporting analytics: line-loss data delivery, demand analysis,
+  abnormal-consumption/反窃电线索
+- Channels: hall, app/网上国网-style, agency/bank, call center
+
+## Out of scope (explicitly)
+
+- SCADA, distribution automation, outage management control systems (field
+  devices; integrated only)
+- Real-time electricity trading/market settlement (separate, fast-changing
+  regulatory area — candidate pack later)
+- Meter hardware/firmware management
+
+## Open questions
+
+1. Tariff engine design: versioned rule engine given policy-driven price
+   tables — formalize change-effect windows.
+2. Prepayment model (residential vs. commercial) as variant depth.
+3. Fault-order ↔ distribution-system integration interface scope.
+
+## Maturity roadmap
+
+- [x] L1 — Brief
+- [ ] L2 — Blueprint
+- [ ] L3 — Agent-ready
+- [ ] L4 — Proven

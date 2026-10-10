@@ -1,0 +1,75 @@
+schema: osa-pack/v1
+slug: tms
+title: Transportation Management System
+title_zh: 运输管理系统（TMS）
+domain: manufacturing
+subdomain: logistics-wms
+tags:
+  - tms
+  - transportation
+  - freight
+  - carrier
+  - rate-management
+  - load-planning
+  - routing
+  - dispatch
+  - track-and-trace
+  - freight-settlement
+  - epcis
+  - dangerous-goods
+  - adr
+  - imdg
+maturity: L3
+provenance: llm-drafted
+verification: source-checked           # claims traced to sources 2026-10-09; not field-proven
+stack_stance: stack-agnostic
+variants: []                # planned: air-dgr, sea-imdg, regulated-edhr, xinchuang-cn
+regulatory:
+  - id: gs1-epcis
+    region: global
+  - id: iso-28000
+    region: global
+  - id: incoterms-2020
+    region: global
+  - id: adr
+    region: eu
+  - id: imdg
+    region: global
+  - id: iata-dgr
+    region: global
+  - id: jt617-gb6944
+    region: cn
+  - id: gdpr
+    region: eu
+  - id: mlps-2-0
+    region: cn
+language: en
+translations: []                           # no full translation yet (key assets bilingual; see standard §5)
+maintainers: []
+version: 0.3.0
+last_reviewed: 2026-10-09
+sources:
+  - https://ref.gs1.org/standards/epcis/            # EPCIS 2.0 (ratified 2022-06)
+  - https://ref.gs1.org/standards/cbv/              # CBV 2.0
+  - https://www.iso.org/standard/79612.html         # ISO 28000:2022 (Ed. 2)
+  - https://iccwbo.org/business-solutions/incoterms-rules/incoterms-2020/ # Incoterms 2020
+  - https://unece.org/transport/dangerous-goods      # ADR 2025 (road DG)
+  - https://www.imo.org/en/publications/pages/imdg%20code.aspx # IMDG 2024 (A42-24)
+  - https://www.iata.org/en/programs/cargo/dgr/      # IATA DGR 67th ed. (2026)
+  - https://unece.org/trade/uncefact                  # UN/EDIFACT IFTMIN/IFTSTA
+  - https://www.rfc-editor.org/rfc/rfc5905           # NTPv4
+  - https://gdpr-info.eu/                            # GDPR
+verified_by: []                       # empty: practitioner review still pending
+evidence:
+  - type: standard
+    ref: SOURCES.md#1-standards--specifications
+    note: EPCIS/CBV 2.0, ISO 28000:2022, Incoterms 2020, ADR 2025, IMDG 2024/A42-24, IATA DGR 67, JT/T 617-2018+GB 6944-2025, EDIFACT/X12 claims traced per claim, verified 2026-10-09
+  - type: standard
+    ref: SOURCES.md#1-standards--specifications
+    note: Corrected citation risk — ISO/IEC 19987/19988:2017 (EPCIS/CBV 1.2 PAS) are withdrawn; pack cites GS1 EPCIS/CBV 2.0 specs instead
+  - type: standard
+    ref: SOURCES.md#4-declared-assumptions-not-traceable-to-a-source
+    note: All NFR/BR numeric targets and the five ADRs declared as assumptions; DG regulations cited as validation data only (ADR-0003), never as legal compliance claims
+  - type: oss-implementation
+    ref: https://vroom-project.org/
+    note: VRP solver observable as a real project behind the pluggable-solver contract (ADR-0002); illustrative, not a deployment proof

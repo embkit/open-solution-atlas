@@ -1,0 +1,27 @@
+schema: osa-pack/v1
+slug: power-marketing-cis
+title: Power Marketing & Customer Information System
+title_zh: 电力营销与客户服务信息系统（营销/CIS/95598）
+domain: energy-utilities
+subdomain: power-marketing
+tags: [cis, metering, billing, tariff, 95598, work-orders, payment, power-supply, amr]
+maturity: L1
+provenance: llm-drafted
+verification: unverified
+stack_stance: stack-agnostic
+variants: []
+regulatory:
+  - id: electric-power-law
+    region: cn
+  - id: mlps-2-0
+    region: cn
+language: en
+translations: []                           # no full translation yet (key assets bilingual; see standard §5)
+maintainers: []
+version: 0.1.0
+last_reviewed: 2026-10-08
+sources:
+  - https://www.nea.gov.cn/
+  - http://www.dltjyy.cn/
+verified_by: []
+evidence: []

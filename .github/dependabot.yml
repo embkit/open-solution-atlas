@@ -1,0 +1,19 @@
+version: 2
+updates:
+  # Keep the tool dependencies pinned and patched.
+  - package-ecosystem: pip
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels: ["dependencies"]
+    groups:
+      python-deps:
+        patterns: ["*"]
+
+  # Keep GitHub Actions current (security fixes land here first).
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    labels: ["dependencies", "ci"]

@@ -1,0 +1,65 @@
+schema: osa-pack/v1
+slug: mes
+title: Manufacturing Execution System
+title_zh: 制造执行系统（MES）
+domain: manufacturing
+subdomain: mes-mom
+tags:
+  - mes
+  - mom
+  - isa-95
+  - production
+  - work-order
+  - traceability
+  - andon
+  - oee
+  - quality
+  - event-sourcing
+  - b2mml
+maturity: L3
+provenance: llm-drafted
+verification: source-checked           # claims traced to sources 2026-10-08; not field-proven
+stack_stance: stack-agnostic
+variants: []                # planned: discrete-assembly, process-batch, regulated-edhr, xinchuang-cn
+regulatory:
+  - id: isa-95
+    region: global
+  - id: iso-9001
+    region: global
+  - id: iec-62443
+    region: global
+  - id: fda-21-cfr-part-11
+    region: us
+  - id: eu-gmp-annex-11
+    region: eu
+  - id: mlps-2-0
+    region: cn
+language: en
+translations: []                           # no full translation yet (key assets bilingual; see standard §5)
+maintainers: []
+version: 0.3.0
+last_reviewed: 2026-10-09
+sources:
+  - https://www.isa.org/standards-and-publications/isa-standards/isa-standards-committees/isa95
+  - https://www.iso.org/standard/53936.html         # ISO 22400-2:2014 (OEE / MOM KPIs)
+  - https://www.iso.org/standard/70089.html        # ISO 9001:2015
+  - https://isa-95.com/
+  - https://webstore.iec.ch/en/publication/5768     # IEC 62443 series
+  - https://reference.opcfoundation.org/ISA-95/     # OPC UA for ISA-95 companion spec
+  - https://www.rfc-editor.org/rfc/rfc5905          # NTPv4
+  - https://www.ecfr.gov/current/title-21/chapter-I/subchapter-A/part-11
+  - https://health.ec.europa.eu/medicinal-products/eudralex_en
+verified_by: []                       # empty: practitioner review still pending
+evidence:
+  - type: standard
+    ref: SOURCES.md#1-standards--specifications
+    note: ISA-95/IEC 62264 part titles, ISO 9001 8.5.2, IEC 62443-3-2/3-3/4-2, 21 CFR Part 11 / Annex 11 claims traced per claim, verified 2026-10-08
+  - type: standard
+    ref: https://www.iso.org/standard/53936.html
+    note: ISO 22400-2:2014 closes BR-09 — OEE index = Availability × Effectiveness × Quality ratio (starter ledger had "no source")
+  - type: standard
+    ref: SOURCES.md#4-declared-assumptions-not-traceable-to-a-source
+    note: IEC 62264-3 Annex C confirms genealogy is NOT specified by the standard — declared as pack extension; all NFR/BR numeric targets marked (A) as assumptions
+  - type: oss-implementation
+    ref: https://www.eclipse.org/basyx/
+    note: OPC UA + AAS integration observable in a real project; illustrative of the adapter boundary (ADR-0003), not a deployment proof

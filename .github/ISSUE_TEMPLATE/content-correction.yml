@@ -1,0 +1,32 @@
+name: 🛠️ Content correction
+description: Fix an error, outdated claim, or missing source in an existing pack
+title: "[Correction] <pack-slug>: "
+labels: ["correction"]
+body:
+  - type: input
+    id: pack
+    attributes:
+      label: Pack slug / file
+      placeholder: e.g. data-ai/enterprise-bi — 02-requirements/non-functional.md
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What is wrong?
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Public evidence for the correction
+      description: Link to public regulation, standard, official documentation, or vendor-neutral reference.
+    validations:
+      required: true
+  - type: checkboxes
+    id: confidential
+    attributes:
+      label: Confirmation
+      options:
+        - label: The correction is based on public/generalized knowledge, not internal project experience.
+          required: true

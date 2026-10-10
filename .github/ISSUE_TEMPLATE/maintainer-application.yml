@@ -1,0 +1,62 @@
+name: Maintainer application
+description: Apply to become a repository or domain maintainer (see MAINTAINERS.md)
+title: "[maintainer] <domain / role>"
+labels: ["governance"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for offering to take ownership. Read
+        [`MAINTAINERS.md`](../MAINTAINERS.md) first — it lists the roles and who
+        may approve each verification promotion. **Do not include
+        employer-confidential detail**; describe your experience in
+        generalised terms.
+  - type: dropdown
+    id: role
+    attributes:
+      label: Role sought
+      options:
+        - Repository maintainer (standard, tooling, CI, release)
+        - Domain maintainer (review packs in one taxonomy domain)
+        - Pack author only (no maintainer role — use the pack proposal template instead)
+    validations:
+      required: true
+  - type: input
+    id: domain
+    attributes:
+      label: Domain
+      description: Taxonomy domain you would own (see docs/taxonomy.md), if applying as a domain maintainer
+      placeholder: e.g. manufacturing, horizontal, data-ai
+    validations:
+      required: false
+  - type: textarea
+    id: experience
+    attributes:
+      label: First-hand experience
+      description: Generalised description of your operational/implementation experience in this domain. No confidential or employer-identifying detail.
+    validations:
+      required: true
+  - type: input
+    id: packs
+    attributes:
+      label: Packs you will review
+      description: Slugs you can review on an ongoing basis
+      placeholder: e.g. wms, mes, tms
+    validations:
+      required: false
+  - type: input
+    id: handle
+    attributes:
+      label: GitHub handle
+      description: The handle to add to MAINTAINERS.md and CODEOWNERS
+    validations:
+      required: true
+  - type: checkboxes
+    id: acknowledgements
+    attributes:
+      label: Acknowledgements
+      options:
+        - label: I have read MAINTAINERS.md and accept the promotion-authority rules (including that authors may not self-approve a verification promotion).
+          required: true
+        - label: I will not introduce employer- or client-confidential material.
+          required: true

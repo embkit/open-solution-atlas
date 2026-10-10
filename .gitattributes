@@ -1,0 +1,9 @@
+# Normalize line endings: store LF in the repository, check out LF.
+# All content here is text (Markdown, YAML, JSON, Python).
+* text=auto eol=lf
+
+# Preserve explicit binary types if ever added.
+*.png binary
+*.jpg binary
+*.pdf binary
+*.woff2 binary

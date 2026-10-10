@@ -1,0 +1,74 @@
+schema: osa-pack/v1
+slug: wms
+title: Warehouse Management System
+title_zh: 仓储管理系统（WMS）
+domain: manufacturing
+subdomain: logistics-wms
+tags:
+  - wms
+  - inbound
+  - outbound
+  - putaway
+  - picking
+  - inventory
+  - barcode
+  - rfid
+  - wave
+  - replenishment
+  - cycle-count
+  - sscc
+  - epcis
+  - wcs
+maturity: L3
+provenance: llm-drafted
+verification: source-checked           # claims traced to sources 2026-10-08; not field-proven
+stack_stance: stack-agnostic
+variants: []                # planned: manufacturing-linked, retail-ecom-3pl, cold-chain, xinchuang-cn
+regulatory:
+  - id: iso-9001
+    region: global
+  - id: gs1
+    region: global
+  - id: gs1-epcis
+    region: global
+  - id: iso-iec-27001
+    region: global
+  - id: gmp-eu-annex-11
+    region: eu
+  - id: fda-21-cfr-part-11
+    region: us
+  - id: mlps-2-0
+    region: cn
+language: en
+translations: []                           # no full translation yet (key assets bilingual; see standard §5)
+maintainers: []
+version: 0.3.0
+last_reviewed: 2026-10-08
+sources:
+  - https://ref.gs1.org/standards/                  # GS1 repository: AI/GS1 General Specifications, SSCC, EPCIS 2.0.0 + CBV 2.0.0, EPC TDS, Gen2
+  - https://www.gs1.org/standards/epcis             # EPCIS & CBV landing page
+  - https://www.gs1.org/standards/id-keys/gln       # GLN
+  - https://www.iso.org/standard/70089.html         # ISO 9001:2015 (8.5.2, 8.5.4, 8.7, 7.5)
+  - https://www.iso.org/standard/27001              # ISO/IEC 27001:2022 Annex A
+  - https://webstore.iec.ch/en/publication/30727    # IEC 62443-3-2:2020 (zones & conduits)
+  - https://webstore.iec.ch/en/publication/7033     # IEC 62443-3-3:2013 (system security requirements)
+  - https://openid.net/connect/                     # OIDC (SSO / authN)
+  - https://health.ec.europa.eu/medicinal-products/eudralex_en  # EU GDP 2013/C 343/01; GMP Annex 11
+  - https://www.ecfr.gov/current/title-21/chapter-I/subchapter-A/part-11   # 21 CFR Part 11
+verified_by: []                       # empty: practitioner review still pending
+evidence:
+  - type: standard
+    ref: SOURCES.md#1-standards--specifications
+    note: GS1 / ISO 9001 / ISO 27001 / IEC 62443 / GDP / Annex 11 / Part 11 claims traced per claim, verified 2026-10-08
+  - type: standard
+    ref: https://ref.gs1.org/standards/epcis/
+    note: EPCIS 2.0.0 + CBV 2.0.0 confirmed current (ratified Jun 2022); SSCC = AI (00) confirmed as the only GS1 logistic-unit key
+  - type: standard
+    ref: https://webstore.iec.ch/en/publication/30727
+    note: IEC 62443-3-2:2020 confirmed as the zones-and-conduits part (was cited generically as "the 62443 series")
+  - type: standard
+    ref: https://www.iso.org/standard/70089.html
+    note: ISO 9001:2015 clause numbers 8.5.2 / 8.5.4 confirmed against the published standard
+  - type: oss-implementation
+    ref: https://openwms.org/
+    note: task-based WMS + stock model observable in a real OSS implementation; illustrative, not a deployment proof
