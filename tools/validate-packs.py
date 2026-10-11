@@ -58,7 +58,8 @@ L1_CHECKLIST = [  # standard §6 L1 items — WARN only (existing debt must be v
     "03-domain/glossary.md",
 ]
 
-L2_FILES = L1_CHECKLIST + [
+L2_FILES = [
+    *L1_CHECKLIST,
     "01-business/processes.md",
     "01-business/business-rules.md",
     "02-requirements/functional.md",
@@ -73,7 +74,8 @@ L2_FILES = L1_CHECKLIST + [
     "05-data/data-dictionary.md",
 ]
 
-L3_FILES = L2_FILES + [
+L3_FILES = [
+    *L2_FILES,
     "03-domain/state-machines.md",
     "06-contracts/api-overview.md",
     "06-contracts/api/openapi.yaml",
@@ -145,7 +147,10 @@ def validate_manifest(pack: str, data: dict, rep: Report) -> None:
         rep.err(pack, f"last_reviewed must be YYYY-MM-DD, got {lr!r}")
         reviewed = None
     if reviewed is not None:
-        age = (datetime.date.today() - reviewed).days
+        # UTC-normalised: a naive local `today()` would make the 180-day decay
+        # warning shift by a day depending on the contributor's timezone.
+        # (datetime.UTC needs Python 3.11+, which is this repo's floor.)
+        age = (datetime.datetime.now(datetime.UTC).date() - reviewed).days
         if age > 180 and data.get("verification") != "unverified":
             rep.warn(pack, f"last_reviewed is {age} days old — verification claim may have decayed (standard §8.3 rule 7)")
     for key in ("tags", "sources", "verified_by", "evidence", "maintainers"):
@@ -188,7 +193,7 @@ def validate_lifecycle(pack: str, data: dict, pack_dir: Path, rep: Report) -> No
                 spec = yaml.safe_load(openapi.read_text(encoding="utf-8"))
                 if not isinstance(spec, dict) or "paths" not in spec:
                     rep.err(pack, "openapi.yaml parses but has no `paths`")
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 rep.err(pack, f"openapi.yaml does not parse: {exc}")
     if maturity in ("L2", "L3", "L4"):
         adr_dir = pack_dir / "04-architecture" / "adr"
@@ -223,9 +228,8 @@ def validate_lifecycle(pack: str, data: dict, pack_dir: Path, rep: Report) -> No
             rep.err(pack, f"README head must name verification value `{verification}`")
         if re.search(r"verification:\s*`?unverified`?", readme_head):
             rep.err(pack, f"README head claims `verification: unverified` but manifest is {verification}")
-    if VERIFY_RANK.get(verification, 0) >= VERIFY_RANK["practitioner-reviewed"]:
-        if not data.get("verified_by"):
-            rep.err(pack, f"{verification} requires non-empty verified_by (§8.2)")
+    if VERIFY_RANK.get(verification, 0) >= VERIFY_RANK["practitioner-reviewed"] and not data.get("verified_by"):
+        rep.err(pack, f"{verification} requires non-empty verified_by (§8.2)")
     if verification == "field-proven" or maturity == "L4":
         types = {e.get("type") for e in (data.get("evidence") or []) if isinstance(e, dict)}
         if not types & {"deployment", "case-study"}:
@@ -254,7 +258,7 @@ def main() -> int:
         pack_dir = mf.parent
         try:
             data = yaml.safe_load(mf.read_text(encoding="utf-8"))
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             rep.err(f"packs/{pack_dir.parent.name}/{pack_dir.name}", f"manifest parse error: {exc}")
             continue
         if not isinstance(data, dict):

@@ -1,0 +1,43 @@
+# Ruff configuration for the repository tooling (tools/*.py, tests/).
+#
+# Everything here MUST live under [tool.ruff] — a root-level [lint] table is
+# silently ignored by ruff, which then falls back to its default rule set and
+# makes every setting below inert.
+
+[tool.ruff]
+target-version = "py311"
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes: unused imports/variables/redefinitions
+    "I",    # isort: import ordering
+    "B",    # flake8-bugbear: likely bugs and foot-guns
+    "UP",   # pyupgrade: modern syntax
+    "SIM",  # flake8-simplify
+    "RUF",  # Ruff-specific rules
+    "DTZ",  # naive datetime usage (make timezones explicit)
+    "PTH",  # prefer pathlib over os.path
+]
+
+ignore = [
+    # The repository tools are small, linear scripts; docstrings and F-strings
+    # are kept as-is rather than reformatted for length.
+    "E501",
+
+    # Shebang-vs-executable-bit. These scripts ship `#!/usr/bin/env python3`
+    # and are invoked as `python tools/<tool>.py` everywhere (CI, CONTRIBUTING,
+    # README). Git does not track the executable bit on Windows, so the rule
+    # is unreachable locally and always fails on a Linux runner — a platform
+    # blind spot, not a defect. Enabling it would require chmod +x recorded
+    # through git, which Windows contributors cannot do.
+    "EXE001",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests intentionally construct objects, stub modules and alias fixtures.
+"tests/*.py" = [
+    "B011",   # assert False is fine in tests
+    "RUF059", # unpacking unused positionals is idiomatic in assertions
+]

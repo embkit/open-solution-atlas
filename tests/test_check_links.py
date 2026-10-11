@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 
 def test_broken_relative_link_detected(check_links, tmp_path):
     md = tmp_path / "a.md"

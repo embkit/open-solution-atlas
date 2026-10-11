@@ -79,3 +79,21 @@ def test_cross_pack_reference_is_info_not_error(check_ids, tmp_path, capsys, mon
     assert rc == 0
     assert "cross-pack reference" in out
     assert "0 error(s)" in out
+
+
+def test_strict_promotes_cross_pack_reference_to_error(
+    check_ids, tmp_path, capsys, monkeypatch
+):
+    """--strict makes cross-pack references fail: L2+ packs must be self-contained."""
+    pack_a = tmp_path / "horizontal" / "alpha"
+    pack_b = tmp_path / "horizontal" / "beta"
+    _write(pack_a, "manifest.yaml", "slug: alpha\n")
+    _write(pack_a, "01-business/business-rules.md", "| BR-01 | defined here |\n")
+    _write(pack_b, "manifest.yaml", "slug: beta\n")
+    _write(pack_b, "02-requirements/functional.md", "- **FR-001** SHALL x (BR-01).\n")
+    monkeypatch.setattr(check_ids, "PACKS_DIR", tmp_path)
+    monkeypatch.setattr(check_ids.sys, "argv", ["check-ids.py", "--strict"])
+    rc = check_ids.main()
+    out = capsys.readouterr().out
+    assert rc == 1
+    assert "cross-pack reference" in out and "--strict" in out
