@@ -30,6 +30,8 @@ Exit:   0 = built; 1 = a pack failed to parse.
 from __future__ import annotations
 
 import argparse
+import base64
+import hashlib
 import html
 import json
 import re
@@ -54,9 +56,19 @@ ROOT = Path(__file__).resolve().parent.parent
 PACKS_DIR = ROOT / "packs"
 DOCS_DIR = ROOT / "docs"
 ASSETS_SRC = Path(__file__).resolve().parent / "site-assets"
+VENDOR_SRC = ASSETS_SRC / "vendor"
 
-FUSE_CDN = "https://cdn.jsdelivr.net/npm/fuse.js@7.0.0/dist/fuse.min.js"
-MERMAID_CDN = "https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.min.js"
+# Third-party assets are vendored, never loaded from a CDN: the catalog must
+# keep working with no network access (or with a blocked CDN — see the
+# project's audience). VENDOR_EXPECTED pins the provenance of each file so an
+# accidental or malicious change fails the build loudly; the values are the
+# official jsdelivr hashes recorded in tools/site-assets/vendor/README.md.
+VENDOR_EXPECTED = {
+    # fuse.js v7.0.0 — official jsdelivr hash, verified on vendoring
+    "fuse.min.js": "sha384-PCSoOZTpbkikBEtd/+uV3WNdc676i9KUf01KOA8CnJotvlx8rRrETbDuwdjqTYvt",
+    # mermaid v11.4.1 — official jsdelivr hash, verified on vendoring
+    "mermaid.min.js": "sha384-rbtjAdnIQE/aQJGEgXrVUlMibdfTSa4PQju4HDhN3sR2PmaKFzhEafuePsl9H/9I",
+}
 
 MATURITY_LABEL = {
     "L1": ("L1 · Brief", "m1"),
@@ -200,6 +212,56 @@ def first_heading(text: str, fallback: str) -> str:
 
 
 # --------------------------------------------------------------------------- #
+# Language annotation & canonical URLs
+# --------------------------------------------------------------------------- #
+
+# CJK ideographs (incl. extension A + compatibility), CJK punctuation and
+# full-width forms — enough to detect a Chinese-dominant block element.
+CJK_RE = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\u3000-\u303f\uff00-\uffef]")
+TAG_STRIP_RE = re.compile(r"<[^>]+>")
+# Block elements that may hold a CJK-dominant paragraph. `pre`/`code` are
+# deliberately excluded: source snippets are not natural language.
+LANG_BLOCK_RE = re.compile(
+    r"<(p|h1|h2|h3|h4|h5|h6|li|td|th|blockquote)((?:\s[^>]*)?)>(.*?)</\1>",
+    re.DOTALL,
+)
+LANG_MIN_RATIO = 0.3  # >=30% CJK characters ⇒ the element is Chinese
+
+
+def annotate_lang(html_text: str) -> str:
+    """Tag predominantly Chinese block elements with ``lang="zh-CN"``.
+
+    The catalog UI is English, but the pack prose — especially glossary
+    entries, requirement bodies and 公文-specific notes — is frequently Chinese.
+    Without an explicit ``lang``, screen readers switch to an English
+    pronunciation engine and the text becomes unintelligible. The element keeps
+    its existing attributes; a page-level ``lang`` is never overwritten.
+    """
+    def repl(match: re.Match) -> str:
+        tag, attrs, inner = match.group(1), match.group(2), match.group(3)
+        if "lang=" in attrs:
+            return match.group(0)  # already explicit — respect it
+        text = TAG_STRIP_RE.sub(" ", html.unescape(inner))
+        letters = [c for c in text if c.isalpha() or CJK_RE.match(c)]
+        if not letters:
+            return match.group(0)
+        cjk = sum(1 for c in letters if CJK_RE.match(c))
+        if cjk / len(letters) < LANG_MIN_RATIO:
+            return match.group(0)
+        return f"<{tag}{attrs} lang=\"zh-CN\">{inner}</{tag}>"
+
+    return LANG_BLOCK_RE.sub(repl, html_text)
+
+
+def abs_url(site_url: str, rel: str) -> str:
+    """Absolute canonical URL for a site-relative path (or "" if unset)."""
+    base = (site_url or "").strip().rstrip("/")
+    if not base:
+        return ""
+    return f"{base}/{rel.lstrip('/')}"
+
+
+# --------------------------------------------------------------------------- #
 # Loading
 # --------------------------------------------------------------------------- #
 
@@ -232,7 +294,8 @@ def discover_markdown() -> list[Path]:
     """Every Markdown file that belongs on the site.
 
     Excludes hidden directories (``.github``, ``.pytest_cache`` …) and
-    non-content trees (``templates/`` is scaffolding, ``_site/`` is output).
+    non-content trees (``templates/`` is scaffolding, ``site-assets/`` holds
+    vendored libraries, ``tests/`` is test code, ``_site/`` is output).
     """
     files: list[Path] = []
     for path in sorted(ROOT.rglob("*.md")):
@@ -240,6 +303,8 @@ def discover_markdown() -> list[Path]:
         if any(part.startswith(".") for part in parts):
             continue
         if "_site" in parts or "templates" in parts or "tests" in parts:
+            continue
+        if "site-assets" in parts:  # vendored third-party libs, not content
             continue
         files.append(path)
     return files
@@ -286,12 +351,21 @@ def load_packs(summaries: dict[str, str]) -> list[Pack]:
 # --------------------------------------------------------------------------- #
 
 HEAD = """<!doctype html>
-<html lang="en">
+<html lang="{lang}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="{description}">
 <title>{title}</title>
+<link rel="canonical" href="">
+<meta name="robots" content="index, follow">
+<meta property="og:type" content="website">
+<meta property="og:title" content="{title}">
+<meta property="og:description" content="{description}">
+<meta property="og:site_name" content="Open Solution Atlas">
+<meta name="twitter:card" content="summary">
+<meta name="theme-color" content="#fbfaf7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121316" media="(prefers-color-scheme: dark)">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='24' font-size='24'>{icon}</text></svg>">
 <link rel="stylesheet" href="{prefix}assets/style.css">
 </head>
@@ -299,12 +373,15 @@ HEAD = """<!doctype html>
 <a class="skip" href="#main">Skip to content</a>
 <header class="topbar">
   <a class="brand" href="{prefix}index.html"><span class="brand-mark">◈</span> Solution&nbsp;Atlas</a>
-  <nav class="topnav">
-    <a href="{prefix}index.html">Catalog</a>
-    <a href="{prefix}docs/pack-standard.v1.html">Standard</a>
-    <a href="{prefix}docs/taxonomy.html">Taxonomy</a>
-    <a href="{prefix}docs/roadmap.html">Roadmap</a>
-  </nav>
+  <details class="navmenu">
+    <summary aria-label="Toggle navigation"><span class="navmenu-icon" aria-hidden="true">☰</span>Menu</summary>
+    <nav class="topnav" aria-label="Primary">
+      <a href="{prefix}index.html">Catalog</a>
+      <a href="{prefix}docs/pack-standard.v1.html">Standard</a>
+      <a href="{prefix}docs/taxonomy.html">Taxonomy</a>
+      <a href="{prefix}docs/roadmap.html">Roadmap</a>
+    </nav>
+  </details>
 </header>
 <main id="main">
 """
@@ -332,12 +409,27 @@ def page_shell(
     body_class: str = "doc",
     icon: str = "◈",
     scripts: str = "",
+    lang: str = "en",
+    canonical: str = "",
 ) -> str:
-    return (
-        HEAD.format(
-            title=html.escape(title), description=html.escape(description),
-            prefix=prefix, body_class=body_class, icon=icon,
+    head = HEAD.format(
+        title=html.escape(title), description=html.escape(description),
+        prefix=prefix, body_class=body_class, icon=icon,
+        lang=lang, canonical=canonical,
+    )
+    # og:url and a canonical link are only meaningful once the site's public
+    # origin is known; without it, drop the elements entirely rather than emit
+    # `href=""` (which some crawlers treat as a self-referential duplicate).
+    if canonical:
+        head = head.replace(
+            '<link rel="canonical" href="">',
+            f'<link rel="canonical" href="{canonical}">\n'
+            f'<meta property="og:url" content="{canonical}">',
         )
+    else:
+        head = head.replace('<link rel="canonical" href="">\n', "")
+    return (
+        head
         + body
         + FOOT.format(scripts=scripts)
     )
@@ -366,7 +458,12 @@ def pack_pills(pack: Pack) -> str:
 
 
 def nav_tree(pack: Pack, current_url: str, prefix: str) -> str:
-    """Sidebar: the pack's files grouped by their chapter directory."""
+    """Sidebar: the pack's files grouped by their chapter directory.
+
+    Groups render as ``<details>``: on desktop CSS keeps them open (they are
+    short), so the nav looks unchanged; below 760px the same markup becomes
+    collapsible, which keeps an L3 pack's 40+ chapters from burying the page.
+    """
     groups: dict[str, list[Doc]] = {}
     for doc in pack.docs:
         rel_inside = Path(doc.rel).relative_to(pack.rel_dir).as_posix()
@@ -377,7 +474,11 @@ def nav_tree(pack: Pack, current_url: str, prefix: str) -> str:
     out = ['<nav class="packnav" aria-label="Pack chapters">']
     for group in sorted(groups):
         label = group or "overview"
-        out.append(f'<div class="navgroup"><span class="navgroup-label">{html.escape(label)}</span><ul>')
+        has_active = any(doc.url == current_url for doc in groups[group])
+        out.append(
+            f'<details class="navgroup"{"" if has_active else " open"}>'
+            f'<summary class="navgroup-label">{html.escape(label)}</summary><ul>'
+        )
         for doc in sorted(groups[group], key=lambda d: d.rel):
             rel_inside = Path(doc.rel).relative_to(pack.rel_dir).as_posix()
             name = Path(rel_inside).name
@@ -385,10 +486,10 @@ def nav_tree(pack: Pack, current_url: str, prefix: str) -> str:
                 name = "overview"
             else:
                 name = name[:-3]
-            active = ' class="active"' if doc.url == current_url else ""
+            active = ' class="active" aria-current="page"' if doc.url == current_url else ""
             href = prefix + doc.url
             out.append(f'<li><a{active} href="{href}">{html.escape(name)}</a></li>')
-        out.append("</ul></div>")
+        out.append("</ul></details>")
     out.append("</nav>")
     return "".join(out)
 
@@ -416,7 +517,7 @@ def render_toc(toc_tokens: list) -> str:
 # Build
 # --------------------------------------------------------------------------- #
 
-def build(out: Path, base_url: str) -> int:
+def build(out: Path, base_url: str, site_url: str = "", lang: str = "en") -> int:
     summaries = load_summaries()
     packs = load_packs(summaries)
     if not packs:
@@ -466,14 +567,14 @@ def build(out: Path, base_url: str) -> int:
         for doc in pack.docs:
             depth = doc.url.count("/")
             prefix = "../" * depth
-            body = render_doc_page(pack, doc, prefix)
+            body = render_doc_page(pack, doc, prefix, site_url, lang)
             write(out / doc.url, body)
 
     # ---- write non-pack pages --------------------------------------------
     for doc in other_docs:
         depth = doc.url.count("/")
         prefix = "../" * depth
-        body = render_plain_page(doc, prefix)
+        body = render_plain_page(doc, prefix, site_url, lang)
         write(out / doc.url, body)
 
     # Non-Markdown files that prose links to (openapi.yaml, the schema, tool
@@ -487,23 +588,55 @@ def build(out: Path, base_url: str) -> int:
         copied += 1
 
     # ---- catalog page + search index --------------------------------------
-    write(out / "index.html", render_catalog(packs, base_url))
+    write(out / "index.html", render_catalog(packs, base_url, site_url, lang))
     write(out / "search-index.json", json.dumps(build_index(packs, other_docs), ensure_ascii=False))
 
     # ---- assets ------------------------------------------------------------
     assets_out = out / "assets"
     assets_out.mkdir(exist_ok=True)
     for asset in ASSETS_SRC.iterdir():
+        if not asset.is_file():
+            continue
         shutil.copy2(asset, assets_out / asset.name)
+    # The vendored directory is copied recursively; a missing or altered file
+    # fails the build (supply-chain tripwire) rather than shipping a broken UI.
+    vendor_out = assets_out / "vendor"
+    vendor_out.mkdir(exist_ok=True)
+    for name, expected in VENDOR_EXPECTED.items():
+        src = VENDOR_SRC / name
+        if not src.is_file():
+            print(f"[ERROR] missing vendored asset: {name}", file=sys.stderr)
+            return 1
+        actual = "sha384-" + base64.b64encode(hashlib.sha384(src.read_bytes()).digest()).decode()
+        if actual != expected:
+            print(f"[ERROR] vendored asset {name} fails integrity check "
+                  f"({actual} != {expected})", file=sys.stderr)
+            return 1
+        shutil.copy2(src, vendor_out / name)
 
     # Any directory still lacking an index.html gets a generated listing, so
     # links to a directory (…/docs/, …/packs/) resolve.
     generated = generate_missing_indexes(out)
 
+    # ---- crawler-facing artifacts -----------------------------------------
+    write_sitemap(out, site_url)
+    write_robots(out, site_url)
+    write_404(out, site_url, lang)
+
+    # GitHub Pages runs Jekyll by default, which would ignore `vendor` and the
+    # underscore-prefixed internal files; `.nojekyll` disables that.
+    (out / ".nojekyll").write_text("", encoding="utf-8")
+
     pages = sum(1 for _ in out.rglob("*.html"))
+    # `out` may legitimately live outside the repo (tests build into tmp_path),
+    # so fall back to the absolute path instead of raising.
+    try:
+        where = out.relative_to(ROOT).as_posix()
+    except ValueError:
+        where = out.as_posix()
     print(
         f"built {pages} pages, {len(packs)} packs, "
-        f"{copied} linked asset(s), {generated} generated index(es) -> {out.relative_to(ROOT)}/"
+        f"{copied} linked asset(s), {generated} generated index(es) -> {where}/"
     )
 
     broken = verify_internal_links(out)
@@ -523,7 +656,7 @@ def write(path: Path, content: str) -> None:
     path.write_text(content, encoding="utf-8")
 
 
-def render_doc_page(pack: Pack, doc: Doc, prefix: str) -> str:
+def render_doc_page(pack: Pack, doc: Doc, prefix: str, site_url: str = "", lang: str = "en") -> str:
     rel_inside = Path(doc.rel).relative_to(pack.rel_dir).as_posix()
     is_overview = rel_inside == "README.md"
     header = ""
@@ -531,7 +664,7 @@ def render_doc_page(pack: Pack, doc: Doc, prefix: str) -> str:
         header = (
             '<div class="packhead">'
             f'<div class="packhead-titles"><h1>{html.escape(pack.title)}</h1>'
-            + (f'<p class="zh">{html.escape(pack.title_zh)}</p>' if pack.title_zh else "")
+            + (f'<p class="zh" lang="zh-CN">{html.escape(pack.title_zh)}</p>' if pack.title_zh else "")
             + "</div>"
             f'<div class="packhead-meta">{pack_pills(pack)}'
             f'<span class="meta-plain">{html.escape(pack.domain)} / {html.escape(pack.subdomain)}</span>'
@@ -543,7 +676,7 @@ def render_doc_page(pack: Pack, doc: Doc, prefix: str) -> str:
         + header
         + '<div class="layout">'
         + nav_tree(pack, doc.url, prefix)
-        + f'<article class="prose">{doc.html}</article>'
+        + f'<article class="prose">{annotate_lang(doc.html)}</article>'
         + render_toc(doc.toc)
         + "</div>"
     )
@@ -554,21 +687,30 @@ def render_doc_page(pack: Pack, doc: Doc, prefix: str) -> str:
         title=f"{pack.title} · {doc.title}",
         description=pack.manifest.get("_summary", doc.title),
         prefix=prefix, body=body, body_class="pack", scripts=scripts,
+        lang=lang, canonical=abs_url(site_url, doc.url),
     )
 
 
-def render_plain_page(doc: Doc, prefix: str) -> str:
-    body = f'<article class="prose prose-wide">{doc.html}</article>'
+def render_plain_page(doc: Doc, prefix: str, site_url: str = "", lang: str = "en") -> str:
+    body = f'<article class="prose prose-wide">{annotate_lang(doc.html)}</article>'
     scripts = mermaid_script(prefix) if 'class="mermaid"' in doc.html else ""
     return page_shell(
         title=doc.title, description=doc.title,
         prefix=prefix, body=body, body_class="doc", scripts=scripts,
+        lang=lang, canonical=abs_url(site_url, doc.url),
     )
 
 
 def mermaid_script(prefix: str = "") -> str:
+    """Load the vendored mermaid build and start it in the current color scheme.
+
+    The script tag carries an integrity hash so a tampered or truncated vendor
+    file fails loudly instead of silently rendering nothing; the noscript
+    fallback below is what readers see when JS is unavailable.
+    """
     return (
-        f'<script src="{MERMAID_CDN}"></script>\n'
+        f'<script src="{prefix}assets/vendor/mermaid.min.js" '
+        f'integrity="{VENDOR_EXPECTED["mermaid.min.js"]}" crossorigin="anonymous"></script>\n'
         "<script>(function(){var d=window.matchMedia"
         "&&window.matchMedia('(prefers-color-scheme: dark)').matches;"
         "window.mermaid&&window.mermaid.initialize("
@@ -576,7 +718,7 @@ def mermaid_script(prefix: str = "") -> str:
     )
 
 
-def render_catalog(packs: list[Pack], base_url: str) -> str:
+def render_catalog(packs: list[Pack], base_url: str, site_url: str = "", lang: str = "en") -> str:
     domains = sorted({p.domain for p in packs})
     maturities = ["L1", "L2", "L3", "L4"]
     verifications = ["unverified", "source-checked", "practitioner-reviewed", "field-proven"]
@@ -613,8 +755,9 @@ def render_catalog(packs: list[Pack], base_url: str) -> str:
   <div class="searchwrap">
     <input id="q" type="search" autocomplete="off" spellcheck="false"
            placeholder="Search {len(packs)} solutions — try “warehouse”, “OEE”, “federated login”, “FEFO”…"
-           aria-label="Search solutions">
+           aria-label="Search solutions" aria-describedby="index-status">
     <kbd class="hint">/</kbd>
+    <p id="index-status" class="index-status" role="status" hidden></p>
   </div>
   <p class="trustnote">Every pack is <code>llm-drafted</code>;
      <strong>none has been field-verified</strong>. Maturity measures
@@ -633,8 +776,9 @@ def render_catalog(packs: list[Pack], base_url: str) -> str:
 </section>
 """
     scripts = (
-        f'<script src="{FUSE_CDN}"></script>\n'
-        f'<script src="assets/app.js"></script>\n'
+        f'<script src="assets/vendor/fuse.min.js" '
+        f'integrity="{VENDOR_EXPECTED["fuse.min.js"]}" crossorigin="anonymous"></script>\n'
+        f'<script src="assets/app.js" defer></script>\n'
         f'<script>window.__BASE__={json.dumps(base_url)};</script>'
     )
     return page_shell(
@@ -642,13 +786,14 @@ def render_catalog(packs: list[Pack], base_url: str) -> str:
         description="Searchable catalog of solution packs for enterprise systems: "
                     "manufacturing, logistics, identity, data & AI and more.",
         prefix="", body=body, body_class="catalog", icon="◈", scripts=scripts,
+        lang=lang, canonical=abs_url(site_url, "index.html"),
     )
 
 
 def render_card(pack: Pack) -> str:
     tags = "".join(f'<span class="tag">{html.escape(t)}</span>' for t in pack.tags[:8])
     summary = str(pack.manifest.get("_summary", ""))
-    zh = f'<p class="zh">{html.escape(pack.title_zh)}</p>' if pack.title_zh else ""
+    zh = f'<p class="zh" lang="zh-CN">{html.escape(pack.title_zh)}</p>' if pack.title_zh else ""
     return (
         f'<article class="card" data-slug="{html.escape(pack.slug)}"'
         f' data-domain="{html.escape(pack.domain)}"'
@@ -662,6 +807,22 @@ def render_card(pack: Pack) -> str:
         f'<div class="tags">{tags}</div>'
         "</article>"
     )
+
+
+def cjk_ngrams(text: str) -> str:
+    """Character n-grams of the CJK runs in ``text``, space-joined.
+
+    Fuse.js tokenizes on whitespace, so a multi-character Chinese query
+    ("一网通办") cannot match an indexed run that is not written identically.
+    Splitting each CJK run into overlapping bigrams/trigrams is a cheap,
+    dependency-free substitute for segmentation: the query decomposes the same
+    way client-side and matches on overlap.
+    """
+    grams: list[str] = []
+    for run in re.findall(r"[\u3400-\u9fff\uf900-\ufaff]+", text or ""):
+        for n in (2, 3):
+            grams.extend(run[i : i + n] for i in range(len(run) - n + 1))
+    return " ".join(grams)
 
 
 def build_index(packs: list[Pack], other_docs: list[Doc]) -> list[dict]:
@@ -678,6 +839,7 @@ def build_index(packs: list[Pack], other_docs: list[Doc]) -> list[dict]:
             "v": pack.verification,
             "g": pack.tags,
             "x": str(pack.manifest.get("_summary", ""))[:MAX_PACK_TEXT],
+            "n": cjk_ngrams(" ".join([pack.title, pack.title_zh, *pack.tags])),
         })
         for doc in pack.docs:
             rel_inside = Path(doc.rel).relative_to(pack.rel_dir).as_posix()
@@ -692,6 +854,7 @@ def build_index(packs: list[Pack], other_docs: list[Doc]) -> list[dict]:
                 "p": pack.slug,
                 "g": [],
                 "x": doc.text[:MAX_DOC_TEXT],
+                "n": cjk_ngrams(doc.text[:MAX_DOC_TEXT]),
             })
     for doc in other_docs:
         index.append({
@@ -704,6 +867,7 @@ def build_index(packs: list[Pack], other_docs: list[Doc]) -> list[dict]:
             "v": "",
             "g": [],
             "x": doc.text[:MAX_DOC_TEXT],
+            "n": cjk_ngrams(doc.text[:MAX_DOC_TEXT]),
         })
     return index
 
@@ -758,8 +922,16 @@ def generate_missing_indexes(out: Path) -> int:
     ``index.html`` during rendering; this makes those targets real.
     """
     created = 0
-    dirs = {f.parent for f in out.rglob("*") if f.is_file()}
+    # Every output directory — including ones that hold only subdirectories —
+    # needs an index; a parent's listing links to <child>/index.html, and a
+    # missing one is a broken link the build must not ship.
+    dirs = {p for p in out.rglob("*") if p.is_dir()}
     for d in sorted(dirs):
+        # Hidden trees (`.github/`, `.nojekyll`'s siblings) are repository
+        # internals, not catalog content; publishing them would leak the
+        # project's scaffolding into the public site and the sitemap.
+        if any(part.startswith(".") for part in d.relative_to(out).parts):
+            continue
         index = d / "index.html"
         if index.exists():
             continue
@@ -790,6 +962,70 @@ def generate_missing_indexes(out: Path) -> int:
     return created
 
 
+def write_sitemap(out: Path, site_url: str) -> None:
+    """Emit ``sitemap.xml`` — one <url> per generated HTML page.
+
+    Without this, 299 pages are invisible to crawlers beyond what they can
+    reach from the catalog links. The base must be absolute; when the caller
+    passes an empty value the file is skipped rather than emitting relative
+    loc elements (which sitemaps do not allow).
+    """
+    base = (site_url or "").strip().rstrip("/")
+    if not base:
+        print("note: --site-url unset, no sitemap emitted")
+        return
+    # Generated pages first (they are the canonical entry points). Hidden
+    # trees are repository internals and must never reach a sitemap.
+    urls = sorted(
+        p.relative_to(out).as_posix() for p in out.rglob("*.html")
+        if not any(part.startswith(".") for part in p.relative_to(out).parts)
+    )
+    body = "".join(f"<url><loc>{html.escape(f'{base}/{u}')}</loc></url>" for u in urls)
+    write(
+        out / "sitemap.xml",
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+        + body + "</urlset>\n",
+    )
+
+
+def write_robots(out: Path, site_url: str) -> None:
+    """Emit ``robots.txt`` — permit everything, point at the sitemap."""
+    base = (site_url or "").strip().rstrip("/")
+    lines = [
+        "User-agent: *",
+        "Allow: /",
+        # The catalog UI is client-side; the raw index is machine data.
+        "Disallow: /search-index.json",
+    ]
+    if base:
+        # URL-join instead of string concat: a trailing "/" in --site-url
+        # must not produce "//sitemap.xml".
+        lines.append(f"Sitemap: {base}/sitemap.xml")
+    write(out / "robots.txt", "\n".join(lines) + "\n")
+
+
+def write_404(out: Path, site_url: str = "", lang: str = "en") -> None:
+    """Emit a branded ``404.html`` (GitHub Pages serves it on unknown paths)."""
+    body = (
+        '<section class="hero"><h1>Page not found</h1>'
+        '<p class="hero-sub">That page does not exist — it may have been renamed '
+        "when a pack was promoted. The catalog is searchable.</p>"
+        '<div class="searchwrap">'
+        '<a class="clear" href="index.html">← Back to the catalog</a></div>'
+        "</section>"
+    )
+    write(
+        out / "404.html",
+        page_shell(
+            title="Page not found — Solution Atlas",
+            description="404 — the requested page does not exist.",
+            prefix="", body=body, body_class="catalog",
+            lang=lang, canonical=abs_url(site_url, "404.html"),
+        ),
+    )
+
+
 def verify_internal_links(out: Path) -> list[str]:
     """Every relative href/src in the built site must resolve on disk.
 
@@ -814,9 +1050,24 @@ def verify_internal_links(out: Path) -> list[str]:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Build the static site")
     parser.add_argument("--out", default="_site", help="output directory")
-    parser.add_argument("--base-url", default="/", help="base URL the site is served from")
+    parser.add_argument(
+        "--base-url", default="/",
+        help="path the site is served under, for relative links (default: /)",
+    )
+    parser.add_argument(
+        "--site-url",
+        default="https://embkit.github.io/open-solution-atlas",
+        help="absolute public origin, used for canonical URLs, sitemap.xml "
+             "and robots.txt; pass '' for a local-only build with no "
+             "crawler artifacts (default: the deployed GitHub Pages origin)",
+    )
+    parser.add_argument(
+        "--lang", default="en",
+        help="value of the <html lang> attribute for the site chrome "
+             "(default: en); pack prose is language-tagged separately",
+    )
     args = parser.parse_args()
-    return build(ROOT / args.out, args.base_url)
+    return build(ROOT / args.out, args.base_url, args.site_url, args.lang)
 
 
 if __name__ == "__main__":
