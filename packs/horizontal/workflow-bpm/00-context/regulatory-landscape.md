@@ -11,6 +11,7 @@
 | Instrument | Jurisdiction | What it governs here |
 |---|---|---|
 | **《中华人民共和国电子签名法》** (2004-08-28 通过，2005-04-01 施行；2015-04-24、2019-04-23 两次修正) | CN | Legal effect of electronic signatures and data messages; conditions for a "reliable" signature; when third-party certification is required |
+| **《电子印章管理办法》** (国办发〔2025〕33号，2025-09-27 印发即施行) | CN | The governing rule for 电子印章/电子签章 management and integration: validity, certificates, status service, verification duties |
 | **GB/T 22239-2019《网络安全等级保护基本要求》** | CN | Graded-protection (等保 / MLPS 2.0) baseline controls for the platform |
 | **GB/T 9704-2012《党政机关公文格式》** (2012-06-29 发布，2012-07-01 实施，现行) | CN | Paper-era layout of official documents: paper, elements, pagination, specific formats |
 | **GB/T 33476.1-2016《党政机关电子公文格式规范 第1部分：公文结构》** | CN | Electronic official-document structure — the more relevant standard for a digital 公文 flow |
@@ -33,6 +34,40 @@ conditions hold: the signature-creation data is **exclusive** to the signer;
 **controlled** by the signer at the time of signing; **any later alteration to
 the signature is detectable**; and **any later alteration to the data message
 is detectable** (《电子签名法》第十三条).
+
+> Currency check (2026-10): the current text is the **2019 second amendment**
+> (2004 enacted; amended 2015-04-24 and 2019-04-23). No later amendment found.
+> Re-verify before relying on this in a compliance argument.
+
+**Electronic seals — the governing rule as of 2025.** 《电子印章管理办法》
+(国办发〔2025〕33号, State Council General Office, signed 2025-09-27, published
+2025-10-09, **effective on promulgation** per 第三十八条) is the instrument
+that governs 电子签章 integration. Load-bearing provisions for a platform:
+
+- **第五条** — a compliant 电子印章 has the **same legal effect as a physical
+  seal**, and a sealed electronic file the same effect as a paper one.
+- **第十六条** — the seal's certificate must be issued by a lawfully
+  established e-certification body, the **seal's expiry must not exceed the
+  certificate's**, and the seal's **data format, generation process and
+  application interface** must conform to national standards.
+- **第十七条** — the production/filing body **must provide a seal status query
+  service**, and status changes must be filed. A platform therefore needs to
+  consume a status service, not only a signing service.
+- **第二十一条** — the principle **"谁所有、谁控制，谁签章、谁负责"** (who owns
+  it, controls it; who signs, is responsible) — the ownership/responsibility
+  split this pack's glossary treats as 印章管理员 authority.
+- **第二十二条** — sealing process information **must be recorded and
+  retained**, making the seal action traceable and attributable. This is a
+  statutory counterpart to the pack's own auditability rule.
+- **第二十三条** — verification must confirm the seal **was valid at the time
+  of signing**, not merely that it is valid now. This is a distinct check.
+
+> ⚠️ ASSUMPTION: 国办发〔2025〕33号 requires conformance to "国家有关标准规范"
+> without naming a specific standard number for the seal data format and
+> interface. This pack therefore still names **none**; the applicable
+> specification has to be established from the responsible authority rather than
+> guessed. Full text:
+> https://www.gov.cn/zhengce/content/202510/content_7043696.htm
 
 > Engineering consequence: the platform must be able to *detect* alteration of
 > both the signature and the document. That is an integrity property of the

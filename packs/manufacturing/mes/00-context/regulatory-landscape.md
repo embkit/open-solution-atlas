@@ -12,6 +12,7 @@ electronic-record regulations. Controls derived here are traced in
 | FDA 21 CFR Part 11 | regulation (US; regulated variant) | e-records: audit trail, e-signatures, copy fidelity, retention |
 | EU GMP Annex 11 (EudraLex Vol. 4) | regulation (EU; regulated variant) | computerized-system validation; data integrity (ALCOA+) |
 | 网络安全法 / 数据安全法 / 等保2.0 (GB/T 22239-2019) | law & baseline (CN deployment) | classified protection, industrial data management, logging & audit |
+| — ⚠️ 网络安全法 as amended 2025-10-28, effective **2026-01-01**, **renumbered** (see `docs/citation-audit-2026-10.md`). No article number is cited here. | — | — |
 
 ## Variant triggers (regulated variants must be declared before use)
 

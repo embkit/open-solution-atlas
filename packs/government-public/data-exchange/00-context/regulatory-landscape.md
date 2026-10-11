@@ -77,8 +77,9 @@ administrative function.
 > that records *who* and *what* but not *why* cannot support this.
 
 > ⚠️ ASSUMPTION: the article numbers above are quoted from the published text
-> of 国发〔2016〕51号 (full text reachable at
-> http://www.cac.gov.cn/2016-09/21/c_1119596700.htm and mirrored on Wikisource).
+> of 国发〔2016〕51号 (State Council Gazette:
+> https://www.gov.cn/gongbao/content/2016/content_5115838.htm). Currency
+> re-checked 2026-10: no repeal found, and later instruments still cite it.
 > Re-verify against the authoritative source before relying on them in a
 > compliance argument. Later provincial/municipal implementation rules may add
 > obligations this pack does not model.

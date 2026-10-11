@@ -26,7 +26,8 @@ version: 0.2.0
 last_reviewed: 2026-10-11
 sources:
   - https://www.w3.org/TR/vocab-dcat-3/                          # W3C DCAT 3 — open-data catalog vocabulary
-  - http://www.cac.gov.cn/2016-09/21/c_1119596700.htm            # 国发〔2016〕51号《政务信息资源共享管理暂行办法》
+  - https://www.gov.cn/gongbao/content/2016/content_5115838.htm  # 国发〔2016〕51号《政务信息资源共享管理暂行办法》(国务院公报)
+  - https://www.gov.cn/zhengce/content/2016-09/19/content_5109486.htm  # 同上，中国政府网
   - https://openstd.samr.gov.cn/bzgk/gb/std_list?p.p2=GB/T%2021063  # GB/T 21063 政务信息资源目录体系
   - https://openstd.samr.gov.cn/bzgk/gb/std_list?p.p2=GB/T%2043697  # GB/T 43697-2024 数据分类分级规则
   - https://openstd.samr.gov.cn/bzgk/gb/std_list?p.p2=GB/T%2022239  # GB/T 22239-2019 MLPS 2.0 baseline

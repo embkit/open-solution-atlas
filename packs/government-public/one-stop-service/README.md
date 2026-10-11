@@ -5,7 +5,7 @@
 | Maturity | 🟡 L1 — Brief (target L3) |
 | Domain | government-public / government-services |
 | Stack stance | Vendor-neutral |
-| Regulatory context | 网络安全法、数据安全法、个人信息保护法; 等保2.0（三级基线典型）; 政务服务相关行政法规与电子证照/电子签章国家标准 |
+| Regulatory context | 网络安全法（**2025-10-28 修订，2026-01-01 施行，条文已重排——勿用旧条款号**）; 数据安全法; 个人信息保护法; 等保2.0（三级基线典型）; 国务院令第716号; 国办发〔2025〕33号《电子印章管理办法》; 电子证照六项国家标准 |
 
 > ⚠️ **DRAFT — not field-verified.** Provenance: `llm-drafted` · Verification: `unverified`.
 > Drafted with LLM assistance from public standards; **not** validated in a real
@@ -83,10 +83,14 @@ government cloud deployment requirements.
    starts at 受理, not at submission. This materially changes reported
    performance and is a design position, not a citation. It must be confirmed
    against the applicable procedural rules per 事项 type.
-2. **The 统一电子印章 technical standard** — 国务院令第716号 第九条 mandates the
-   national unified seal system but names no standard number, and this pack
-   names none. The specification the platform must comply with has to be
-   established.
+2. **The 统一电子印章 technical standard** — *partly resolved.*
+   《电子印章管理办法》(国办发〔2025〕33号, effective 2025-09-27) now supplies the
+   governing rule (legal effect, certificate-validity bounds, mandatory seal
+   status query service, point-in-time verification, and — importantly —
+   第二十七条, which **mandates** that public-service business systems support
+   compliant seals). But 第十六条 defers to "国家有关标准规范" without naming a
+   standard, so the specification itself is still to be established. See
+   `00-context/regulatory-landscape.md` §6a.
 3. **Internal catalogue vs. GB/T 36902/36903** — whether the platform's 事项
    catalogue should align to the electronic-licence catalogue structure is
    deliberately undecided; they are different objects.
