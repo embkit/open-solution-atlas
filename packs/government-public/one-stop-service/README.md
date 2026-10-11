@@ -59,6 +59,34 @@ government cloud deployment requirements.
 ## Maturity roadmap
 
 - [x] L1 — Brief
+  - [x] Industry brief with sources (`00-context/industry-brief.md`)
+  - [x] Regulatory landscape with citations (`00-context/regulatory-landscape.md`)
+  - [x] Stakeholder list (`00-context/stakeholders.md`)
+  - [x] Level-1 capability map (`01-business/capability-map.md`)
+  - [x] Glossary seeded, incl. the statutory lifecycle vocabulary
+        (`03-domain/glossary.md`)
 - [ ] L2 — Blueprint
+  - [ ] Business processes / rules (`01-business/`) — the 受理→审查→决定→出件
+        state machine, 一次性告知 rules, and 限时办结 clock semantics
+  - [ ] Functional requirements (`02-requirements/`) with stable IDs
+  - [ ] NFR catalog (`02-requirements/non-functional.md`)
+  - [ ] Compliance controls traced to `regulatory-landscape.md`
+  - [ ] Domain model incl. bounded contexts (`03-domain/domain-model.md`)
+  - [ ] Architecture views + ≥3 ADRs (`04-architecture/`), incl. 政务云分区
+  - [ ] Logical data model + data dictionary (`05-data/`)
 - [ ] L3 — Agent-ready
 - [ ] L4 — Proven
+
+### Blocking L2
+
+1. **The deadline clock's starting point** — the glossary asserts the clock
+   starts at 受理, not at submission. This materially changes reported
+   performance and is a design position, not a citation. It must be confirmed
+   against the applicable procedural rules per 事项 type.
+2. **The 统一电子印章 technical standard** — 国务院令第716号 第九条 mandates the
+   national unified seal system but names no standard number, and this pack
+   names none. The specification the platform must comply with has to be
+   established.
+3. **Internal catalogue vs. GB/T 36902/36903** — whether the platform's 事项
+   catalogue should align to the electronic-licence catalogue structure is
+   deliberately undecided; they are different objects.
