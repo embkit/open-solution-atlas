@@ -18,9 +18,10 @@ regulatory:
 language: en
 translations: []                           # no full translation yet (key assets bilingual; see standard §5)
 maintainers: []
-version: 0.1.0
-last_reviewed: 2026-10-08
+version: 0.2.0
+last_reviewed: 2026-10-11
 sources:
-  - https://www.getdbt.com/analytics-engineering
+  - https://www.getdbt.com/analytics-engineering          # dbt Labs — analytics engineering practice (vendor reference, not normative)
+  - https://www.iso.org/standard/27001                    # ISO/IEC 27001 — information security (designation only)
 verified_by: []
 evidence: []

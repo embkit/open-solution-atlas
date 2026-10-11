@@ -54,6 +54,29 @@ row/column-level access control and trustworthy freshness.
 ## Maturity roadmap
 
 - [x] L1 — Brief
+  - [x] Industry brief with sources (`00-context/industry-brief.md`)
+  - [x] Regulatory landscape (`00-context/regulatory-landscape.md`)
+  - [x] Stakeholder list (`00-context/stakeholders.md`)
+  - [x] Level-1 capability map (`01-business/capability-map.md`)
+  - [x] Glossary seeded (`03-domain/glossary.md`)
 - [ ] L2 — Blueprint
+  - [ ] Business processes / rules (`01-business/`) — the promotion workflow
+  - [ ] Functional requirements (`02-requirements/`) with stable IDs
+  - [ ] NFR catalog (`02-requirements/non-functional.md`)
+  - [ ] Compliance controls traced to `regulatory-landscape.md`
+  - [ ] Domain model incl. bounded contexts (`03-domain/domain-model.md`)
+  - [ ] Architecture views + ≥3 ADRs (`04-architecture/`)
+  - [ ] Logical data model + data dictionary (`05-data/`)
 - [ ] L3 — Agent-ready
 - [ ] L4 — Proven
+
+### Blocking L2
+
+1. **The join key's enforcement mechanism** — the glossary requires metric
+   definitions to join on one key, but *how* that is enforced (modelling-time
+   constraint, query-time validation, or both) is undecided.
+2. **What makes a definition "duplicate"** — the state is named and detectable
+   by definition; the detection rule (same grain + same time semantics + same
+   name?) is not specified.
+3. **Promotion triggers and review criteria** — the workflow exists in the
+   capability map; what starts it and what it requires are L2 rules.
