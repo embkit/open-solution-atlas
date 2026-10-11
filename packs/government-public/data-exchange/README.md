@@ -59,6 +59,29 @@ a recorded grant, and every share is attributable and auditable.
 ## Maturity roadmap
 
 - [x] L1 — Brief
+  - [x] Industry brief with sources (`00-context/industry-brief.md`)
+  - [x] Regulatory landscape with citations (`00-context/regulatory-landscape.md`)
+  - [x] Stakeholder list (`00-context/stakeholders.md`)
+  - [x] Level-1 capability map (`01-business/capability-map.md`)
+  - [x] Glossary seeded (`03-domain/glossary.md`)
 - [ ] L2 — Blueprint
+  - [ ] Business processes / rules (`01-business/`) — the
+        request→approve→grant→exchange→revoke rule set
+  - [ ] Functional requirements (`02-requirements/`) with stable IDs
+  - [ ] NFR catalog (`02-requirements/non-functional.md`)
+  - [ ] Compliance controls traced to `regulatory-landscape.md`
+  - [ ] Domain model incl. bounded contexts (`03-domain/domain-model.md`)
+  - [ ] Architecture views + ≥3 ADRs (`04-architecture/`)
+  - [ ] Logical data model + data dictionary (`05-data/`)
 - [ ] L3 — Agent-ready
 - [ ] L4 — Proven
+
+### Blocking L2
+
+1. **Channel composition** (open question #1) — whether 库表/文件/接口 are all
+   first-class or one primary with adapters changes the data model and the
+   reconciliation design.
+2. **Classification grade → masking rule mapping** — the requirement is
+   defined; the actual rule set needs GB/T 43697-2024 confirmed at clause level.
+3. **Single-tenant vs. federated nodes** (open question #2) — decides whether
+   grants are local, cross-node, or both.
