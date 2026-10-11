@@ -19,10 +19,11 @@ releases (individual packs carry their own `version` in `manifest.yaml`).
 - `SECURITY.md` names a fallback contact ([@ebk-slm](https://github.com/ebk-slm))
   instead of "no named maintainers, contact route pending", which contradicted
   the very next sentence.
-- `LICENSE` now holds the CC BY-SA 4.0 text and a new `LICENSE-MIT` holds the
-  MIT text. The previous single `LICENSE` mixed both in prose, so GitHub
-  detected `NOASSERTION` — no license badge, and license scanners could not
-  classify the repository. READMEs updated to point at both files.
+- `LICENSE` — one file mixing CC BY-SA and MIT in prose. GitHub detected
+  NOASSERTION, so the repo showed no license badge and license scanners could
+  not classify it. Split into `LICENSE` (the canonical CC BY-SA 4.0 legal text,
+  verbatim from the official legalcode so licenceer recognises it — a
+  hand-condensed version did *not*) and `LICENSE-MIT`; READMEs point at both.
 - `.github/CODEOWNERS` was 100% comments; it now routes every path to the
   actual maintainer, with `require_code_owner_reviews` explicitly off and the
   reason documented (single maintainer ⇒ code-owner approval would block

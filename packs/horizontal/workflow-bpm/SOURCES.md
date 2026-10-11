@@ -39,12 +39,38 @@
 
 ## 4. Uncited specifics to resolve
 
-- **Chinese approval semantics** — 会签/或签/加签/转办/退回. Not defined by BPMN 2.0; the pack (AGENTS.md) requires them to be defined explicitly at L2, but no semantics exist yet.
-- **BPMN conformance depth** — full execution semantics vs. a pragmatic subset remains an open question (§Open questions #1); no conformance class/target is stated.
-- **公文/文号管理** — drafting/核稿/签发/文号/归档 rules are CN-specific; no standard cited beyond a candidate (GB/T 9704). First-class chapter vs. variant unresolved.
-- **电子签章 integration** — 《电子签名法》 is referenced; no article-level obligation, signature-standard (e.g. GB/T 38540) or legal-effect mapping is cited.
-- **Auditability & replay** — "every process state transition must be auditable and replayable" (AGENTS.md) has no measurable target (retention, ordering, tamper-evidence) at L1.
-- **Approval analytics / process mining** — depth undecided; no method standard cited (e.g. an event-log interchange format) — confirm before specifying.
-- **SLA / timeout / escalation** — in-scope but no thresholds, business-calendar, or pause/resume semantics defined; must be specified as rules at L2.
-- **SOD-like constraints** — referenced as "SOD-like"; ownership and rule source deferred to the IAM pack (no rule specifics here).
-- **Form-engine validation / conditional visibility** — described as schema-driven; no schema standard or expression language chosen.
+Still open (each blocks `source-checked`):
+
+- **Chinese approval semantics** — 会签/或签/加签/转办/退回. Not defined by
+  BPMN 2.0. Now **defined at L1** in `03-domain/glossary.md` §2 as this pack's
+  contribution, and labelled `[PACK]` because no public standard defines them.
+  Still open: the completion policies (does 会签 end on any rejection? does
+  或签 cancel the other tasks or merely never surface them?) — these are
+  decisions to make at L2, not lookups.
+- **BPMN conformance depth** — full execution semantics vs. a pragmatic subset
+  remains an open question (§Open questions #1); no conformance class/target
+  is stated, and this pack deliberately claims none.
+- **公文/文号管理** — drafting/核稿/签发/文号/归档 rules are CN-specific.
+  GB/T 9704-2012 (paper layout) and GB/T 33476.1-2016 (electronic structure,
+  scope/clauses not yet verified) are now cited in
+  `00-context/regulatory-landscape.md`. Still open: 文号 allocation rules
+  (gapless? reusable? per-authority sequence?) — a policy decision.
+- **电子签章 integration** — article-level obligations from 《电子签名法》 are
+  now cited in `00-context/regulatory-landscape.md` §2 (arts. 3, 4, 5, 6, 13,
+  14; 2004/2015/2019 versions). Still open: the signature/e-seal **technical
+  standard** and provider obligations — none named, deliberately.
+- **Auditability & replay** — the AGENTS.md rule now has definitions in
+  `03-domain/glossary.md` §5 (audit trail, replay-as-reconstruction vs.
+  re-execution, tamper evidence, compensating events). Still open: measurable
+  targets — retention period, ordering guarantee, integrity mechanism.
+- **Approval analytics / process mining** — depth undecided; no event-log
+  interchange standard confirmed (IEEE 1849 XES is a candidate; standard
+  number to be verified before any conformance claim).
+- **SLA / timeout / escalation** — terms defined in `03-domain/glossary.md`
+  §3; still open: thresholds, business-calendar semantics, pause/resume
+  behaviour, and whether auto-approval-on-timeout is permitted at all
+  (this pack's position: only by explicit policy, never by default).
+- **SoD constraints** — the rule source is the IAM pack; this pack consumes it.
+  No rule specifics here, by design.
+- **Form-engine validation / conditional visibility** — no schema standard or
+  expression language chosen; deferred to L2.

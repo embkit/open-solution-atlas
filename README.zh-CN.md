@@ -156,7 +156,13 @@
 
 ## 许可证
 
-文档内容（Markdown 蓝图、图表、清单）：[CC BY-SA 4.0](./LICENSE)
-代码与模板（`tools/`、`tests/`、`templates/`）：[MIT](./LICENSE-MIT)
+两份许可，对应两类材料：
 
-两许可证并存，内容为主、代码为辅；详见上述两个文件。
+| 材料 | 许可 | 文件 |
+|---|---|---|
+| 文档与蓝图内容——Markdown、图表、目录页、方案包数据 | [CC BY-SA 4.0](./LICENSE) | `LICENSE` |
+| 代码与模板——`tools/`、`tests/`、`templates/` | [MIT](./LICENSE-MIT) | `LICENSE-MIT` |
+
+`LICENSE` 为 CC BY-SA 4.0 官方法律文本逐字全文（以便许可证扫描器正确识别仓库），
+`LICENSE-MIT` 为 MIT 全文。贡献按两者共同接受，见
+[`CONTRIBUTING.md`](CONTRIBUTING.md)。

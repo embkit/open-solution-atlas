@@ -55,6 +55,27 @@ explicit variants, not assumed by the core.
 ## Maturity roadmap
 
 - [x] L1 — Brief
+  - [x] Industry brief with sources (`00-context/industry-brief.md`)
+  - [x] Regulatory landscape with citations (`00-context/regulatory-landscape.md`)
+  - [x] Stakeholder list (`00-context/stakeholders.md`)
+  - [x] Level-1 capability map (`01-business/capability-map.md`)
+  - [x] Glossary seeded, incl. the Chinese approval semantics
+        (`03-domain/glossary.md`)
 - [ ] L2 — Blueprint
+  - [ ] Business processes (`01-business/processes.md`) and rules (`01-business/business-rules.md`)
+  - [ ] Functional requirements (`02-requirements/functional.md`) with stable IDs
+  - [ ] NFR catalog (`02-requirements/non-functional.md`) with measurable targets
+  - [ ] Compliance controls traced to the instruments in `regulatory-landscape.md`
+  - [ ] Domain model incl. bounded contexts (`03-domain/domain-model.md`)
+  - [ ] Architecture views (`04-architecture/overview.md`, …) and ≥3 ADRs
+  - [ ] Logical data model + data dictionary (`05-data/`)
 - [ ] L3 — Agent-ready
 - [ ] L4 — Proven
+
+### Blocking L2
+
+The glossary defines the approval vocabulary, but the **semantics of
+会签/或签 completion policies and the 文号 allocation rules** are still
+decisions, not specifications. Those two must be settled as rules before L2
+requirements can be written against them (see `03-domain/glossary.md` §2 and
+§4).
