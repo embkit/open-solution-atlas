@@ -60,6 +60,36 @@ business/integration surface is in scope.
 ## Maturity roadmap
 
 - [x] L1 — Brief
+  - [x] Industry brief with sources (`00-context/industry-brief.md`)
+  - [x] Regulatory landscape (`00-context/regulatory-landscape.md`)
+  - [x] Stakeholder list (`00-context/stakeholders.md`)
+  - [x] Level-1 capability map (`01-business/capability-map.md`)
+  - [x] Glossary seeded (`03-domain/glossary.md`)
 - [ ] L2 — Blueprint
+  - [ ] Business processes / rules (`01-business/`) — tariff splitting, 估抄
+        rules, adjustment and guardrail rules
+  - [ ] Functional requirements (`02-requirements/`) with stable IDs
+  - [ ] NFR catalog (`02-requirements/non-functional.md`)
+  - [ ] Compliance controls traced to `regulatory-landscape.md`
+  - [ ] Domain model incl. bounded contexts (`03-domain/domain-model.md`)
+  - [ ] Architecture views + ≥3 ADRs (`04-architecture/`), incl. the tariff
+        engine separation and the distribution seam
+  - [ ] Logical data model + data dictionary (`05-data/`)
 - [ ] L3 — Agent-ready
 - [ ] L4 — Proven
+
+### Blocking L2
+
+1. **The tariff rule content itself.** `AGENTS.md` requires versioned, auditable,
+   effective-dated rules; the pack provides the framework and deliberately
+   encodes **no** tariff specifics, because doing so at `unverified` status would
+   be invented certainty. A deployment's rules are a governed input.
+2. **The 估抄 method.** Rule-bound and labelled is required; the method, period
+   and reconciliation against the next actual reading are regulatory inputs, not
+   pack theses.
+3. **Guardrail classes.** The classes must exist as enforced state; which
+   classes applies is a regulatory input.
+4. **Retention of rules, readings and approval records.** If the obligation to
+   reconstruct a historical bill's arithmetic is long-dated — which for a
+   regulated utility it is — retention becomes a capability with a stated period
+   rather than a by-product of billing.
