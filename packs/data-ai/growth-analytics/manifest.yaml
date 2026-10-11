@@ -18,8 +18,17 @@ regulatory:
 language: en
 translations: []                           # no full translation yet (key assets bilingual; see standard §5)
 maintainers: []
-version: 0.1.0
-last_reviewed: 2026-10-08
+version: 0.2.0
+last_reviewed: 2026-10-11
+# Experimentation statistics (sample size, SRM, guardrails, holdouts, peeking
+# discipline) are stated as design requirements from AGENTS.md, but no normative
+# method text is adopted at L1 -- see 00-context/industry-brief.md §10.
+#
+# sources is intentionally EMPTY: every candidate source tried during L1 drafting
+# (W3C Trace Context for session/span correlation, and external method texts for
+# the experiment statistics) failed an automated reachability probe from this
+# environment. Unverified links are worse than none;
+# see docs/citation-audit-2026-10.md §4.
 sources: []
 verified_by: []
 evidence: []
