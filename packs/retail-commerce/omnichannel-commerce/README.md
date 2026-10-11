@@ -56,6 +56,30 @@ as variants behind one order core.
 ## Maturity roadmap
 
 - [x] L1 — Brief
+  - [x] Industry brief with sources (`00-context/industry-brief.md`)
+  - [x] Regulatory landscape (`00-context/regulatory-landscape.md`)
+  - [x] Stakeholder list (`00-context/stakeholders.md`)
+  - [x] Level-1 capability map (`01-business/capability-map.md`)
+  - [x] Glossary seeded (`03-domain/glossary.md`)
 - [ ] L2 — Blueprint
+  - [ ] Business processes / rules (`01-business/`) — order state transitions,
+        hold policies, reversal paths
+  - [ ] Functional requirements (`02-requirements/`) with stable IDs
+  - [ ] NFR catalog with concurrency targets (`02-requirements/non-functional.md`)
+  - [ ] Compliance controls traced to `regulatory-landscape.md`
+  - [ ] Domain model incl. bounded contexts (`03-domain/domain-model.md`)
+  - [ ] Architecture views + ≥3 ADRs (`04-architecture/`)
+  - [ ] Logical data model + data dictionary (`05-data/`)
 - [ ] L3 — Agent-ready
 - [ ] L4 — Proven
+
+### Blocking L2
+
+1. **Hold policy granularity** — the glossary fixes "per product, with expiry",
+   but the *set* of supported policies and their transitions between them (a
+   cart that moves from reserve-at-add to consume-at-capture) is undecided.
+2. **The order state machine itself** — states and transitions are named in the
+   glossary but not enumerated. This is the load-bearing artefact and must be
+   specified before requirements can reference it.
+3. **Promotion snapshot retention period** — the chapter records that retention
+   is not optional for transparency reasons, but the period is a business decision.

@@ -20,8 +20,12 @@ regulatory:
 language: en
 translations: []                           # no full translation yet (key assets bilingual; see standard §5)
 maintainers: []
-version: 0.1.0
-last_reviewed: 2026-10-08
+version: 0.2.0
+last_reviewed: 2026-10-11
+# PCI DSS ("demonstrated out of the core" via PSP-hosted fields) shapes this
+# architecture through its SCOPE requirement; the pack states the design
+# consequence and cites no clause. See docs/citation-audit-2026-10.md §4 for
+# the citation-discipline policy.
 sources:
   - https://www.pcisecuritystandards.org/
   - https://www.gs1.org/standards
