@@ -172,16 +172,64 @@ externally.
 > assigned grading. The deployment must use the level actually assigned to it,
 > and this pack maps no specific control clauses.
 
+## 6a. 《电子印章管理办法》(国办发〔2025〕33号) — the seal rule, as of 2025
+
+Issued by the State Council General Office, signed 2025-09-27, published
+2025-10-09, **effective on promulgation** (第三十八条). Full text retrieved:
+https://www.gov.cn/zhengce/content/202510/content_7043696.htm
+
+This is the instrument behind 国务院令第716号 第九条's "统一电子印章系统", and
+it converts that mandate into integration requirements a platform can be built
+against:
+
+- **第五条** — a compliant 电子印章 has the **same legal effect as a physical
+  seal**; a sealed electronic file the same effect as a paper one with a
+  physical seal. Restates and extends 716号 第九条.
+- **第七条** — the State Council General Office drives mutual recognition for
+  electronic seals in government and public services **through the national
+  integrated online platform** — the very platform this pack models. 716号
+  第九条's "统一电子印章系统" is thus anchored to a concrete platform.
+- **第十六条** — the certificate must come from a lawfully established
+  e-certification body; **the seal's validity must not exceed the
+  certificate's**; the data format, generation process and **application
+  interface** must meet national standards.
+- **第十七条** — the production/filing body **must provide a seal status query
+  service**, and status changes (停用/恢复) must be filed. A platform must
+  therefore consume a **status** service, not only a signing service — and must
+  handle a seal that becomes invalid *after* it signed a document.
+- **第二十一条** — **"谁所有、谁控制，谁签章、谁负责"**: the owner controls the
+  seal, the signer is responsible for what they signed. This is the
+  ownership/authority split the pack's stakeholders chapter draws between
+  印章管理员 and the signing department.
+- **第二十二条** — sealing process information **must be recorded and
+  retained**, so the act is traceable and attributable.
+- **第二十三条** — verification must confirm the seal **was valid at the time of
+  signing**. This is distinct from verifying it now.
+- **第二十四条** — a sealed electronic file, when archived, must comply with
+  electronic-archive rules — the same obligation as 716号 第十二条.
+- **第二十七条** — **administrative organs and bodies performing social
+  management and public service functions shall have their business systems
+  support compliant electronic seals.** For this pack that is a *mandate on the
+  platform's own architecture*, not merely a reason to integrate.
+- **第三十五条** — seals used only for a unit's internal affairs may be
+  self-produced and self-managed by reference to the rule. This is the escape
+  hatch that makes the mandate proportionate.
+
+> ⚠️ ASSUMPTION: 第十六条 defers to "国家有关标准规范" for the seal's data
+> format, generation process and interface **without naming a standard**. This
+> pack therefore names none; establishing it from the responsible authority
+> (国家密码管理局, per 第六条) is an open L2 task.
+
 ## 7. What would make this pack `source-checked`
 
 1. Confirm 国令第716号 article text against the 司法部 国家行政法规库 entry
    (retrieved and quoted here; re-verify before a compliance argument).
 2. Retrieve and cite GB/T 36901–36906 clause-level requirements, not just titles.
-3. Retrieve the **统一电子印章** technical standard. 国务院令第716号 第九条
-   mandates a national unified seal system but names no standard number, and
-   this pack deliberately names none either. Which specification the platform
-   must comply with has to be established — guessing it is exactly the error
-   the standard's "cite or qualify" rule forbids.
+3. Retrieve the **统一电子印章** technical standard. 国办发〔2025〕33号 (see §6a)
+   now supplies the *governing rule* — certificate validity bounds, status
+   query service, verification duties — but 第十六条 itself defers to "国家
+   有关标准规范" without naming a number. **Still to be established** from the
+   responsible authority; this pack still names none.
 4. Map the assigned 等保 level to GB/T 22239-2019 control clauses.
 5. Confirm whether sector-specific rules (不动产登记、社保、医保) override the
    generic lifecycle terms used here.

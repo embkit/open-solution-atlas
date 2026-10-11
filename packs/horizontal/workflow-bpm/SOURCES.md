@@ -57,8 +57,15 @@ Still open (each blocks `source-checked`):
   (gapless? reusable? per-authority sequence?) — a policy decision.
 - **电子签章 integration** — article-level obligations from 《电子签名法》 are
   now cited in `00-context/regulatory-landscape.md` §2 (arts. 3, 4, 5, 6, 13,
-  14; 2004/2015/2019 versions). Still open: the signature/e-seal **technical
-  standard** and provider obligations — none named, deliberately.
+  14; 2004/2015/2019 versions, re-confirmed current in the 2026-10 citation
+  audit). **Updated:** the *governing rule* for seals is 《电子印章管理办法》
+  (国办发〔2025〕33号, effective on promulgation 2025-09-27) — arts. 5, 16, 17,
+  21, 22, 23 are now cited, covering legal effect, certificate-validity bounds,
+  the mandatory **seal status query service**, "谁所有、谁控制，谁签章、谁负责",
+  sealing-process record retention, and point-in-time validity verification.
+  Still open: the **technical standard number** for the seal data format and
+  interface — 第十六条 defers to "国家有关标准规范" without naming one, so none is
+  cited.
 - **Auditability & replay** — the AGENTS.md rule now has definitions in
   `03-domain/glossary.md` §5 (audit trail, replay-as-reconstruction vs.
   re-execution, tamper evidence, compensating events). Still open: measurable
