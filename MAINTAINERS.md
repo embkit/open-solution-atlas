@@ -9,12 +9,13 @@ than editorial.
 
 | Role | Holder | Notes |
 |---|---|---|
-| Repository maintainer | _TBD — to be published at first public release_ | Owns standard, tooling, CI, release |
-| Domain maintainers | _none yet_ | Recruited from practitioner review queue (see below) |
+| Repository maintainer | [@ebk-slm](https://github.com/ebk-slm) | Owns the standard, tooling, CI, and release tagging. Sole maintainer today. |
+| Domain maintainers | _none yet_ | Recruited from the practitioner review queue (see below). Each new appointment is what unlocks `practitioner-reviewed` verification for its domain. |
 
-> This file is intentionally honest: no maintainer handles are invented.
-> GitHub handles land here — and in `.github/CODEOWNERS` — when real people
-> accept the role.
+> This file records actual holders, not intentions. Until a domain maintainer
+> accepts their role, the repository maintainer reviews that domain's PRs —
+> which is a bottleneck, and the single highest-value contribution available
+> right now is filling these rows.
 
 ## Roles
 
@@ -34,6 +35,11 @@ than editorial.
 | `unverified` → `source-checked` | any contributor + green CI | `tools/validate-packs.py` (ledger, evidence, banner) |
 | → `practitioner-reviewed` | named practitioner(s) via issue template + domain maintainer merge | `verified_by` non-empty, entries complete |
 | → `field-proven` | repository maintainer, with public reference implementation or describable deployment evidence | `deployment`/`case-study` evidence entry |
+
+> **The verification ladder is empty above rung 2.** No pack in this library is
+> `practitioner-reviewed` or `field-proven`, because both rungs require named
+> humans and real deployments — work that no amount of tooling can substitute
+> for. This is stated plainly rather than papered over.
 
 ## Becoming a domain maintainer
 

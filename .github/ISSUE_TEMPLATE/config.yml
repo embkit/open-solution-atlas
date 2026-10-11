@@ -1,10 +1,18 @@
 blank_issues_enabled: false
 contact_links:
   - name: 💬 Questions & discussion
-    url: https://github.com/USERNAME/open-solution-atlas/discussions
+    url: https://github.com/embkit/open-solution-atlas/discussions
     with:
       about: Ask questions about using a Solution Pack or the pack standard.
   - name: 📖 Pack Standard v1
-    url: https://github.com/USERNAME/open-solution-atlas/blob/main/docs/pack-standard.v1.md
+    url: https://github.com/embkit/open-solution-atlas/blob/main/docs/pack-standard.v1.md
     with:
       about: Read the standard before proposing a pack.
+  - name: 🗺️ Browse the atlas online
+    url: https://embkit.github.io/open-solution-atlas/
+    with:
+      about: Read the generated catalog with full-text search and filters.
+  - name: 🗂️ Taxonomy — find where a system belongs
+    url: https://github.com/embkit/open-solution-atlas/blob/main/docs/taxonomy.md
+    with:
+      about: Check whether a proposed pack's domain already exists.

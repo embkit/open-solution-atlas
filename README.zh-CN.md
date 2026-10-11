@@ -149,8 +149,14 @@
 
 一份你深刻了解的行业系统 L1 简报，就是极好的第一个 PR。
 
+**对某个方案包或规范本身有疑问？** 请到
+[Discussions](https://github.com/embkit/open-solution-atlas/discussions)
+开一个话题——提问请走那里，Issue 追踪器留给真实的缺陷与提案。如果你在某个包里
+发现了错误论断、失效引用或死链，那确实是 Issue，请使用勘误模板。
+
 ## 许可证
 
-文档内容：[CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/)
-代码与模板：[MIT](https://opensource.org/license/mit)
-详见 [`LICENSE`](./LICENSE)。
+文档内容（Markdown 蓝图、图表、清单）：[CC BY-SA 4.0](./LICENSE)
+代码与模板（`tools/`、`tests/`、`templates/`）：[MIT](./LICENSE-MIT)
+
+两许可证并存，内容为主、代码为辅；详见上述两个文件。
