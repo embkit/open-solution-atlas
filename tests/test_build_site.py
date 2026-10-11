@@ -163,6 +163,31 @@ def test_nojekyll_present_and_empty(built_site):
     assert nojekyll.read_text(encoding="utf-8") == ""
 
 
+def test_pages_workflow_preserves_nojekyll(build_site, built_site):
+    """The deploy must keep `.nojekyll` in the artifact.
+
+    `pages.yml` uses actions/upload-pages-artifact, which from v4 excludes
+    dotfiles unless `include-hidden-files: true` is set — verified against the
+    action's own action.yml, where the default is "false" and tar receives
+    `--exclude=.[^/]*`. The site emits `.nojekyll`, so a version bump without
+    that input silently drops it and GitHub Pages starts running its Jekyll
+    build over the catalog. This test is the tripwire for the next bump.
+    """
+    assert (built_site / ".nojekyll").exists(), "the build must emit .nojekyll"
+
+    text = (build_site.ROOT / ".github" / "workflows" / "pages.yml").read_text(
+        encoding="utf-8"
+    )
+    version = re.search(r"upload-pages-artifact@v(\d+)", text)
+    assert version, "could not determine the upload-pages-artifact version"
+    if int(version.group(1)) >= 4:
+        assert re.search(r"include-hidden-files:\s*true", text), (
+            "actions/upload-pages-artifact v4+ excludes dotfiles by default; "
+            "`include-hidden-files: true` is required or `.nojekyll` is lost "
+            "and GitHub Pages will Jekyll-build the catalog"
+        )
+
+
 def test_url_for_maps_readme_to_index(build_site, monkeypatch, tmp_path):
     monkeypatch.setattr(build_site, "ROOT", tmp_path)
     pack_readme = tmp_path / "packs" / "manufacturing" / "wms" / "README.md"
