@@ -22,8 +22,12 @@ regulatory:
 language: en
 translations: []                           # no full translation yet (key assets bilingual; see standard §5)
 maintainers: []
-version: 0.1.0
-last_reviewed: 2026-10-08
+version: 0.2.0
+last_reviewed: 2026-10-11
+# ODA and TMF Open API are adopted as this pack's VOCABULARY (component
+# decomposition and interface language). Nothing in this pack claims conformance
+# to any maturity level or API version; see 00-context/industry-brief.md §10
+# and docs/citation-audit-2026-10.md §4 for the citation-discipline policy.
 sources:
   - https://www.tmforum.org/
   - https://www.itu.int/

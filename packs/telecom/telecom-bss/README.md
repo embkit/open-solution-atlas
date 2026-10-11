@@ -64,6 +64,31 @@ activates must stay in agreement across long-lived, multi-domain processes.
 ## Maturity roadmap
 
 - [x] L1 — Brief
+  - [x] Industry brief with sources (`00-context/industry-brief.md`)
+  - [x] Regulatory landscape (`00-context/regulatory-landscape.md`)
+  - [x] Stakeholder list (`00-context/stakeholders.md`)
+  - [x] Level-1 capability map (`01-business/capability-map.md`)
+  - [x] Glossary seeded (`03-domain/glossary.md`)
 - [ ] L2 — Blueprint
+  - [ ] Business processes / rules (`01-business/`) — decomposition and fallout
+  - [ ] Functional requirements (`02-requirements/`) with stable IDs
+  - [ ] NFR catalog (`02-requirements/non-functional.md`)
+  - [ ] Compliance controls traced to `regulatory-landscape.md`
+  - [ ] Domain model incl. bounded contexts (`03-domain/domain-model.md`)
+  - [ ] Architecture views + ≥3 ADRs (`04-architecture/`), incl. the
+        specification and the BSS/OSS contract
+  - [ ] Logical data model + data dictionary (`05-data/`)
 - [ ] L3 — Agent-ready
 - [ ] L4 — Proven
+
+### Blocking L2
+
+1. **Which ODA/TMF versions the vocabulary is pinned to.** The pack adopts the
+   vocabulary but names no version; the interface family and component set it
+   conforms to is an undecided, versioned decision.
+2. **Retention floor vs. erasure** — the glossary records the mechanism
+   (per-class policy with a stated generation window) but not which window. This
+   is a business/legal decision the design must expose, not a default it may pick.
+3. **All one-to-N specification shapes** — the glossary states "one offering may
+   map to N resource realisations", but the supported cardinality and how
+   alternatives are chosen at order time is unspecified.
