@@ -61,6 +61,36 @@ trail that reconciles to the clinical encounter without distorting it.
 ## Maturity roadmap
 
 - [x] L1 — Brief
+  - [x] Industry brief with sources (`00-context/industry-brief.md`)
+  - [x] Regulatory landscape with citations (`00-context/regulatory-landscape.md`)
+  - [x] Stakeholder list (`00-context/stakeholders.md`)
+  - [x] Level-1 capability map (`01-business/capability-map.md`)
+  - [x] Glossary seeded (`03-domain/glossary.md`)
 - [ ] L2 — Blueprint
+  - [ ] Business processes / rules (`01-business/`) — order→result closed loop,
+        addendum rules, EMPI merge/unmerge semantics
+  - [ ] Functional requirements (`02-requirements/`) with stable IDs
+  - [ ] NFR catalog with availability targets (`02-requirements/non-functional.md`)
+  - [ ] Compliance controls traced to `regulatory-landscape.md`
+  - [ ] Domain model incl. bounded contexts (`03-domain/domain-model.md`)
+  - [ ] Architecture views + ≥3 ADRs (`04-architecture/`), incl. the
+        clinical/billing separation boundary
+  - [ ] Logical data model + data dictionary (`05-data/`)
 - [ ] L3 — Agent-ready
+  - [ ] Governed AI-over-record surface, per 国卫规划发〔2026〕6号 第二十八条
 - [ ] L4 — Proven
+
+### Blocking L2
+
+1. **FHIR release choice** — the pack names resources but claims no normative
+   release; R4 vs R5 is an undecided pack decision recorded in `SOURCES.md` §2.
+2. **国卫规划发〔2026〕6号 official text** — the sector's current data rule is
+   sourced from secondary summaries, not the 国家卫生健康委 original. It is the
+   most directly applicable instrument for this pack, so retrieving and quoting
+   it at article level is a prerequisite.
+3. **Retention periods per data class** — required by `AGENTS.md`, and no
+   period is asserted anywhere in this pack.
+
+> ⚠️ **Citation hazard, repository-wide.** 《网络安全法》was amended
+> 2025-10-28, effective **2026-01-01**, and **renumbered**. Article numbers from
+> the pre-2026 text are stale. See `00-context/regulatory-landscape.md`.

@@ -24,12 +24,19 @@ regulatory:
 language: en
 translations: []                           # no full translation yet (key assets bilingual; see standard §5)
 maintainers: []
-version: 0.1.0
-last_reviewed: 2026-10-08
+version: 0.2.0
+last_reviewed: 2026-10-11
 sources:
-  - https://www.hl7.org/fhir/
-  - https://www.dicomstandard.org/
-  - https://icd.who.int/
-  - https://www.hhs.gov/hipaa/index.html
+  - https://hl7.org/fhir/                          # HL7 FHIR — clinical data model
+  - https://www.dicomstandard.org/                 # DICOM — imaging object model / boundary
+  - https://icd.who.int/                            # WHO ICD — diagnosis & procedure coding
+  - https://www.snomed.org/                        # SNOMED International — clinical terminology
+  - https://www.openehr.org/                        # openEHR — archetype-based alternative
+  - https://hapifhir.io/                            # HAPI FHIR — citable implementation
+  - https://www.dcm4che.org/                        # dcm4che — DICOM/LIS-RIS toolkit
+  - https://www.gov.cn/zhengce/content/202409/content_6977766.htm  # 国令第790号《网络数据安全管理条例》(full text)
+  - http://www.npc.gov.cn/c2/c30834/202510/t20251028_449048.html      # 《网络安全法》2025修订决定，自2026-01-01施行，条文已重排
+  - https://www.hhs.gov/hipaa/index.html            # HIPAA — did not respond to an automated probe; no clause mapping made
+  - https://openstd.samr.gov.cn/bzgk/gb/std_list?p.p2=GB/T%2022239  # GB/T 22239-2019 MLPS 2.0 baseline
 verified_by: []
 evidence: []
