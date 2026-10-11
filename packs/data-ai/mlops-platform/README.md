@@ -60,6 +60,32 @@ was trained on, and its behavior must stay under monitoring after release.
 ## Maturity roadmap
 
 - [x] L1 — Brief
+  - [x] Industry brief with sources (`00-context/industry-brief.md`)
+  - [x] Regulatory landscape (`00-context/regulatory-landscape.md`)
+  - [x] Stakeholder list (`00-context/stakeholders.md`)
+  - [x] Level-1 capability map (`01-business/capability-map.md`)
+  - [x] Glossary seeded (`03-domain/glossary.md`)
 - [ ] L2 — Blueprint
+  - [ ] Business processes / rules (`01-business/`) — promotion, rollback, retirement
+  - [ ] Functional requirements (`02-requirements/`) with stable IDs
+  - [ ] NFR catalog (`02-requirements/non-functional.md`)
+  - [ ] Compliance controls traced to `regulatory-landscape.md`
+  - [ ] Domain model incl. bounded contexts (`03-domain/domain-model.md`)
+  - [ ] Architecture views + ≥3 ADRs (`04-architecture/`)
+  - [ ] Logical data model + data dictionary (`05-data/`)
 - [ ] L3 — Agent-ready
 - [ ] L4 — Proven
+
+### Blocking L2
+
+1. **The binding's full component list** — `AGENTS.md` names code commit, data
+   snapshot and feature definitions as the minimum, but a real deployment pins
+   more (hyperparameters, framework version, seeds, environment). What the
+   binding must contain is a versioned decision, not a default.
+2. **Retention vs. erasure** — rollback and retraining require snapshots to be
+   retained; data-protection obligations require training data to support
+   erasure of a specific individual. Deliberately unresolved in this pack;
+   needs a stated regeneration window.
+3. **Risk-tier taxonomy** — the pack requires a declared tier field but does not
+   define the tier set, per the scope decision that no framework clause was
+   verified.

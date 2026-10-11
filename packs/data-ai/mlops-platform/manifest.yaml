@@ -20,8 +20,12 @@ regulatory:
 language: en
 translations: []                           # no full translation yet (key assets bilingual; see standard §5)
 maintainers: []
-version: 0.1.0
-last_reviewed: 2026-10-08
+version: 0.2.0
+last_reviewed: 2026-10-11
+# NIST AI RMF, ISO/IEC 42001 and the EU AI Act are adopted as governance
+# VOCABULARY AND SHAPE (risk framing + owned documentation artefacts), per
+# AGENTS.md. Nothing in this pack claims conformance to any clause, and no
+# framework clause was verified. See docs/citation-audit-2026-10.md §4.
 sources:
   - https://www.nist.gov/itl/ai-risk-management-framework
   - https://www.iso.org/
