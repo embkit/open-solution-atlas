@@ -50,15 +50,39 @@
 
 ## 4. Uncited specifics to resolve
 
-- **Layering model** — "raw → curated → mart (medallion / ODS-DWD-DWS equivalent)" presents three naming systems as equivalent without citing a source that defines them; confirm whether the mapping is asserted or planned.
-- **Modeling default** — "dimensional/Data Vault as options" and "recommend, with context rules" (open question #1) name a recommendation but no rule set; the chosen default and its justification are unsourced.
-- **Streaming vs. batch baseline** — open question #2; no throughput/latency figures or reference architecture cited.
-- **Quality gates** — "blocking vs. warning gates" and "reconciliation source↔warehouse↔report" are named with no rule catalog, thresholds, or source.
-- **Idempotent loads / partition replay** — asserted as a requirement (AGENTS.md, in-scope) but no mechanism spec or reference is given.
-- **Lineage granularity** — "source-field → mart-column" coverage is claimed with no tooling contract or spec citation beyond the OpenLineage reference.
-- **Classification & access enforcement** — "enforced in the warehouse, not only in BI" is an architectural stance; no mapping to GB/T 43697 levels or to specific controls is given.
-- **Deletion pipeline (GDPR/PIPL)** — "operational pipeline" for subject deletion is asserted but has no defined cascade scope, SLA, or article-level regulatory mapping.
-- **Retention / legal-hold** — retention periods and legal-hold behavior are named without values or sources.
-- **FinOps** — "storage/compute cost tracking" is listed with no metric definitions or targets.
-- **Regulatory mapping** — 数据安全法, GB/T 43697, 等保2.0, GDPR, ISO 27001 are named without article/Annex citations; confirm the exact obligations at L2.
-- **L1 breadth** — no requirements/NFR/model chapters yet; no numeric targets or field definitions exist to audit. The items above are the load-bearing claims to source when L2 is written.
+Resolved at L1 (now defined in the pack, still needing external sourcing at L2):
+
+- **Layering model** — now defined in `03-domain/glossary.md` §1 (raw immutable
+  → conformed → marts, each with a contract). The earlier concern that three
+  naming systems were presented as equivalent is addressed: the pack states its
+  own layers and notes the equivalence only as a reader's aid.
+- **Quality gates** — blocking vs. warning gates are now defined as *different
+  mechanisms* in `03-domain/glossary.md` §3.
+- **Lineage granularity** — field-level lineage is defined as
+  source-field → mart-column in `03-domain/glossary.md` §4.
+- **Idempotent loads / partition replay** — idempotent landing and partition
+  reprocess are defined in `03-domain/glossary.md` §2/§6.
+- **Classification & access** — platform-enforced access and
+  classification-driven policy are defined in `03-domain/glossary.md` §5.
+
+Still open:
+
+- **A citation that does not exist.** The previous `manifest.yaml` listed
+  `https://www.iso.org/standard/56737.html` as a pack-level source. Searching
+  found no ISO/IEC standard with that number, and the URL could not be probed
+  (iso.org returns 403 to automated requests). It has been **removed** rather
+  than propagated. **Action for whoever promotes this pack:** confirm which ISO
+  standard, if any, was intended. Candidates seen in industry material are
+  ISO/IEC 38505-1 (data governance) and ISO/IEC 25012 (data quality model), but
+  neither number could be verified from this environment, so neither is cited.
+- **Modeling default** — open question #1 still names a recommendation with no
+  rule set.
+- **Streaming vs. batch baseline** — open question #2; no figures cited.
+- **Erasure vs. immutability** — the glossary now records the candidates
+  (tombstones, crypto-shredding, snapshot-expiry windows) and states that the
+  pack deliberately picks none at L1. The choice needs legal input.
+- **Retention / legal-hold** — still no values or sources.
+- **FinOps** — still no metric definitions or targets.
+- **Regulatory clause mapping** — 数据安全法, GB/T 43697, 等保2.0, GDPR are
+  still cited by designation only; article/clause-level mapping is a
+  precondition for `source-checked`.
