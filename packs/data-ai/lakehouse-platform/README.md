@@ -55,6 +55,32 @@ cloud-native and on-prem/信创 are variants.
 ## Maturity roadmap
 
 - [x] L1 — Brief
+  - [x] Industry brief with sources (`00-context/industry-brief.md`)
+  - [x] Regulatory landscape with citations (`00-context/regulatory-landscape.md`)
+  - [x] Stakeholder list (`00-context/stakeholders.md`)
+  - [x] Level-1 capability map (`01-business/capability-map.md`)
+  - [x] Glossary seeded (`03-domain/glossary.md`)
 - [ ] L2 — Blueprint
+  - [ ] Business processes / rules (`01-business/`)
+  - [ ] Functional requirements (`02-requirements/`) with stable IDs
+  - [ ] NFR catalog with measurable targets (`02-requirements/non-functional.md`)
+  - [ ] Compliance controls traced to `regulatory-landscape.md` — **requires
+        the GB/T 43697-2024 clause mapping and the ISO designations to be
+        confirmed first**
+  - [ ] Domain model incl. bounded contexts (`03-domain/domain-model.md`)
+  - [ ] Architecture views + ≥3 ADRs (`04-architecture/`)
+  - [ ] Logical data model + data dictionary (`05-data/`)
 - [ ] L3 — Agent-ready
 - [ ] L4 — Proven
+
+### Blocking L2
+
+1. **Erasure vs. immutability** — the glossary records the candidates
+   (tombstones, crypto-shredding, snapshot-expiry windows) but the pack
+   deliberately picks none at L1. The choice needs legal input and is a
+   load-bearing architecture decision.
+2. **Blocking/warning gate policy** — the distinction is defined; *which*
+   checks are blocking is a per-dataset steward decision that must be
+   specified as rules.
+3. **Table-format criteria** — Iceberg/Delta/Hudi are named but not compared;
+   an L2 `variants/` overlay needs real selection criteria.

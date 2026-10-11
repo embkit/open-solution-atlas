@@ -22,9 +22,13 @@ regulatory:
 language: en
 translations: []                           # no full translation yet (key assets bilingual; see standard §5)
 maintainers: []
-version: 0.1.0
-last_reviewed: 2026-10-08
+version: 0.2.0
+last_reviewed: 2026-10-11
 sources:
-  - https://www.iso.org/standard/56737.html
+  - https://iceberg.apache.org/                                  # Apache Iceberg — open table format
+  - https://delta.io/                                            # Delta Lake — open table format
+  - https://hudi.apache.org/                                      # Apache Hudi — open table format
+  - https://openstd.samr.gov.cn/bzgk/gb/std_list?p.p2=GB/T%2043697  # GB/T 43697-2024 数据分类分级规则
+  - https://openstd.samr.gov.cn/bzgk/gb/std_list?p.p2=GB/T%2022239  # GB/T 22239-2019 MLPS 2.0 baseline
 verified_by: []
 evidence: []
