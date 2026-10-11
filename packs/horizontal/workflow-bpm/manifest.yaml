@@ -20,10 +20,14 @@ regulatory:
 language: en
 translations: []                           # no full translation yet (key assets bilingual; see standard §5)
 maintainers: []
-version: 0.1.0
-last_reviewed: 2026-10-08
+version: 0.2.0
+last_reviewed: 2026-10-11
 sources:
-  - https://www.omg.org/spec/BPMN/2.0.2/
-  - https://www.w3.org/TR/vc-data-model/
+  - https://www.omg.org/spec/BPMN/2.0.2/          # BPMN 2.0.2 — process modelling notation
+  - https://www.omg.org/spec/DMN/                  # DMN — decision modelling (candidate at L2)
+  - https://docs.oasis-open.org/cmis/CMIS/v1.1/    # CMIS 1.1 — document repository interoperability
+  - https://www.iso.org/standard/27001             # ISO/IEC 27001 — ISMS controls
+  - https://openstd.samr.gov.cn/bzgk/gb/std_list?p.p2=GB/T%2022239   # GB/T 22239-2019 MLPS 2.0 baseline
+  - https://openstd.samr.gov.cn/bzgk/gb/std_list?p.p2=GB/T%209704    # GB/T 9704-2012 official document layout
 verified_by: []
 evidence: []
