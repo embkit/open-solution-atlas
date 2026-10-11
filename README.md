@@ -187,10 +187,13 @@ if that is you.
 
 ## License
 
-Content — the Markdown blueprints, diagrams, and catalogs:
-[CC BY-SA 4.0](./LICENSE).
-Code and templates — `tools/`, `tests/`, `templates/`:
-[MIT](./LICENSE-MIT).
+Two licenses, because two kinds of material:
 
-Two files, because two licenses: the content is the substance of this library
-and the code is the machinery. See both.
+| Material | License | File |
+|---|---|---|
+| Documentation and blueprint content — Markdown, diagrams, catalogs, pack data | [CC BY-SA 4.0](./LICENSE) | `LICENSE` |
+| Code and templates — `tools/`, `tests/`, `templates/` | [MIT](./LICENSE-MIT) | `LICENSE-MIT` |
+
+`LICENSE` holds the canonical CC BY-SA 4.0 legal text verbatim (so license
+scanners classify the repository correctly); `LICENSE-MIT` holds the MIT text.
+Contributions are accepted under both, per [`CONTRIBUTING.md`](CONTRIBUTING.md).
