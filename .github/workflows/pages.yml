@@ -31,9 +31,17 @@ jobs:
       - name: Build site (fails on broken internal links)
         run: python tools/build-site.py
       - uses: actions/configure-pages@v6
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: _site
+          # v4 changed the default to EXCLUDE dotfiles; v5 only added an opt-in
+          # input. This site emits `.nojekyll`, which GitHub Pages needs to
+          # skip its Jekyll build — the vendored libraries and generated
+          # catalog must be served verbatim. Without this input the v3 -> v5
+          # bump silently drops `.nojekyll` from the deployed artifact.
+          # (.git and .github are excluded by the action regardless, so the
+          # only file this adds back is `.nojekyll`.)
+          include-hidden-files: true
 
   deploy:
     name: Deploy to GitHub Pages
