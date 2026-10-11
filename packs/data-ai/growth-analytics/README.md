@@ -55,6 +55,30 @@ by default.
 ## Maturity roadmap
 
 - [x] L1 — Brief
+  - [x] Industry brief with sources (`00-context/industry-brief.md`)
+  - [x] Regulatory landscape (`00-context/regulatory-landscape.md`)
+  - [x] Stakeholder list (`00-context/stakeholders.md`)
+  - [x] Level-1 capability map (`01-business/capability-map.md`)
+  - [x] Glossary seeded (`03-domain/glossary.md`)
 - [ ] L2 — Blueprint
+  - [ ] Business processes / rules (`01-business/`)
+  - [ ] Functional requirements (`02-requirements/`) with stable IDs
+  - [ ] NFR catalog (`02-requirements/non-functional.md`)
+  - [ ] Compliance controls traced to `regulatory-landscape.md`
+  - [ ] Domain model incl. bounded contexts (`03-domain/domain-model.md`)
+  - [ ] Architecture views + ≥3 ADRs (`04-architecture/`)
+  - [ ] Logical data model + data dictionary (`05-data/`)
 - [ ] L3 — Agent-ready
 - [ ] L4 — Proven
+
+### Blocking L2
+
+1. **The statistics method text** — sample size, SRM, guardrails, holdouts and
+   peeking discipline are stated as design requirements from `AGENTS.md`, but the
+   pack cites **no** normative source for any of them. Adopting one is a
+   precondition for writing verifiable experiment requirements.
+2. **Deletion vs. aggregate recomputation** — the glossary requires deletion to
+   reach join keys and derived facts; whether aggregates must be recomputed is
+   undecided and is in genuine tension with experiment validity.
+3. **Segment snapshot semantics** — the glossary fixes "snapshot, not a live
+   view", but the re-resolution policy for long-lived campaigns is not specified.
