@@ -17,12 +17,13 @@ issue" here usually means:
 
 **Do not open a public issue.** Use GitHub's **private vulnerability
 reporting** on this repository (Security tab → "Report a vulnerability"),
-which routes only to the repository maintainers.
+which routes only to the maintainers and is enabled here.
 
-No dedicated security email alias exists yet — this project is honest that it
-has no named maintainers ([`MAINTAINERS.md`](MAINTAINERS.md)); an address will
-be published here once one is established. Until then the GitHub private
-channel is the only supported route.
+If that route is unavailable to you, contact the repository maintainer
+directly: **[@ebk-slm](https://github.com/ebk-slm)** — the sole maintainer and
+repository owner (see [`MAINTAINERS.md`](MAINTAINERS.md)). There is no
+security mailing list; the private GitHub channel is the supported route and
+the listed contact is the fallback.
 
 Please include:
 

@@ -1,15 +1,31 @@
-# CODEOWNERS — see MAINTAINERS.md for role definitions.
+# CODEOWNERS — who is asked to review what.
 #
-# GitHub requires real handles to enforce review rules; none are published
-# yet. When the repository maintainer and domain maintainers are announced,
-# uncomment and fill in — e.g.:
+# See MAINTAINERS.md for the role definitions. `ebk-slm` is the repository
+# maintainer and, at present, the only one, so every path defaults to them.
 #
-#   *                          @<repo-maintainer>
-#   /docs/                    @<repo-maintainer>
-#   /tools/                   @<repo-maintainer>
-#   /schemas/                 @<repo-maintainer>
-#   /packs/manufacturing/     @<domain-maintainer-manufacturing>
-#   /packs/horizontal/        @<domain-maintainer-horizontal>
-#
-# Until then this file is a placeholder: review expectations are governed by
-# CONTRIBUTING.md and MAINTAINERS.md, not yet by enforced code owners.
+# NOTE: `require_code_owner_reviews` is deliberately left off in the branch
+# protection rule. With a single maintainer, requiring code-owner approval
+# would block every PR — including the maintainer's own — because an author
+# cannot approve their own pull request. Turn it on when a second person
+# accepts a domain-maintainer role.
+
+*                       @ebk-slm
+
+# Standard, schema, tooling and CI — the repository maintainer's remit.
+/docs/                  @ebk-slm
+/schemas/               @ebk-slm
+/tools/                 @ebk-slm
+/templates/             @ebk-slm
+/.github/               @ebk-slm
+
+# Packs default to the repository maintainer until domain maintainers exist.
+# Replace these lines as people accept domain roles in MAINTAINERS.md.
+/packs/horizontal/      @ebk-slm
+/packs/manufacturing/   @ebk-slm
+/packs/retail-commerce/ @ebk-slm
+/packs/government-public/ @ebk-slm
+/packs/energy-utilities/ @ebk-slm
+/packs/data-ai/         @ebk-slm
+/packs/telecom/         @ebk-slm
+/packs/healthcare/      @ebk-slm
+/packs/finance/         @ebk-slm

@@ -166,20 +166,31 @@ Vendor-neutral is the default; stack opinions live in labeled `variants/`.
 
 A maintained L1 brief about a system you know deeply is a fantastic first PR.
 
+**Questions about using a pack, or about the standard itself?** Open a thread
+in [Discussions](https://github.com/embkit/open-solution-atlas/discussions) —
+that is the place for questions, and it keeps the issue tracker for actual
+defects and proposals. If you hit a wrong claim, a dead citation, or a broken
+link in a pack, that *is* an issue — use the correction template.
+
 ## Governance
 
-This project is honest about a current gap: it has **no named maintainers
-yet**. [`MAINTAINERS.md`](MAINTAINERS.md) defines the roles and the promotion
-authority for each verification rung; `.github/CODEOWNERS` is a placeholder
-until real handles exist, and the security contact in
-[`SECURITY.md`](SECURITY.md) is likewise pending publication. Recruiting
-domain maintainers — the people who make `practitioner-reviewed` (rung 3)
-possible — is the highest-value contribution right now; open a
+This project is honest about a current gap: it has **no domain maintainers
+yet** — every industry vertical is reviewed by the repository maintainer
+alone, which is the real bottleneck. [`MAINTAINERS.md`](MAINTAINERS.md)
+defines the roles and the promotion authority for each verification rung;
+`.github/CODEOWNERS` currently routes everything to the sole maintainer.
+
+Recruiting domain maintainers — the people who make `practitioner-reviewed`
+(rung 3) possible — is the highest-value contribution right now; open a
 [maintainer application](./.github/ISSUE_TEMPLATE/maintainer-application.yml)
 if that is you.
 
 ## License
 
-Content: [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).
-Code & templates: [MIT](https://opensource.org/license/mit).
-See [`LICENSE`](./LICENSE).
+Content — the Markdown blueprints, diagrams, and catalogs:
+[CC BY-SA 4.0](./LICENSE).
+Code and templates — `tools/`, `tests/`, `templates/`:
+[MIT](./LICENSE-MIT).
+
+Two files, because two licenses: the content is the substance of this library
+and the code is the machinery. See both.

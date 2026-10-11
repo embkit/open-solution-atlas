@@ -6,6 +6,36 @@ releases (individual packs carry their own `version` in `manifest.yaml`).
 
 ## [Unreleased]
 
+### Fixed — repository hygiene (outsider-facing)
+
+- `.github/ISSUE_TEMPLATE/config.yml`: both `contact_links` pointed at
+  `github.com/USERNAME/...` — placeholders left over from the pre-rename push.
+  With `blank_issues_enabled: false`, an outsider had **no route at all** to ask
+  a question. Links now point at `embkit/...`, GitHub Discussions, the online
+  catalog, and the taxonomy.
+- GitHub **Discussions** and **private vulnerability reporting** are now
+  enabled. `SECURITY.md` already told readers to use the latter, but the
+  feature was off — the file described a route that did not exist.
+- `SECURITY.md` names a fallback contact ([@ebk-slm](https://github.com/ebk-slm))
+  instead of "no named maintainers, contact route pending", which contradicted
+  the very next sentence.
+- `LICENSE` now holds the CC BY-SA 4.0 text and a new `LICENSE-MIT` holds the
+  MIT text. The previous single `LICENSE` mixed both in prose, so GitHub
+  detected `NOASSERTION` — no license badge, and license scanners could not
+  classify the repository. READMEs updated to point at both files.
+- `.github/CODEOWNERS` was 100% comments; it now routes every path to the
+  actual maintainer, with `require_code_owner_reviews` explicitly off and the
+  reason documented (single maintainer ⇒ code-owner approval would block
+  everything, since an author cannot approve their own PR).
+- `MAINTAINERS.md` records the repository maintainer that already existed in
+  fact, and states plainly that the verification ladder above rung 2 is empty.
+- `CONTRIBUTING.md` promised "one domain reviewer and one architecture
+  reviewer" while branch protection required zero approvals. It now states the
+  enforced rule (one approving review) and the intent separately.
+- Repository **topics** (15) and the **homepage link** (`embkit.github.io/...`)
+  were both empty, so the catalog had no entry point from the repo page and the
+  project was undiscoverable in GitHub search.
+
 ### Added — searchable site
 - `tools/build-site.py` — generates the static catalog into `_site/`: a
   searchable index page, a page per pack and per document, Mermaid rendering,

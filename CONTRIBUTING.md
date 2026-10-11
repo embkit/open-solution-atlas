@@ -48,8 +48,13 @@ practitioners choose to share in a generalized, reusable form.
    `provenance: llm-drafted` / `verification: unverified` and carry the draft
    banner in `README.md`.
 5. **Self-review** against the level checklist in the pack standard.
-6. **Pull request**: require review from one domain reviewer and one
-   architecture reviewer. L2+ packs require cited public sources.
+6. **Pull request**: every PR must pass the required CI checks and carry **one
+   approving review** before merge — enforced by branch protection, not by
+   convention. The intent is a domain reviewer *and* an architecture reviewer;
+   with a single maintainer today, one approval is what the gate can require
+   (an author cannot approve their own PR, and a second approver does not
+   exist yet — see [`MAINTAINERS.md`](MAINTAINERS.md)). L2+ packs require
+   cited public sources.
 
 ## Verification (raising `verification`)
 

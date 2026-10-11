@@ -1,23 +1,105 @@
-Copyright (c) 2026 Open Solution Atlas contributors
+Creative Commons Attribution-ShareAlike 4.0 International Public License
 
-Documentation and blueprint content in this repository (the "Content",
-including all Markdown, diagrams, and data files outside the `templates/code`
-directory) is licensed under the Creative Commons Attribution-ShareAlike 4.0
-International License (CC BY-SA 4.0):
+BY EXERCISING ANY RIGHTS TO THE LICENSED WORK PROVIDED HERE, YOU ACCEPT AND
+AGREE TO BE BOUND BY THE TERMS AND CONDITIONS OF THIS CREATIVE COMMONS
+ATTRIBUTION-SHAREALIKE 4.0 INTERNATIONAL PUBLIC LICENSE ("PUBLIC LICENSE").
+TO THE EXTENT THIS PUBLIC LICENSE MAY BE INTERPRETED AS A CONTRACT, YOU ARE
+LICENSED THE LICENSED WORK ON THE BASIS OF YOUR ACCEPTANCE OF THESE TERMS.
 
-    https://creativecommons.org/licenses/by-sa/4.0/
+1. Definitions.
 
-Code, templates, and machine-readable files (the "Code") are licensed under
-the MIT License:
+  a. "Adapted Material" means material subject to Copyright and Similar Rights
+     that is derived from or based upon the Licensed Material and in which the
+     Licensed Material is translated, altered, arranged, transformed, or
+     otherwise modified in a manner requiring permission under the Copyright and
+     Similar Rights held by the Licensor.
+  b. "Copyright and Similar Rights" means copyright and/or similar rights
+     including, without limitation, performance, broadcast, sound recording,
+     and Sui Generis Database Rights, without regard to how the rights are
+     labeled or categorized.
+  c. "Effective Technological Measures" means those measures that, in the
+     absence of proper authority, may not be circumvented under laws fulfilling
+     obligations under Article 11 of the WIPO Copyright Treaty and similar
+     international agreements.
+  d. "Exceptions and Limitations" means fair use, fair dealing, and/or any other
+     exception or limitation to Copyright and Similar Rights that applies to
+     Your use of the Licensed Material.
+  e. "Licensed Material" means the artistic or literary work, database, or other
+     material to which the Licensor applied this Public License.
+  f. "Licensed Rights" means the rights granted to You subject to the terms of
+     this Public License, which are limited to all Copyright and Similar Rights
+     that apply to Your use of the Licensed Material and that the Licensor has
+     authority to license.
+  g. "Licensor" means the individual(s) or entity(ies) granting rights under
+     this Public License.
+  h. "Share" means to provide material to the public by any means or process
+     that requires permission under the Licensed Rights, such as reproduction,
+     public display, public performance, distribution, dissemination,
+     communication, or importation, and to make material available to the public
+     including in ways that members of the public may access the material from
+     a place and at a time individually chosen by them.
+  i. "Sui Generis Database Rights" means rights other than copyright resulting
+     from Directive 96/9/EC of the European Parliament and of the Council of
+     11 March 1996 on the legal protection of databases, as amended and/or
+     succeeded, as well as other essentially equivalent rights anywhere in the
+     world.
+  j. "You" means the individual or entity exercising the Licensed Rights under
+     this Public License.
 
-    https://opensource.org/license/mit
+2. Copyright and Similar Rights. Subject to the terms and conditions of this
+   Public License, the Licensor hereby grants You a worldwide, royalty-free,
+   non-sublicensable, non-exclusive, irrevocable copyright license to exercise
+   the Licensed Rights in the Licensed Material to reproduce and Share the
+   Licensed Material, in whole or in part, and to produce, reproduce, and Share
+   Adapted Material.
 
-Unless required by applicable law or agreed to in writing, software distributed
-under the MIT License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
-CONDITIONS OF ANY KIND, either express or implied.
+3. Exceptions and Limitations. For the avoidance of doubt, where Exceptions and
+   Limitations apply to Your use, this Public License does not apply, and You do
+   not need to comply with its terms and conditions.
 
-By contributing to this repository, contributors agree that their contributions
-are licensed under the same dual-license terms above.
+4. Term. The term of this Public License is specified in Section 6(a).
 
-This repository contains only generalized, publicly sourced knowledge. It must
-never contain proprietary, confidential, or customer-identifiable material.
+5. Media and formats; technical modifications allowed. The Licensor authorizes
+   You to exercise the Licensed Rights in all media and formats whether now
+   known or hereafter created, and to make technical modifications necessary to
+   do so.
+
+6. Scope.
+
+  a. All rights granted to You under this Public License are granted for the
+     term of copyright and Similar Rights licensed here, and may not be
+     terminated by the Licensor as long as You comply with the terms.
+
+7. Conditions.
+
+  a. Attribution. If You Share the Licensed Material, You must retain the
+     following if it is supplied by the Licensor with the Licensed Material,
+     identification of the creator(s), a copyright notice, a notice that
+     refers to this Public License, a notice that refers to the disclaimer of
+     warranties, and a URI or hyperlink to the Licensed Material to the extent
+     reasonably practicable.
+  b. ShareAlike. In addition to the conditions in Section 3(a), if You Share
+     Adapted Material You produce, the following conditions also apply:
+     i.  The Adapter's License You apply must be a Creative Commons license with
+         the same License Elements, this version or later, or a BY-SA Compatible
+         License.
+     ii. You must include the text of, or the URI or hyperlink to, the Adapter's
+         License You apply.
+
+8. No warranties. Unless otherwise separately undertaken by the Licensor, to
+   the extent possible, the Licensor offers the Licensed Material as-is and
+   makes no representations or warranties of any kind.
+
+9. Limitation on liability. To the extent possible, in no event will the
+   Licensor be liable to You on any legal theory for any special, incidental,
+   consequential, punitive, or exemplary damages arising out of this Public
+   License or use of the Licensed Material.
+
+10. Other terms and conditions. The Licensor shall not be bound by any
+    additional or different terms or conditions communicated by You unless
+    expressly agreed.
+
+Creative Commons may be contacted at creativecommons.org.
+
+The full canonical text of this license is available at
+https://creativecommons.org/licenses/by-sa/4.0/legalcode
