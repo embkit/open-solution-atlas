@@ -44,16 +44,16 @@ their IDs.
 
 | # | Capability | What it must answer | Notes / L1 position |
 |---|---|---|---|
-| **01** | **Process definition & lifecycle** | how a procedure becomes a running definition | model → publish → version → deprecate; definitions are artefacts under change control |
-| **02** | **Process execution engine** | how an instance actually advances | token flow, gateways, events, timers, in-flight behaviour during redeploy |
-| **03** | **Task & work-item management** | how human work is handed over | assign/claim/transfer/delegate/会签/或签/加签/退回 — the core OA vocabulary |
-| **04** | **Forms & data capture** | how data enters the process | schema-driven forms, validation, conditional visibility, drafts, attachments |
-| **05** | **Rules & decision points** | how routing and approval are decided | approval conditions, gateway predicates, thresholds, business calendars |
-| **06** | **Documents & records** | what the process produces and must keep | content store, templates, 公文/文号, seal/signature, archive & retention |
-| **07** | **Identity, participants & authority** | *who* is allowed to act | participant resolution via org/role, delegation scope, SoD constraints |
-| **08** | **Events, audit & replay** | how it can be proven afterwards | event model, audit trail, retention, tamper-evidence, export |
-| **09** | **Integration & extension** | how it connects to everything else | service tasks, callbacks, process-data API, embedding, stack variants |
-| **10** | **Monitoring, analytics & operations** | how it is run and improved | dashboards, SLA/escalation, process analytics, engine operations |
+| **CAP-01** | **Process definition & lifecycle** | how a procedure becomes a running definition | model → publish → version → deprecate; definitions are artefacts under change control |
+| **CAP-02** | **Process execution engine** | how an instance actually advances | token flow, gateways, events, timers, in-flight behaviour during redeploy |
+| **CAP-03** | **Task & work-item management** | how human work is handed over | assign/claim/transfer/delegate/会签/或签/加签/退回 — the core OA vocabulary |
+| **CAP-04** | **Forms & data capture** | how data enters the process | schema-driven forms, validation, conditional visibility, drafts, attachments |
+| **CAP-05** | **Rules & decision points** | how routing and approval are decided | approval conditions, gateway predicates, thresholds, business calendars |
+| **CAP-06** | **Documents & records** | what the process produces and must keep | content store, templates, 公文/文号, seal/signature, archive & retention |
+| **CAP-07** | **Identity, participants & authority** | *who* is allowed to act | participant resolution via org/role, delegation scope, SoD constraints |
+| **CAP-08** | **Events, audit & replay** | how it can be proven afterwards | event model, audit trail, retention, tamper-evidence, export |
+| **CAP-09** | **Integration & extension** | how it connects to everything else | service tasks, callbacks, process-data API, embedding, stack variants |
+| **CAP-10** | **Monitoring, analytics & operations** | how it is run and improved | dashboards, SLA/escalation, process analytics, engine operations |
 
 ## 2. Boundaries (what each capability does *not* own)
 

@@ -5,7 +5,7 @@ title_zh: 工作流/BPM与协同办公审批平台（OA）
 domain: horizontal
 subdomain: collaboration
 tags: [bpm, workflow, oa, approval, bpmn, process-engine, form-engine, dms]
-maturity: L1
+maturity: L2
 provenance: llm-drafted
 verification: unverified
 stack_stance: stack-agnostic
@@ -20,8 +20,8 @@ regulatory:
 language: en
 translations: []                           # no full translation yet (key assets bilingual; see standard §5)
 maintainers: []
-version: 0.2.0
-last_reviewed: 2026-10-11
+version: 0.3.0
+last_reviewed: 2026-10-12
 sources:
   - https://www.omg.org/spec/BPMN/2.0.2/          # BPMN 2.0.2 — process modelling notation
   - https://www.omg.org/spec/DMN/                  # DMN — decision modelling (candidate at L2)
