@@ -39,16 +39,16 @@
 
 | # | Capability | What it must answer | Notes / L1 position |
 |---|---|---|---|
-| **01** | **Experiment tracking** | what produced this result, exactly | binding recorded **as a unit**, not as loose metadata |
-| **02** | **Feature store** | did serving see what training saw | point-in-time correctness is the reason it exists; a cache with a governance document otherwise |
-| **03** | **Training & backfill** | can this be rebuilt | replay must reproduce training feature values |
-| **04** | **Model registry** | may this go to production | **the single gate**, with an approval record, risk tier, and lifecycle states |
-| **05** | **Serving & release** | what is live, and can we go back | canary, shadow, and rollback to a prior binding — possible only because the binding exists |
-| **06** | **Monitoring & drift** | is it still right on live traffic | live, not offline; **auditable** results |
-| **07** | **Lineage & explainability** | why did it predict that | a query with an answer, not a diagram |
-| **08** | **Governance artefacts** | what is this model for, and what are its limits | model card, intended use, limitations, evaluation, retirement — each with a home |
-| **09** | **Evaluation & sliced metrics** | is it right for *everyone* | aggregate metrics hide segment failure; the audit is on the slices nobody looked at |
-| **10** | **Platform operations & security** | who may promote, who may serve | promotion and serving are separated authorities |
+| **CAP-01** | **Experiment tracking** | what produced this result, exactly | binding recorded **as a unit**, not as loose metadata |
+| **CAP-02** | **Feature store** | did serving see what training saw | point-in-time correctness is the reason it exists; a cache with a governance document otherwise |
+| **CAP-03** | **Training & backfill** | can this be rebuilt | replay must reproduce training feature values |
+| **CAP-04** | **Model registry** | may this go to production | **the single gate**, with an approval record, risk tier, and lifecycle states |
+| **CAP-05** | **Serving & release** | what is live, and can we go back | canary, shadow, and rollback to a prior binding — possible only because the binding exists |
+| **CAP-06** | **Monitoring & drift** | is it still right on live traffic | live, not offline; **auditable** results |
+| **CAP-07** | **Lineage & explainability** | why did it predict that | a query with an answer, not a diagram |
+| **CAP-08** | **Governance artefacts** | what is this model for, and what are its limits | model card, intended use, limitations, evaluation, retirement — each with a home |
+| **CAP-09** | **Evaluation & sliced metrics** | is it right for *everyone* | aggregate metrics hide segment failure; the audit is on the slices nobody looked at |
+| **CAP-10** | **Platform operations & security** | who may promote, who may serve | promotion and serving are separated authorities |
 
 ## 2. Boundaries (what each capability does *not* own)
 
