@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Maturity | 🟡 L1 — Brief (target L3) |
+| Maturity | 🔵 L2 — Blueprint (target L3) |
 | Domain | energy-utilities / power-marketing |
 | Stack stance | Vendor-neutral |
 | Regulatory context | 电力法及供电监管规则（电价、供电服务规范、95598 服务标准）; 等保2.0 |
@@ -65,7 +65,64 @@ business/integration surface is in scope.
   - [x] Stakeholder list (`00-context/stakeholders.md`)
   - [x] Level-1 capability map (`01-business/capability-map.md`)
   - [x] Glossary seeded (`03-domain/glossary.md`)
-- [ ] L2 — Blueprint
+- [x] L2 — Blueprint
+  - [x] Business processes / rules (`01-business/processes.md` P-01..08,
+        `business-rules.md` BR-01..BR-15)
+  - [x] Functional requirements with stable IDs (`02-requirements/functional.md`,
+        FR-001..FR-022)
+  - [x] NFR catalog with measurable targets and pinned formulas
+        (`02-requirements/non-functional.md`, NFR-001..NFR-012)
+  - [x] Compliance controls traced to instrument designations
+        (`02-requirements/compliance.md`, CTL-01..CTL-08)
+  - [x] Domain model incl. bounded contexts (`03-domain/domain-model.md`)
+  - [x] Architecture views (`04-architecture/overview.md`, `integration.md`,
+        `security.md`, `observability.md`)
+  - [x] ≥3 ADRs covering the load-bearing decisions (`04-architecture/adr/`,
+        0001..0004)
+  - [x] Logical data model + data dictionary (`05-data/`, 10 integrity
+        constraints)
+- [ ] L3 — Agent-ready
+  - [ ] API contracts for the interface (`06-contracts/`)
+  - [ ] State machines for key lifecycle objects (`03-domain/state-machines.md`)
+  - [ ] EARS acceptance criteria with full requirement traceability
+        (`08-quality/`)
+  - [ ] Integration & data-flow specs (protocols, payloads, frequencies)
+  - [ ] Test strategy incl. performance and failure scenarios
+  - [ ] Delivery milestones + agent-executable task map (`09-delivery/`)
+  - [ ] Consistency review: IDs resolve, glossary terms used uniformly, no
+        contradiction between requirements, design, and contracts
+- [ ] L4 — Proven
+
+## Settled ADRs (do not relitigate)
+
+| ADR | Decision |
+|---|---|
+| **0001** | Tariff arithmetic runs in a **separate, governed engine**; a rate change inside billing code is indistinguishable from a bug fix |
+| **0002** | Charge events are **immutable**, and invoices carry the **rule versions** they were computed under |
+| **0003** | A reading estimate must be **rule-bound and labelled**, because an unlabelled one is unfalsifiable by the customer and unprovable by the utility |
+| **0004** | Disconnection guardrails are **enforced state**, not configuration; the evaluation is a recorded act, not a side effect |
+
+## Blocking L3
+
+1. **The interface contract itself** — the five declared aspects exist in prose
+   (`04-architecture/integration.md`); L3 needs payload shapes and state
+   vocabulary.
+2. **The estimate reconciliation procedure** — BR-05 requires labelling and
+   reconciliation; the procedure is not specified.
+3. **Acceptance criteria for the five zero-tolerance invariants** — NFR-001,
+   NFR-003 (`silent_estimate_detected`), NFR-004, NFR-006 and NFR-009 need
+   criteria that fail a build, not a reported threshold.
+4. **Cycle-straddle verification** — constraint 6 forbids a wrong-version charge;
+   how it is *tested* is L3 work.
+
+### Explicitly unresolved (recorded, not forgotten)
+
+- **The 估抄 method** — period, estimation rule and reconciliation against the
+  next actual reading are regulatory inputs, deliberately not specified.
+- **Retention vs. erasure** — regenerating historical invoices needs rule
+  versions, readings and charges retained; personal-data obligations push the
+  other way. The mechanism (per-class policy with a declared regeneration
+  window) is named; the window is a business decision.
   - [ ] Business processes / rules (`01-business/`) — tariff splitting, 估抄
         rules, adjustment and guardrail rules
   - [ ] Functional requirements (`02-requirements/`) with stable IDs

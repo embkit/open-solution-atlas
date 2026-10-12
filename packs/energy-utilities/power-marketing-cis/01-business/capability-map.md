@@ -39,16 +39,16 @@
 
 | # | Capability | What it must answer | Notes / L1 position |
 |---|---|---|---|
-| **01** | **Customer & account master** | who is supplied, under what terms | the service point and meter are distinct objects from the customer |
-| **02** | **Metering & reading** | what did the meter say, and when | exceptions surfaced as exceptions; 估抄 only **by rule and labelled** (`AGENTS.md`) |
-| **03** | **Tariff engine** | what does this reading cost | **versioned, auditable, effective-dated** (`AGENTS.md`) — regulated math |
-| **04** | **Billing & adjustment** | what is owed, and how is a correction made | bill records the rule version; adjustments require an approval workflow |
-| **05** | **Payment & reconciliation** | is the money recorded, and does it match | money and energy traceable to readings |
-| **06** | **95598 service & cases** | what does the customer need, and what is happening | intake with real account/meter/outage context |
-| **07** | **Work orders & field execution** | who does what, where | dispatch and completion feedback, incl. meter service |
-| **08** | **Disconnect / reconnect** | may this legally be done | guardrails as **enforced state** (`AGENTS.md`) |
-| **09** | **Distribution interface** | how operational state reaches this system | **interface-only; no SCADA scope** (`AGENTS.md`) |
-| **10** | **Audit, retention & security** | can the whole record be defended | evidence of rules, approvals, readings; retention |
+| **CAP-01** | **Customer & account master** | who is supplied, under what terms | the service point and meter are distinct objects from the customer |
+| **CAP-02** | **Metering & reading** | what did the meter say, and when | exceptions surfaced as exceptions; 估抄 only **by rule and labelled** (`AGENTS.md`) |
+| **CAP-03** | **Tariff engine** | what does this reading cost | **versioned, auditable, effective-dated** (`AGENTS.md`) — regulated math |
+| **CAP-04** | **Billing & adjustment** | what is owed, and how is a correction made | bill records the rule version; adjustments require an approval workflow |
+| **CAP-05** | **Payment & reconciliation** | is the money recorded, and does it match | money and energy traceable to readings |
+| **CAP-06** | **95598 service & cases** | what does the customer need, and what is happening | intake with real account/meter/outage context |
+| **CAP-07** | **Work orders & field execution** | who does what, where | dispatch and completion feedback, incl. meter service |
+| **CAP-08** | **Disconnect / reconnect** | may this legally be done | guardrails as **enforced state** (`AGENTS.md`) |
+| **CAP-09** | **Distribution interface** | how operational state reaches this system | **interface-only; no SCADA scope** (`AGENTS.md`) |
+| **CAP-10** | **Audit, retention & security** | can the whole record be defended | evidence of rules, approvals, readings; retention |
 
 ## 2. Boundaries (what each capability does *not* own)
 

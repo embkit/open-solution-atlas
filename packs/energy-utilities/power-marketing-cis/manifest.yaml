@@ -5,7 +5,7 @@ title_zh: 电力营销与客户服务信息系统（营销/CIS/95598）
 domain: energy-utilities
 subdomain: power-marketing
 tags: [cis, metering, billing, tariff, 95598, work-orders, payment, power-supply, amr]
-maturity: L1
+maturity: L2
 provenance: llm-drafted
 verification: unverified
 stack_stance: stack-agnostic
@@ -18,8 +18,8 @@ regulatory:
 language: en
 translations: []                           # no full translation yet (key assets bilingual; see standard §5)
 maintainers: []
-version: 0.2.0
-last_reviewed: 2026-10-11
+version: 0.3.0
+last_reviewed: 2026-10-12
 # Source note (2026-10 L1 completion): dltjyy.cn is a non-authoritative
 # commercial reference site carried over from the original manifest. The pack
 # relies on it for NO load-bearing claim; tariff specifics are regulatory

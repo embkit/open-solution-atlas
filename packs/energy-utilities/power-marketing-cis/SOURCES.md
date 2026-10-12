@@ -30,12 +30,27 @@
 
 ## 4. Uncited specifics to resolve
 
-- **Tariff tables (居民阶梯/合表/工商业目录电价)** — exact figures are policy-driven and change frequently; no stable citable source. Treat as data, not fact.
-- **估抄/补抄/零度户 exception rules & thresholds** — no source.
-- **95598 service standard details** — public/industry source to confirm.
-- **报装容量 (connection capacity) rules** — no source.
-- **Disconnect/reconnect regulated procedure detail** — to confirm against 电力供应与使用条例 clauses.
-- **Line-loss delivery / 反窃电线索 analytics thresholds** — no source.
-- **Existing manifest source `http://www.dltjyy.cn/`** — provenance/authority unverified; confirm or replace.
-- **Prepayment (预付费) model depth** — residential vs commercial variant; no source.
-- **等保2.0 control-item mapping** — to confirm.
+Resolved at L2 (pack design; still need external sourcing for source-checked):
+
+- **Tariff rules** — ADR-0001 settles versioned + effective-dated + governed
+  separately from billing code. Still open: **the tariff rule content itself**,
+  deliberately unencoded (see industry-brief.md §11).
+- **Charge events and invoices** — ADR-0002 settles immutability, rule-version
+  stamping, and regeneration-with-recorded-versions. Still open: the
+  **retention period** per class, in tension with erasure (deliberately
+  unresolved).
+- **估抄** — ADR-0003 settles rule-bound, labelled, and reconciled. Still open:
+  **the estimation method, period, and reconciliation rule** — regulatory inputs,
+  not pack theses.
+- **Disconnection guardrails** — ADR-0004 settles enforced-state + recorded
+  evaluation. Still open: **which classes apply** — a regulatory input.
+- **Interface** — BR-02 settles interface-only with no SCADA scope. Still open:
+  the **contract itself** as payload shapes and state vocabulary (L3).
+
+Still open:
+
+- **Regulatory mapping** — 电力法 and MLPS 2.0 remain **designations only**. No
+  clause-level mapping exists, per this repository's scope decision
+  (see docs/citation-audit-2026-10.md §4).
+- **Retention of rules, readings and approval records** — the tension with
+  erasure is real; the regeneration window is a business decision.
