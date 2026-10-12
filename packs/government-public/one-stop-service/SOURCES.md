@@ -32,33 +32,46 @@
 
 ## 4. Uncited specifics to resolve
 
-Resolved at L1 (now grounded in the cited regulation; details still needed at L2):
+Resolved at L2 (pack design; still need external sourcing for source-checked):
 
-- **事项 guide element field set** — 国务院令第716号 **第六条** mandates the three
-  elements (受理条件/办事材料/办理流程). The statutory minimum is now cited; the
-  national 事项编码 set and any fuller metadata profile are **not** retrieved.
-- **受理 → 审查 → 决定 → 出件 state machine** — the vocabulary is statutory and
-  now defined in `03-domain/glossary.md` §2, with 受理/不予受理/不予批准 kept
-  distinct. The exact transitions and guards remain unverified.
-- **一次性告知 vs. 补正** — now defined as **distinct** terms in
-  `03-domain/glossary.md` §1 (一次性告知 precedes acceptance; 补正 follows it).
-  Still no citation for the once-only rule itself.
-- **电子证照 standard versions** — the GB/T 36901–36906-2018 six-standard series
-  is confirmed real (published 2018-11-15, effective 2019-01-01, 现行, 归口国家
-  密码局). Clause-level requirements and the actual integration API are not
-  retrieved; GB/T 36906 is named as the sharing-service interface.
-- **MLPS level** — 等保三级 remains the pack's stated assumption (README), not a
-  citation; no control-item mapping.
+- **Two item kinds** — ADR-0001 settles kind-determined result shape. Still open:
+  **which items are 行政权力 vs 公共服务 in a given regime** — a legal
+  determination per item, not a pack decision.
+- **Guide as contract** — ADR-0002 settles versioned publication and reliance
+  recording. Still open: **how far back a relied-on version must be retrievable**,
+  and what an applicant is owed when a guide changes mid-application.
+- **Identity** — ADR-0003 settles integration with no local credential. Still open:
+  **the guest and anonymous edge cases** — which flows genuinely need no identity,
+  and whether any can proceed as a guest (the pack's default is no).
+- **Channels** — ADR-0004 settles variant-over-fork with five declared aspects.
+  Still open: **the permitted-alternative catalogue for paid and assisted flows**
+  that cannot use hosted payment fields — deliberately unspecified.
+- **Anti-double-submission** — ADR-0005 settles per-field rules and a defined
+  permitted alternative. Still open: **the set of permitted alternatives itself**
+  — an L3 design task, and the one that decides whether the rule is enforceable in
+  practice.
+- **Statutory vocabulary and clock** — ADR-0006 settles vocabulary, clock start and
+  the two notices. Still open: **clock pause/resume semantics and thresholds**,
+  and whether auto-approval on timeout is permitted at all in a given regime.
+- **Seal and licence** — ADR-0007 settles national-service integration and at-signing
+  validity. Still open: **the 统一电子印章 technical standard** — the Measures
+  mandate compliance with national standards but name no number; the pack names
+  none either.
+- **Electronic archive** — ADR-0008 settles verified completeness. Still open:
+  **what a migration may not drop**, now that the application model is an archival
+  object — a schema-change rule the pack requires but does not write.
 
 Still open:
 
-- **SLA / 限时办结 durations** — no source for typical time-boxes, and the
-  clock's starting point (受理 vs. submission) is an asserted design position.
-- **统一电子印章 technical standard** — 国务院令第716号 第九条 mandates the
-  national unified seal system but names **no standard number**, and this pack
-  names none either. Establishing it is a precondition for L2.
-- **事项 catalogue vs. GB/T 36902/36903** — whether the internal service-item
-  catalogue should adopt the electronic-licence catalogue structure is
-  deliberately undecided; they are different objects.
-- **Cross-region/跨层级 (省–市–区–街道) routing model** — design choice, no source.
-- **好差评 mechanism definition & official source** — to confirm.
+- **Retention values** — required per class by BR-12; **no period is asserted**.
+- **Regional rules beyond the national instrument** — 国令第716号 is the national
+  regulation; provincial and municipal implementation rules may add obligations
+  this pack does not model.
+- **GB/T 36901/36902/36906 clause mapping** — cited as designations; the electronic
+  licence standard's clauses are not retrieved, and whether this platform's internal
+  事项 catalogue should align to the 36902/36903 structure is deliberately
+  undecided.
+- **Cross-border destination transfer** — recorded as a pack-added designation in
+  data-exchange CTL-04; not verified against an instrument here.
+- **Sector data-security rules** — a sector-specific data rule may add obligations
+  beyond the instruments named; not modelled here.
