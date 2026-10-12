@@ -35,49 +35,45 @@
 
 ## 4. Uncited specifics to resolve
 
-Resolved at L1 (now grounded in retrieved sources; detail still needed at L2):
+Resolved at L2 (pack design; still need external sourcing for source-checked):
 
-- **"Clinical record must never be edited to satisfy billing"** — now given
-  teeth as an explicit capability boundary in `01-business/capability-map.md` §2
-  (capabilities 06 and 07) and as two glossary definitions of *separate record*.
-  It remains a **pack design position derived from `AGENTS.md`**, not a cited
-  clause; no law found in this review compels it.
-- **EMPI merge/unmerge** — `03-domain/glossary.md` §1 now defines merge,
-  unmerge, retraction and visible match confidence at state level. The
-  **matching algorithm and threshold remain uncited** and are a pack decision.
-- **Retention periods per data class** — the *requirement* is now stated per
-  class; **no period is asserted anywhere**, deliberately.
-- **CPOE → LIS/RIS closed loop** — defined in the glossary as an order that
-  reaches result, disposition and review.
-- **Personal-information obligations** — now cited to the retrieved full text of
-  《网络数据安全管理条例》(国令第790号): 第二十二条 (separate consent for
-  医疗健康 and other sensitive data), 第十二条 (contract + ≥3-year record for
-  provision/entrustment), 第二十四条 (degraded-deletion state), 第二十七条
-  (periodic compliance audit), 第二十八条 (10-million-person threshold),
-  第六十二条(四) (important-data definition).
+- **Identity merge/unmerge** — ADR-0001 settles human-reviewed merge with
+  recorded confidence, propagating unmerge, and no auto-merge below threshold.
+  Still open: **the matching algorithm and threshold** — a pack decision.
+- **Signed documents** — ADR-0002 settles addendum-only and retraction-keeps-
+  original. Still open: **the attestation vocabulary** for a signature, and what
+  counts as a legally meaningful attestation in each deployment jurisdiction.
+- **Imaging** — ADR-0003 settles DICOM objects retained with a non-authoritative
+  index. Still open: **how index divergence from objects is detected** — re-reading
+  objects is the only way, and its cost is undecided.
+- **Terminology** — ADR-0004 settles versioned mapping and emission-time system +
+  version. Still open: **which terminology editions are in use** (ICD-10 vs ICD-11,
+  and any national adaptation) — unverified.
+- **Clinical/billing separation** — ADR-0005 settles one-way dependency with
+  constraint 7 blocking the reverse write. Still open: **the billing-side
+  correction path** for a payer-required code the record does not support.
+- **Access and break-glass** — ADR-0006 settles care-relationship basis and
+  fail-closed identity. Still open: **the read-failure mode** when the care-
+  relationship service is unavailable — failing open is not an option, and the
+  pack does not specify the read path's behaviour.
+- **Erasure** — ADR-0007 settles destination list and per-destination outcomes.
+  Still open: **the mechanism** for append-only copies, backups, images and
+  derived ML artefacts — deployment choice, deliberately unspecified.
 
 Still open:
 
-- **FHIR release** — R4 vs R5 is an undecided pack decision (§2 above).
-- **国卫规划发〔2026〕6号 official text** — the sector's current data rule. The
-  文号, five issuing bodies, 2026-02-14 promulgation, seven-chapter structure
-  and the provisions quoted in `regulatory-landscape.md` §3 are consistent
-  across multiple independent secondary sources, but **the 国家卫生健康委
-  original was not retrieved**. This is the most directly applicable instrument
-  for the pack; retrieving it is a precondition for `source-checked`.
-- **国卫规划发〔2022〕29号 official text** — the nhc.gov.cn URL returns HTTP 412
-  to automated clients. The page exists but was not read; no article-level
-  quotation is made on an unretrieved page.
-- **《网络安全法》 renumbering** — the amendment (2025-10-28, effective
-  2026-01-01) renumbered the law. Any pre-existing article-level citation
-  anywhere in this repository is now suspect. Only the amendment decision
-  itself is cited here, and no 网络安全法 article is quoted by number.
-- **HIPAA** — the HHS page did not respond to an automated probe. **No
-  clause-level claim is made.** Blocking for a US regional profile.
-- **LOINC** — returned 403 to an automated probe; cited by designation only.
-- **Medical-insurance (医保) interface** — no public specification retrieved for
-  interface depth (settlement only vs. full reconciliation).
-- **EMR document model** — FHIR-native storage vs. document-oriented repository
-  with a FHIR facade remains an open design choice.
-- **CDS as core vs. extension point** — design choice, no source.
-- **等保 control-item mapping** — requires the institution's assigned level.
+- **FHIR release** — resource names are used as the pack's vocabulary; R4 and R5
+  differ and **neither is claimed as normative**. Choosing one is a versioned
+  decision.
+- **HIPAA** — carried as a designation from the manifest, but the HHS source page
+  did not respond to an automated probe and **nothing was read**. No HIPAA claim
+  is made anywhere in this pack. Blocking for a US regional profile.
+- **Sector rule official text** — 国卫规划发〔2026〕6号 is sourced from secondary
+  summaries; the official 国家卫生健康委 notice must be retrieved and quoted at
+  article level before source-checked.
+- **Sector network rule official text** — 国卫规划发〔2022〕29号's nhc.gov.cn page
+  returns HTTP 412 to automated clients, so no article-level quotation is made.
+- **Regulatory mapping** — MLPS 2.0, GB/T 43697, PIPL and GDPR remain
+  **designations only**. No clause-level mapping exists, per this repository's
+  scope decision (see docs/citation-audit-2026-10.md §4).
+- **Retention values** — required per class by BR-15; **no period is asserted**.

@@ -5,7 +5,7 @@ title_zh: 医院信息系统与电子病历（HIS/EMR）
 domain: healthcare
 subdomain: his-emr
 tags: [his, emr, empi, fhir, hl7, dicom, icd, cpoe, lis, ris, pharmacy, medical-insurance, adt]
-maturity: L1
+maturity: L2
 provenance: llm-drafted
 verification: unverified
 stack_stance: stack-agnostic
@@ -24,8 +24,8 @@ regulatory:
 language: en
 translations: []                           # no full translation yet (key assets bilingual; see standard §5)
 maintainers: []
-version: 0.2.0
-last_reviewed: 2026-10-11
+version: 0.3.0
+last_reviewed: 2026-10-12
 sources:
   - https://hl7.org/fhir/                          # HL7 FHIR — clinical data model
   - https://www.dicomstandard.org/                 # DICOM — imaging object model / boundary

@@ -40,16 +40,16 @@
 
 | # | Capability | What it must answer | Notes / L1 position |
 |---|---|---|---|
-| **01** | **Patient identity (EMPI)** | who is this patient, and can a wrong merge be undone | **merge and unmerge both exist, both audited** (`AGENTS.md`); matching uncertainty visible |
-| **02** | **Encounter & ADT** | what episode of care this is | the context almost every clinical fact attaches to |
-| **03** | **Clinical documentation** | what was observed, decided, and done | **signed content is amended only by addendum** (`AGENTS.md`) |
-| **04** | **Orders & results** | what was ordered, and did it come back | closed loop; **DICOM is the imaging boundary** (`AGENTS.md`) |
-| **05** | **Medication & pharmacy** | what was prescribed, dispensed, and administered | the highest-consequence clinical data |
-| **06** | **Coding & medical records** | how the encounter is classified and archived | coded record feeds both truths, changes neither |
-| **07** | **Billing & insurance** | what is owed | **separate record**; derives from the encounter, never edits it (`AGENTS.md`) |
-| **08** | **Terminology service** | what each code meant **at the time it was recorded** | **versioned**, with code system + version on every coded fact (`AGENTS.md`) |
-| **09** | **Privacy, consent & access** | who may see what, on what basis | classification-driven; separate consent for sensitive data |
-| **10** | **Audit, retention, exchange & reporting** | what happened, what is kept, what is shared | audit evidence; statutory reporting; regional exchange |
+| **CAP-01** | **Patient identity (EMPI)** | who is this patient, and can a wrong merge be undone | **merge and unmerge both exist, both audited** (`AGENTS.md`); matching uncertainty visible |
+| **CAP-02** | **Encounter & ADT** | what episode of care this is | the context almost every clinical fact attaches to |
+| **CAP-03** | **Clinical documentation** | what was observed, decided, and done | **signed content is amended only by addendum** (`AGENTS.md`) |
+| **CAP-04** | **Orders & results** | what was ordered, and did it come back | closed loop; **DICOM is the imaging boundary** (`AGENTS.md`) |
+| **CAP-05** | **Medication & pharmacy** | what was prescribed, dispensed, and administered | the highest-consequence clinical data |
+| **CAP-06** | **Coding & medical records** | how the encounter is classified and archived | coded record feeds both truths, changes neither |
+| **CAP-07** | **Billing & insurance** | what is owed | **separate record**; derives from the encounter, never edits it (`AGENTS.md`) |
+| **CAP-08** | **Terminology service** | what each code meant **at the time it was recorded** | **versioned**, with code system + version on every coded fact (`AGENTS.md`) |
+| **CAP-09** | **Privacy, consent & access** | who may see what, on what basis | classification-driven; separate consent for sensitive data |
+| **CAP-10** | **Audit, retention, exchange & reporting** | what happened, what is kept, what is shared | audit evidence; statutory reporting; regional exchange |
 
 ## 2. Boundaries (what each capability does *not* own)
 

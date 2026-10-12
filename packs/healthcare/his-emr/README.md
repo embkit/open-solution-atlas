@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Maturity | 🟡 L1 — Brief (target L3) |
+| Maturity | 🔵 L2 — Blueprint (target L3) |
 | Domain | healthcare / his-emr |
 | Stack stance | Vendor-neutral |
 | Regulatory context | HL7 FHIR; DICOM; ICD-10/11; HIPAA (US); 等保2.0 (CN) |
@@ -66,31 +66,71 @@ trail that reconciles to the clinical encounter without distorting it.
   - [x] Stakeholder list (`00-context/stakeholders.md`)
   - [x] Level-1 capability map (`01-business/capability-map.md`)
   - [x] Glossary seeded (`03-domain/glossary.md`)
-- [ ] L2 — Blueprint
-  - [ ] Business processes / rules (`01-business/`) — order→result closed loop,
-        addendum rules, EMPI merge/unmerge semantics
-  - [ ] Functional requirements (`02-requirements/`) with stable IDs
-  - [ ] NFR catalog with availability targets (`02-requirements/non-functional.md`)
-  - [ ] Compliance controls traced to `regulatory-landscape.md`
-  - [ ] Domain model incl. bounded contexts (`03-domain/domain-model.md`)
-  - [ ] Architecture views + ≥3 ADRs (`04-architecture/`), incl. the
-        clinical/billing separation boundary
-  - [ ] Logical data model + data dictionary (`05-data/`)
+- [x] L2 — Blueprint
+  - [x] Business processes / rules (`01-business/processes.md` P-01..08,
+        `business-rules.md` BR-04..BR-16)
+  - [x] Functional requirements with stable IDs (`02-requirements/functional.md`,
+        FR-001..FR-026)
+  - [x] NFR catalog with measurable targets and pinned formulas
+        (`02-requirements/non-functional.md`, NFR-001..NFR-014)
+  - [x] Compliance controls traced to instrument designations
+        (`02-requirements/compliance.md`, CTL-01..CTL-06)
+  - [x] Domain model incl. bounded contexts (`03-domain/domain-model.md`)
+  - [x] Architecture views (`04-architecture/overview.md`, `integration.md`,
+        `security.md`, `observability.md`)
+  - [x] >=3 ADRs covering the load-bearing decisions
+        (`04-architecture/adr/`, 0001..0007)
+  - [x] Logical data model + data dictionary (`05-data/`, 10 integrity
+        constraints)
 - [ ] L3 — Agent-ready
+  - [ ] API contracts for core services (`06-contracts/`)
+  - [ ] State machines for key lifecycle objects
+        (`03-domain/state-machines.md`)
+  - [ ] EARS acceptance criteria with full requirement traceability
+        (`08-quality/`)
+  - [ ] Integration & data-flow specs (protocols, payloads, frequencies)
+  - [ ] Test strategy incl. performance and failure scenarios
+  - [ ] Delivery milestones + agent-executable task map (`09-delivery/`)
   - [ ] Governed AI-over-record surface, per 国卫规划发〔2026〕6号 第二十八条
+  - [ ] Consistency review: IDs resolve, glossary terms used uniformly, no
+        contradiction between requirements, design, and contracts
 - [ ] L4 — Proven
 
-### Blocking L2
+## Settled ADRs (do not relitigate)
 
-1. **FHIR release choice** — the pack names resources but claims no normative
-   release; R4 vs R5 is an undecided pack decision recorded in `SOURCES.md` §2.
-2. **国卫规划发〔2026〕6号 official text** — the sector's current data rule is
-   sourced from secondary summaries, not the 国家卫生健康委 original. It is the
-   most directly applicable instrument for this pack, so retrieving and quoting
-   it at article level is a prerequisite.
-3. **Retention periods per data class** — required by `AGENTS.md`, and no
-   period is asserted anywhere in this pack.
+| ADR | Decision |
+|---|---|
+| **0001** | Identity merges are **reversible** and unmerge **propagates** to clinical facts; a merge below the confidence threshold must not exist |
+| **0002** | A signed document is **evidence** — corrected by **addendum**, never edited in place; authorship and signature are separate properties |
+| **0003** | Imaging crosses the boundary as **DICOM objects** and the objects are retained; an index is never authoritative |
+| **0004** | Terminology mapping is a **versioned service**; every coded fact records its code system and version at emission |
+| **0005** | Clinical and billing records are separate with a **one-way** dependency — billing reads coded facts and never writes back |
+| **0006** | Access follows the **care relationship** and fails closed; break-glass is exceptional by definition and a rising rate is a platform defect |
+| **0007** | Erasure reaches **copies, caches, logs and derived data**, recording an outcome per destination |
 
-> ⚠️ **Citation hazard, repository-wide.** 《网络安全法》was amended
-> 2025-10-28, effective **2026-01-01**, and **renumbered**. Article numbers from
-> the pre-2026 text are stale. See `00-context/regulatory-landscape.md`.
+## Blocking L3
+
+1. **The binding's full component list** — the minimum triple is fixed; what a
+   real deployment additionally pins is a versioned decision the pack names but
+   does not make.
+2. **How erasure reaches immutable copies, backups, images and derived ML
+   artefacts** — BR-16 fixes the requirement; the mechanism is a deployment
+   choice the pack deliberately does not make.
+3. **Acceptance criteria for the eight zero-tolerance invariants** — NFR-001,
+   NFR-005, NFR-007, NFR-008, NFR-010, NFR-014 plus the access-basis check and the
+   no-auto-merge constraint need criteria that fail a build, not a reported
+   threshold.
+4. **The FHIR release** — resource names are used as vocabulary, and no release
+   is claimed as normative. Choosing one is a versioned decision.
+
+### Explicitly unresolved (recorded, not forgotten)
+
+- **The sector rule's official text** — 国卫规划发〔2026〕6号 is sourced from
+  secondary summaries, not the official notice. It is the most directly
+  applicable instrument for this pack.
+- **HIPAA** — carried as a designation from the manifest; the source page did not
+  respond to an automated probe and nothing was read. No HIPAA claim is made
+  anywhere in this pack. Blocking for a US regional profile.
+- **Retention values** — required per class, and no period is asserted anywhere.
+- **How AI-over-records security is demonstrated** — 第二十八条 makes the
+  obligation; the demonstration is L3 work.
