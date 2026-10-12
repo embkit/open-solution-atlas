@@ -37,10 +37,39 @@
 
 ## 4. Uncited specifics to resolve
 
-- **Dual versioning binding** — pinning a served model to an immutable combination of code commit + data snapshot + feature definitions is a design assertion; no standard mandates this exact binding/queryability.
-- **Drift detection thresholds & response** — no numeric thresholds given; alert-only vs auto-retrain policy is an open question.
-- **Production promotion approval gate** — where the human-in-the-loop gate lives is unresolved; no source.
-- **"Lineage answers why this prediction end-to-end"** — aspirational depth; uniformity across pipelines unverified.
-- **Feature store: build vs integrate** — open design choice, no source.
-- **Serving runtime: in-core vs KServe/Triton boundary** — design choice, no source.
-- **No measurable NFRs exist at L1** — any future latency/throughput/availability targets are unverified until stated with evidence.
+Resolved at L2 (pack design; still need external sourcing for source-checked):
+
+- **Dual versioning / the binding** — ADR-0001 settles unit + queryable, with
+  the triple stated as the **minimum**. Still open: **which additional
+  components a deployment pins** — a versioned decision the pack names but does
+  not make.
+- **The registry gate and approval** — ADR-0002 settles single gate, named-party
+  approval and rollback-as-selection. Still open: the **approval evidence
+  checklist** — BR-02 requires sliced evaluation, but the set of evidence types
+  is not enumerated.
+- **Lineage** — ADR-0003 settles query-with-an-answer and NFR-009's latency.
+  Still open: the **sampling policy** for traces, unstated and in tension with
+  privacy (security.md §3).
+- **Sliced evaluation** — ADR-0004 settles declared predicates presented at
+  approval. Still open: **which segments are declared** — pack design, and
+  slicing on protected attributes raises questions the pack does not answer.
+- **Point-in-time features** — ADR-0005 settles as-of semantics and
+  replay-equals-training. Still open: **how non-point-in-time objects are
+  modelled** — the pack notes they must be a different kind of object and does
+  not define it.
+- **Drift** — BR-07/BR-08 settle live-traffic plus four-kind classification.
+  Still open: the **statistical method** for each kind — deliberately
+  unspecified.
+- **Retention** — BR-11 fixes that bindings are retained while servable; the
+  **window** is in tension with erasure over training data and is deliberately
+  unresolved.
+
+Still open:
+
+- **Governance frameworks** — NIST AI RMF and ISO/IEC 42001 are adopted as
+  governance **shape and vocabulary**, per AGENTS.md. No clause was verified,
+  no conformity is claimed, and the EU AI Act's risk-tier taxonomy was not
+  reproduced. Establishing these is a precondition for source-checked.
+- **Regulatory mapping** — the EU AI Act, GDPR and PIPL remain designations
+  only, per this repository's scope decision
+  (see docs/citation-audit-2026-10.md §4).

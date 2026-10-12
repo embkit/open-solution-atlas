@@ -5,7 +5,7 @@ title_zh: 机器学习工程与模型生命周期平台（MLOps）
 domain: data-ai
 subdomain: ml-platforms
 tags: [mlops, feature-store, experiment-tracking, model-registry, model-serving, drift-detection, lineage, reproducibility, ai-governance, model-card]
-maturity: L1
+maturity: L2
 provenance: llm-drafted
 verification: unverified
 stack_stance: stack-agnostic
@@ -20,8 +20,8 @@ regulatory:
 language: en
 translations: []                           # no full translation yet (key assets bilingual; see standard §5)
 maintainers: []
-version: 0.2.0
-last_reviewed: 2026-10-11
+version: 0.3.0
+last_reviewed: 2026-10-12
 # NIST AI RMF, ISO/IEC 42001 and the EU AI Act are adopted as governance
 # VOCABULARY AND SHAPE (risk framing + owned documentation artefacts), per
 # AGENTS.md. Nothing in this pack claims conformance to any clause, and no
