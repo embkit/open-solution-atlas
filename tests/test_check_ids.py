@@ -97,3 +97,70 @@ def test_strict_promotes_cross_pack_reference_to_error(
     out = capsys.readouterr().out
     assert rc == 1
     assert "cross-pack reference" in out and "--strict" in out
+
+
+def test_in_pack_gap_beats_cross_pack_collision(check_ids, tmp_path, capsys, monkeypatch):
+    """A gap in a pack's own sequence is an error even if another pack defines
+    that ID.
+
+    Regression coverage: a pack defining ADR-1..4 while citing ADR-5 had its
+    defect downgraded to an INFO because an unrelated pack also happened to
+    define an ADR-5. The collision must not hide the local gap.
+    """
+    pack_a = tmp_path / "retail-commerce" / "alpha"
+    pack_b = tmp_path / "manufacturing" / "beta"
+    # alpha defines ADR-1..4 (the four it actually has) and cites ADR-5.
+    _write(pack_a, "manifest.yaml", "slug: alpha\n")
+    _write(
+        pack_a,
+        "04-architecture/adr/0001-a.md",
+        "# ADR-0001 — a\n\n## Context\n\nSee ADR-0005 for the follow-up.\n",
+    )
+    for n in (2, 3, 4):
+        _write(pack_a, f"04-architecture/adr/000{n}-x.md", f"# ADR-000{n} — x\n")
+    # beta happens to define ADR-5 — the collision that used to mask the gap.
+    _write(pack_b, "manifest.yaml", "slug: beta\n")
+    _write(pack_b, "04-architecture/adr/0005-b.md", "# ADR-0005 — b\n")
+
+    monkeypatch.setattr(check_ids, "PACKS_DIR", tmp_path)
+    rc = check_ids.main()
+    out = capsys.readouterr().out
+
+    assert rc == 1
+    assert "ADR-5" in out and "in-pack gap" in out
+    # beta's own definition is fine and is not reported.
+    assert "beta" not in out
+
+
+def test_genuine_cross_pack_reference_stays_info(check_ids, tmp_path, capsys, monkeypatch):
+    """A reference to an unrelated number in another pack's sequence is still a
+    cross-pack INFO — the adjacency rule must not swallow legitimate ones."""
+    pack_a = tmp_path / "retail-commerce" / "alpha"
+    pack_b = tmp_path / "manufacturing" / "beta"
+    _write(pack_a, "manifest.yaml", "slug: alpha\n")
+    _write(pack_a, "01-business/business-rules.md", "| BR-01 | defined here |\n")
+    _write(pack_b, "manifest.yaml", "slug: beta\n")
+    body = "## Rules\n\n" + "".join(f"| BR-{n} | defined here |\n" for n in range(40, 46))
+    _write(pack_b, "01-business/business-rules.md", body)
+    # alpha's reference to BR-42 is far from its own BR-01, so it stays a
+    # cross-pack INFO rather than being called an in-pack gap.
+    _write(pack_a, "02-requirements/functional.md", "- **FR-001** SHALL x (BR-42).\n")
+
+    monkeypatch.setattr(check_ids, "PACKS_DIR", tmp_path)
+    rc = check_ids.main()
+    out = capsys.readouterr().out
+
+    assert rc == 0
+    assert "cross-pack reference" in out
+    assert "in-pack gap" not in out
+    assert "0 error(s)" in out
+
+
+def test_in_pack_gap_helper(check_ids):
+    defs = {"ADR-1": {"a.md"}, "ADR-2": {"a.md"}, "ADR-3": {"a.md"}, "ADR-4": {"a.md"}}
+    assert check_ids.in_pack_gap("ADR-5", defs)   # just past the maximum
+    assert check_ids.in_pack_gap("ADR-3", defs)   # inside the range
+    assert check_ids.in_pack_gap("ADR-6", defs)   # within slack of the maximum
+    assert not check_ids.in_pack_gap("ADR-42", defs)  # far outside
+    assert not check_ids.in_pack_gap("FR-1", defs)    # a kind the pack lacks
+    assert not check_ids.in_pack_gap("ADR-9", {})     # no peers at all

@@ -15,9 +15,21 @@ pack it collects
 and reports:
 
   ERROR  referenced in a pack but defined in no pack (dangling reference)
+  ERROR  referenced in a pack, defined only in another pack, but numerically
+         adjacent to the referencing pack's own IDs of the same kind
+         (**in-pack gap** — see below)
   INFO   referenced in a pack but defined in another pack (cross-pack ref)
          — with --strict these become errors, since a self-contained
          (L2+) pack must not lean on IDs another pack defines
+
+**In-pack gap detection.** A bare dangling check must look across every pack,
+otherwise a reference to `T-5` is "fine" because another pack also defines a
+`T-5`. That masks the real defect — the referencing pack is the one with the
+gap. So when a referenced ID is missing in-pack but its *kind* is defined in-pack
+by a nearby number (within +2 of that pack's maximum), it is reported as an
+in-pack gap error regardless of what other packs define: a pack that defines
+`ADR-1..4` and cites `ADR-5` has a broken internal reference, not a legitimate
+cross-reference.
 
 Leading zeros are normalized (FR-001 == FR-1, AC-N01 == AC-N1) so packs with
 different padding conventions compare correctly.
@@ -60,6 +72,41 @@ def normalize(kind: str, num: str) -> str:
         return f"{kind}-{num}"
     prefix, digits, tail = m.groups()
     return f"{kind}-{prefix}{int(digits)}{tail}"
+
+
+# How far past a pack's own maximum for a kind a missing number may sit and still
+# count as an in-pack gap. ADR numbering is the common case: a pack defining
+# ADR-1..4 and citing ADR-5 has a gap at the end of its own sequence.
+ADJACENT_SLACK = 2
+
+
+def _number(norm: str) -> int | None:
+    """The numeric part of a normalized ID, if it is a plain number."""
+    m = re.match(r"^[A-Z]+-([A-Za-z]*)(\d+)[a-z]?$", norm)
+    return int(m.group(2)) if m else None
+
+
+def _kind(norm: str) -> str | None:
+    m = re.match(r"^([A-Z]+)-", norm)
+    return m.group(1) if m else None
+
+
+def in_pack_gap(norm: str, definitions: dict[str, set[str]]) -> bool:
+    """True when `norm` is missing in-pack but sits next to the pack's own
+    definitions of the same kind — the signature of a broken internal
+    reference rather than a genuine cross-pack one."""
+    num = _number(norm)
+    kind = _kind(norm)
+    if num is None or kind is None:
+        return False
+    peers = [
+        _number(d)
+        for d in definitions
+        if _kind(d) == kind and (_number(d) is not None)
+    ]
+    if not peers:
+        return False
+    return min(peers) <= num <= max(peers) + ADJACENT_SLACK
 
 
 def _rel(path: Path) -> str:
@@ -129,7 +176,16 @@ def main() -> int:
         for norm, files in sorted(refs.items()):
             if norm in defs:
                 continue
-            if norm in all_definitions:
+            if in_pack_gap(norm, defs):
+                # A reference into the pack's own numbering sequence that the
+                # pack itself does not define. Another pack may happen to define
+                # the same ID; that collision must not hide the local defect.
+                errors.append(
+                    f"[ERROR] {pack_id}: {norm} is an in-pack gap "
+                    f"(the pack defines the surrounding {_kind(norm)}- numbers but "
+                    f"not this one) ({', '.join(sorted(files))})"
+                )
+            elif norm in all_definitions:
                 infos.append(
                     f"[INFO]  {pack_id}: {norm} is a cross-pack reference "
                     f"(defined in {', '.join(sorted(all_definitions[norm]))})"
