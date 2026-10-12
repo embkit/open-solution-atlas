@@ -39,16 +39,16 @@
 
 | # | Capability | What it must answer | Notes / L1 position |
 |---|---|---|---|
-| **01** | **Event schema registry** | what an event and property *mean* — **before** any client emits it | the spine; `AGENTS.md`: ungoverned events make every number unrepeatable |
-| **02** | **Collection & quarantine** | which events were malformed, and **why** | validation at collection; quarantine with reasons is instrumentation signal |
-| **03** | **Identity resolution** | how anonymous becomes known, and can it be undone | merge **recorded and reversible**, propagating to derived facts (`AGENTS.md`) |
-| **04** | **Consent enforcement** | whether this data may be collected and, separately, used for this purpose | enforced at **both** points (`AGENTS.md`) |
-| **05** | **Analysis** | what did someone do, in what order, over what span | funnels, cohorts, retention, attribution |
-| **06** | **Experimentation** | did the change cause it | sample size, SRM, guardrails, holdouts, peeking discipline — *not* percentage comparisons |
-| **07** | **Segments & activation** | who gets reached, under which purpose | segment is a point-in-time snapshot, not a live view |
-| **08** | **Destinations** | how data leaves, without the exit owning the model | messaging and ad networks behind an abstraction, never the owner |
-| **09** | **Export & warehouse handoff** | what flows to the analytical store | schema-versioned exports, so downstream meaning is traceable |
-| **10** | **Rights, privacy & operations** | can a person be removed, and can the platform run | deletion covering profile **and join keys and derived facts**; retention; cost |
+| **CAP-01** | **Event schema registry** | what an event and property *mean* — **before** any client emits it | the spine; `AGENTS.md`: ungoverned events make every number unrepeatable |
+| **CAP-02** | **Collection & quarantine** | which events were malformed, and **why** | validation at collection; quarantine with reasons is instrumentation signal |
+| **CAP-03** | **Identity resolution** | how anonymous becomes known, and can it be undone | merge **recorded and reversible**, propagating to derived facts (`AGENTS.md`) |
+| **CAP-04** | **Consent enforcement** | whether this data may be collected and, separately, used for this purpose | enforced at **both** points (`AGENTS.md`) |
+| **CAP-05** | **Analysis** | what did someone do, in what order, over what span | funnels, cohorts, retention, attribution |
+| **CAP-06** | **Experimentation** | did the change cause it | sample size, SRM, guardrails, holdouts, peeking discipline — *not* percentage comparisons |
+| **CAP-07** | **Segments & activation** | who gets reached, under which purpose | segment is a point-in-time snapshot, not a live view |
+| **CAP-08** | **Destinations** | how data leaves, without the exit owning the model | messaging and ad networks behind an abstraction, never the owner |
+| **CAP-09** | **Export & warehouse handoff** | what flows to the analytical store | schema-versioned exports, so downstream meaning is traceable |
+| **CAP-10** | **Rights, privacy & operations** | can a person be removed, and can the platform run | deletion covering profile **and join keys and derived facts**; retention; cost |
 
 ## 2. Boundaries (what each capability does *not* own)
 

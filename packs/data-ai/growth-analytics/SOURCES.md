@@ -39,12 +39,29 @@
 
 ## 4. Uncited specifics to resolve
 
-- **Statistical engine** — "sample size, power, SRM detection, guardrails, sequential vs. fixed-horizon tests" (open question #3) is named but no reference is given; a statistics source (e.g. a standard experiment-analysis method) must be cited at L2.
-- **Attribution models** — "rule + multi-touch patterns" is listed with no defined model set (first/last touch, linear, position, Markov, etc.) and no source.
-- **Identity graph** — "anonymous → login ID linking" and "merge/deletion" are asserted; merging/unmerging rules and reversibility have no cited basis (open question #1).
-- **Consent enforcement** — "consent state enforced at collection and at activation" is stated with no defined enforcement point or consent-state model citation.
-- **Aggregated reporting thresholds** — "aggregated reporting thresholds" for privacy is mentioned with no numeric minimum or source.
-- **Retention / data residency** — behavioral-event retention and residency rules are asserted from PIPL/GDPR but no article-level mapping or period is given.
-- **Experiment metrics / guardrails** — "LTV/RFM", "frequency caps and suppression" are named without definitions or sources.
-- **Advertising-law constraint** — 广告法 content rules for messaging are referenced without article numbers; confirm the specific clauses.
-- **L1 breadth** — no requirements/NFR/model chapters yet; no numeric targets or event-schema fields exist to audit. The items above are the load-bearing claims to source when L2 is written.
+Resolved at L2 (pack design; still need external sourcing for source-checked):
+
+- **Event schema governance** — ADR-0001 settles declare-before-emit, validated
+  on ingestion, reason-bearing quarantine, version on export. Still open: the
+  **schema language and compatibility rules** (add/rename/remove semantics).
+- **Identity merge / delete** — ADR-0002 settles recorded reversible merges with
+  propagation, and the three-part deletion. Still open: **whether derived
+  aggregates must be recomputed** after an erasure — undecided and in tension
+  with experiment validity.
+- **Experimentation statistics** — ADR-0003 settles assignment location and
+  pre-declared decision rules. Still open: **a normative method text** for
+  sample size, SRM, guardrails, holdouts and peeking discipline. The pack cites
+  none; this is a precondition for verifiable experiment requirements.
+- **Destinations** — ADR-0004 settles abstraction-not-ownership and
+  reports-as-reconciliation-input. Still open: the **transfer property
+  semantics** (CTL-04), which this pack added beyond the manifest's designations.
+- **Segments** — BR-12 settles snapshot-not-live-view. Still open: the
+  **re-resolution policy** for long-lived campaigns.
+
+Still open:
+
+- **Regulatory mapping** — PIPL and GDPR remain **designations only**. No
+  clause-level mapping exists, per this repository's scope decision
+  (see docs/citation-audit-2026-10.md §4).
+- **Cross-border destination requirements** — recorded as a pack-added
+  designation (CTL-04), not verified against any instrument.
