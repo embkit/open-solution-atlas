@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Maturity | 🟡 L1 — Brief (target L3) |
+| Maturity | 🔵 L2 — Blueprint (target L3) |
 | Domain | government-public / data-exchange |
 | Stack stance | Vendor-neutral |
 | Regulatory context | 等保2.0 (MLPS 2.0); Data Security Law & PIPL (CN); W3C DCAT for open-data catalogs |
@@ -60,28 +60,72 @@ a recorded grant, and every share is attributable and auditable.
 
 - [x] L1 — Brief
   - [x] Industry brief with sources (`00-context/industry-brief.md`)
-  - [x] Regulatory landscape with citations (`00-context/regulatory-landscape.md`)
+  - [x] Regulatory landscape (`00-context/regulatory-landscape.md`)
   - [x] Stakeholder list (`00-context/stakeholders.md`)
   - [x] Level-1 capability map (`01-business/capability-map.md`)
   - [x] Glossary seeded (`03-domain/glossary.md`)
-- [ ] L2 — Blueprint
-  - [ ] Business processes / rules (`01-business/`) — the
-        request→approve→grant→exchange→revoke rule set
-  - [ ] Functional requirements (`02-requirements/`) with stable IDs
-  - [ ] NFR catalog (`02-requirements/non-functional.md`)
-  - [ ] Compliance controls traced to `regulatory-landscape.md`
-  - [ ] Domain model incl. bounded contexts (`03-domain/domain-model.md`)
-  - [ ] Architecture views + ≥3 ADRs (`04-architecture/`)
-  - [ ] Logical data model + data dictionary (`05-data/`)
+- [x] L2 — Blueprint
+  - [x] Business processes / rules (`01-business/processes.md` P-01..08,
+        `business-rules.md` BR-01..BR-14)
+  - [x] Functional requirements with stable IDs (`02-requirements/functional.md`,
+        FR-001..FR-026)
+  - [x] NFR catalog with measurable targets and pinned formulas
+        (`02-requirements/non-functional.md`, NFR-001..NFR-013)
+  - [x] Compliance controls traced to instrument designations
+        (`02-requirements/compliance.md`, CTL-01..CTL-08)
+  - [x] Domain model incl. bounded contexts (`03-domain/domain-model.md`)
+  - [x] Architecture views (`04-architecture/overview.md`, `integration.md`,
+        `security.md`, `observability.md`)
+  - [x] >=3 ADRs covering the load-bearing decisions
+        (`04-architecture/adr/`, 0001..0006)
+  - [x] Logical data model + data dictionary (`05-data/`, 12 integrity
+        constraints)
 - [ ] L3 — Agent-ready
+  - [ ] API contracts for the interface and the open-data surface (`06-contracts/`)
+  - [ ] State machines for grant lifecycle (`03-domain/state-machines.md`)
+  - [ ] EARS acceptance criteria with full requirement traceability
+        (`08-quality/`)
+  - [ ] Integration & data-flow specs (protocols, payloads, frequencies)
+  - [ ] Test strategy incl. performance and failure scenarios
+  - [ ] Delivery milestones + agent-executable task map (`09-delivery/`)
+  - [ ] Consistency review: IDs resolve, glossary terms used uniformly, no
+        contradiction between requirements, design, and contracts
 - [ ] L4 — Proven
 
-### Blocking L2
+## Settled ADRs (do not relitigate)
 
-1. **Channel composition** (open question #1) — whether 库表/文件/接口 are all
-   first-class or one primary with adapters changes the data model and the
-   reconciliation design.
-2. **Classification grade → masking rule mapping** — the requirement is
-   defined; the actual rule set needs GB/T 43697-2024 confirmed at clause level.
-3. **Single-tenant vs. federated nodes** (open question #2) — decides whether
-   grants are local, cross-node, or both.
+| ADR | Decision |
+|---|---|
+| **0001** | The **catalog entry** is the root object and authorization references **only** it — never a source system |
+| **0002** | Catalog currency is a **compliance clock**, and the platform exposes staleness against the recorded update obligation |
+| **0003** | A refusal carries a **basis**, and a not-shareable classification requires a **legal** one — as a required field, not a convention |
+| **0004** | A grade **derives** rules per class; a dataset-scoped override is illegal |
+| **0005** | The declared purpose is a **structural** grant attribute, because conformance cannot be reported about a sentence |
+| **0006** | The share-type vocabulary is **closed at three**, and **open data is a distinct regime** with its own publication basis |
+
+## Blocking L3
+
+1. **Channel composition** — whether table-to-table, file and interface are all
+   first-class or one is primary (open question #1) is undecided; it changes the
+   data model and the reconciliation design.
+2. **Classification grade → masking rule mapping** — the requirement that grades
+   drive rules is settled; the actual rule set needs GB/T 43697-2024 confirmed at
+   clause level.
+3. **Structured-purpose expressiveness** — FR-013 requires a checkable purpose;
+   the structure that covers the real purposes in use is not designed.
+4. **Acceptance criteria for the seven zero-tolerance invariants** — NFR-001,
+   NFR-002, NFR-003, NFR-004, NFR-005, NFR-008 and the not-shareable basis check
+   need criteria that fail a build, not a reported threshold.
+
+### Explicitly unresolved (recorded, not forgotten)
+
+- **Federated vs. centralized nodes** — the pack models a single municipal or
+  provincial node with optional federation; whether the core is federated is an
+  explicit open question (`README.md` #2) and the pack does not assume an answer.
+- **开放数据 as core or sibling** — the pack models both but does not assume
+  open-data obligations are a subset of sharing obligations; whether the portal is
+  core here is an explicit open question (#3).
+- **Regional implementation rules** — 国发〔2016〕51号 is the national instrument;
+  provincial and municipal rules may add obligations this pack does not model.
+- **GB/T 21063 clause mapping** — cited as a designation only; the clause-level
+  mapping is a precondition for `source-checked`.
