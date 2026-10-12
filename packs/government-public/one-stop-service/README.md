@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Maturity | 🟡 L1 — Brief (target L3) |
+| Maturity | 🔵 L2 — Blueprint (target L3) |
 | Domain | government-public / government-services |
 | Stack stance | Vendor-neutral |
 | Regulatory context | 网络安全法（**2025-10-28 修订，2026-01-01 施行，条文已重排——勿用旧条款号**）; 数据安全法; 个人信息保护法; 等保2.0（三级基线典型）; 国务院令第716号; 国办发〔2025〕33号《电子印章管理办法》; 电子证照六项国家标准 |
@@ -63,34 +63,53 @@ government cloud deployment requirements.
   - [x] Regulatory landscape with citations (`00-context/regulatory-landscape.md`)
   - [x] Stakeholder list (`00-context/stakeholders.md`)
   - [x] Level-1 capability map (`01-business/capability-map.md`)
-  - [x] Glossary seeded, incl. the statutory lifecycle vocabulary
-        (`03-domain/glossary.md`)
-- [ ] L2 — Blueprint
-  - [ ] Business processes / rules (`01-business/`) — the 受理→审查→决定→出件
-        state machine, 一次性告知 rules, and 限时办结 clock semantics
-  - [ ] Functional requirements (`02-requirements/`) with stable IDs
-  - [ ] NFR catalog (`02-requirements/non-functional.md`)
-  - [ ] Compliance controls traced to `regulatory-landscape.md`
-  - [ ] Domain model incl. bounded contexts (`03-domain/domain-model.md`)
-  - [ ] Architecture views + ≥3 ADRs (`04-architecture/`), incl. 政务云分区
-  - [ ] Logical data model + data dictionary (`05-data/`)
+  - [x] Glossary seeded, incl. the statutory lifecycle vocabulary (`03-domain/glossary.md`)
+- [x] L2 — Blueprint
+  - [x] Business processes / rules (`01-business/processes.md` P-01..08, `business-rules.md` BR-01..BR-14)
+  - [x] Functional requirements with stable IDs (`02-requirements/functional.md`, FR-001..FR-031)
+  - [x] NFR catalog with measurable targets and pinned formulas (`02-requirements/non-functional.md`, NFR-001..NFR-014)
+  - [x] Compliance controls traced to instrument designations (`02-requirements/compliance.md`, CTL-01..CTL-08)
+  - [x] Domain model incl. bounded contexts (`03-domain/domain-model.md`)
+  - [x] Architecture views (`04-architecture/overview.md`, `integration.md`, `security.md`, `observability.md`)
+  - [x] >=3 ADRs covering the load-bearing decisions (`04-architecture/adr/`, 0001..0008)
+  - [x] Logical data model + data dictionary (`05-data/`, 13 integrity constraints)
 - [ ] L3 — Agent-ready
+  - [ ] API contracts for core services and the national-service dependencies (`06-contracts/`)
+  - [ ] State machines for key lifecycle objects (`03-domain/state-machines.md`) — the statutory step machine and the clock
+  - [ ] EARS acceptance criteria with full requirement traceability (`08-quality/`)
+  - [ ] Integration & data-flow specs (protocols, payloads, frequencies)
+  - [ ] Test strategy incl. performance and failure scenarios
+  - [ ] Delivery milestones + agent-executable task map (`09-delivery/`)
+  - [ ] Governed AI-over-record surface, per sector data-security rules
+  - [ ] Consistency review: IDs resolve, glossary terms used uniformly, no contradiction between requirements, design, and contracts
 - [ ] L4 — Proven
 
-### Blocking L2
+## Settled ADRs (do not relitigate)
 
-1. **The deadline clock's starting point** — the glossary asserts the clock
-   starts at 受理, not at submission. This materially changes reported
-   performance and is a design position, not a citation. It must be confirmed
-   against the applicable procedural rules per 事项 type.
-2. **The 统一电子印章 technical standard** — *partly resolved.*
-   《电子印章管理办法》(国办发〔2025〕33号, effective 2025-09-27) now supplies the
-   governing rule (legal effect, certificate-validity bounds, mandatory seal
-   status query service, point-in-time verification, and — importantly —
-   第二十七条, which **mandates** that public-service business systems support
-   compliant seals). But 第十六条 defers to "国家有关标准规范" without naming a
-   standard, so the specification itself is still to be established. See
-   `00-context/regulatory-landscape.md` §6a.
-3. **Internal catalogue vs. GB/T 36902/36903** — whether the platform's 事项
-   catalogue should align to the electronic-licence catalogue structure is
-   deliberately undecided; they are different objects.
+| ADR | Decision |
+|---|---|
+| **0001** | An item has one of **two statutory kinds**, and the kind determines the result artefact — only an 行政权力事项 produces a 决定书 |
+| **0002** | The guide is the **published contract**; changes are dated and attributed, and the version relied on at submission is recorded |
+| **0003** | Identity is **integrated from the national service**; re-implementation creates a second identity to reconcile and a second to breach |
+| **0004** | A channel is a **variant over the shared core**; the identity aspect is the one that fails hardest |
+| **0005** | The anti-double-submission rule is **per field**, and the failure mode of the control is the system being helpful |
+| **0006** | The lifecycle uses the **statutory vocabulary**; the clock starts at **受理**, and 一次性告知 ≠ 补正 |
+| **0007** | Seals and licences come from the **national services**; validity is recorded **at signing**, and art. 27 makes business-system support an obligation on this platform |
+| **0008** | Electronic archiving is a **correctness requirement on the model** — verified complete and retrievable, not an attachment |
+
+## Blocking L3
+
+1. **The channel adapter interface as a contract** — the five declared aspects exist in prose; L3 needs the interface itself.
+2. **The statutory step machine and clock semantics** — vocabulary, clock start and the two notices are defined; L3 requires them enumerated with pause/resume and threshold behaviour.
+3. **Acceptance criteria for the eleven zero-tolerance invariants** — most of them are field- or channel-level and need criteria that fail a build, not an aggregate.
+4. **The permitted-alternative catalogue** — FR-013 requires a defined fallback for every obtainable field; the set of permitted alternatives is not designed.
+5. **The seal status-query dependency** — the platform consumes a status service; the contract for that consumption is L3 work.
+
+### Explicitly unresolved (recorded, not forgotten)
+
+- **The clock's start point** — 受理 is asserted as a design position, not a citation; a deployment reporting from submission will see its numbers get worse (NFR-010 exists to catch the older calculation persisting).
+- **Auto-approval on timeout** — permitted only by explicit policy, never as a default; whether it is permitted at all in a given regime is not decided here.
+- **The 统一电子印章 technical standard** — the Measures mandate compliance with national standards but name no number; the pack names none either.
+- **Retention values** — required per class by BR-12; no period is asserted.
+- **Sector rules beyond the national instrument** — provincial and municipal implementation rules may add obligations this pack does not model.
+- **Cross-border destination transfer** — recorded as a pack-added designation in `data-exchange` CTL-04; not verified against an instrument here.

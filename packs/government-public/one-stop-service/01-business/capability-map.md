@@ -39,16 +39,16 @@
 
 | # | Capability | What it must answer | Notes / L1 position |
 |---|---|---|---|
-| **01** | **Service catalogue (事项)** | what can be applied for, and under what conditions | the **root object**, driving forms, materials, routing and deadlines (`AGENTS.md`); two statutory kinds (行政权力/公共服务, 第四条) |
-| **02** | **Published guide & eligibility** | what the applicant is told, and what is actually enforced | 办事指南 with 受理条件/办事材料/办理流程 is **published** and therefore binding (第六条) |
-| **03** | **Forms, materials & anti-double-submission** | what the applicant must supply — and what they must not be asked for | 第七条 is this capability's hard constraint; the material list must be *derived*, not hand-maintained |
-| **04** | **Unified identity integration** | who is applying | integrates the national service; **no** local citizen identity (第五条, `AGENTS.md`) |
-| **05** | **Shared-data verification** | how applicant facts are confirmed without being demanded | every call **consented and audited** (`AGENTS.md`); consumes the `data-exchange` pack |
-| **06** | **Approval lifecycle** | how a 办件 moves from submission to a decision | statutory vocabulary 受理/审查/决定/出件, 一次性告知, 补正, 限时办结 |
-| **07** | **Electronic seal & licence** | how the result is authenticated and how a 证照 is issued | **integrated, never re-implemented**; GB/T 369xx interfaces |
-| **08** | **Fee & payment** | how administrative fees are settled | only where a 事项 has 收费项目 |
-| **09** | **Notification & progress** | where the applicant stands, and what needs doing | progress, 补正 notice, result, expiry/policy reminders |
-| **10** | **Archive, supervision & feedback** | what is provable afterwards, and whether service improves | electronic archiving is a **statutory obligation** (第十二条); supervision feed; 好差评 |
+| **CAP-01** | **Service catalogue (事项)** | what can be applied for, and under what conditions | the **root object**, driving forms, materials, routing and deadlines (`AGENTS.md`); two statutory kinds (行政权力/公共服务, 第四条) |
+| **CAP-02** | **Published guide & eligibility** | what the applicant is told, and what is actually enforced | 办事指南 with 受理条件/办事材料/办理流程 is **published** and therefore binding (第六条) |
+| **CAP-03** | **Forms, materials & anti-double-submission** | what the applicant must supply — and what they must not be asked for | 第七条 is this capability's hard constraint; the material list must be *derived*, not hand-maintained |
+| **CAP-04** | **Unified identity integration** | who is applying | integrates the national service; **no** local citizen identity (第五条, `AGENTS.md`) |
+| **CAP-05** | **Shared-data verification** | how applicant facts are confirmed without being demanded | every call **consented and audited** (`AGENTS.md`); consumes the `data-exchange` pack |
+| **CAP-06** | **Approval lifecycle** | how a 办件 moves from submission to a decision | statutory vocabulary 受理/审查/决定/出件, 一次性告知, 补正, 限时办结 |
+| **CAP-07** | **Electronic seal & licence** | how the result is authenticated and how a 证照 is issued | **integrated, never re-implemented**; GB/T 369xx interfaces |
+| **CAP-08** | **Fee & payment** | how administrative fees are settled | only where a 事项 has 收费项目 |
+| **CAP-09** | **Notification & progress** | where the applicant stands, and what needs doing | progress, 补正 notice, result, expiry/policy reminders |
+| **CAP-10** | **Archive, supervision & feedback** | what is provable afterwards, and whether service improves | electronic archiving is a **statutory obligation** (第十二条); supervision feed; 好差评 |
 
 ## 2. Boundaries (what each capability does *not* own)
 
