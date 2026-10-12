@@ -39,16 +39,16 @@
 
 | # | Capability | What it must answer | Notes / L1 position |
 |---|---|---|---|
-| **01** | **Catalog & resource registry** | what exists, who owns it, and on what terms it may be shared | the root object linking provider, resource, classification and consumers (`AGENTS.md`) |
-| **02** | **Authorization & grant lifecycle** | whether a transfer may occur, and can it be stopped | request → purpose → approval → grant → revoke; a grant is revocable by design |
-| **03** | **Exchange channels** | how data physically moves | 库表/文件/接口; whether all are first-class is an open question (`README.md` #1) |
-| **04** | **Classification & masking** | what protection applies to this data, enforced where | grade → rule, enforced at exchange time |
-| **05** | **Lineage & attribution** | for any transfer, who authorized it, why, and what moved | the closing half of the audited loop |
-| **06** | **Quality & reconciliation** | whether delivered data matches what the provider holds | 第十三条 makes this a provider obligation |
-| **07** | **Usage monitoring & audit** | whether consumers stayed within their declared purpose | 第十四条 makes purpose-bound use a duty |
-| **08** | **Open-data publication** | how public datasets are produced and described | DCAT-modelled; a different regime, not a subset |
-| **09** | **Identity, org & department context** | who is acting, on whose behalf | department identity, roles, delegation, service accounts |
-| **10** | **Operations & security compliance** | is the platform itself controlled and available | 等保 controls, incident response, capacity |
+| **CAP-01** | **Catalog & resource registry** | what exists, who owns it, and on what terms it may be shared | the root object linking provider, resource, classification and consumers (`AGENTS.md`) |
+| **CAP-02** | **Authorization & grant lifecycle** | whether a transfer may occur, and can it be stopped | request → purpose → approval → grant → revoke; a grant is revocable by design |
+| **CAP-03** | **Exchange channels** | how data physically moves | 库表/文件/接口; whether all are first-class is an open question (`README.md` #1) |
+| **CAP-04** | **Classification & masking** | what protection applies to this data, enforced where | grade → rule, enforced at exchange time |
+| **CAP-05** | **Lineage & attribution** | for any transfer, who authorized it, why, and what moved | the closing half of the audited loop |
+| **CAP-06** | **Quality & reconciliation** | whether delivered data matches what the provider holds | 第十三条 makes this a provider obligation |
+| **CAP-07** | **Usage monitoring & audit** | whether consumers stayed within their declared purpose | 第十四条 makes purpose-bound use a duty |
+| **CAP-08** | **Open-data publication** | how public datasets are produced and described | DCAT-modelled; a different regime, not a subset |
+| **CAP-09** | **Identity, org & department context** | who is acting, on whose behalf | department identity, roles, delegation, service accounts |
+| **CAP-10** | **Operations & security compliance** | is the platform itself controlled and available | 等保 controls, incident response, capacity |
 
 ## 2. Boundaries (what each capability does *not* own)
 

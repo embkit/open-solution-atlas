@@ -5,7 +5,7 @@ title_zh: 政务数据共享交换平台
 domain: government-public
 subdomain: data-exchange
 tags: [government-data, data-exchange, data-catalog, data-sharing, approval-workflow, lineage, data-quality, open-data, dcat, data-classification, mlps]
-maturity: L1
+maturity: L2
 provenance: llm-drafted
 verification: unverified
 stack_stance: stack-agnostic
@@ -22,8 +22,8 @@ regulatory:
 language: en
 translations: []                           # no full translation yet (key assets bilingual; see standard §5)
 maintainers: []
-version: 0.2.0
-last_reviewed: 2026-10-11
+version: 0.3.0
+last_reviewed: 2026-10-12
 sources:
   - https://www.w3.org/TR/vocab-dcat-3/                          # W3C DCAT 3 — open-data catalog vocabulary
   - https://www.gov.cn/gongbao/content/2016/content_5115838.htm  # 国发〔2016〕51号《政务信息资源共享管理暂行办法》(国务院公报)
