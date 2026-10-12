@@ -5,7 +5,7 @@ title_zh: 电信业务支撑系统（BSS/OSS）
 domain: telecom
 subdomain: bss-oss
 tags: [telecom, bss, oss, tmforum, oda, open-api, product-catalog, order-orchestration, rating, billing, dunning, number-inventory, provisioning]
-maturity: L1
+maturity: L2
 provenance: llm-drafted
 verification: unverified
 stack_stance: stack-agnostic
@@ -22,8 +22,8 @@ regulatory:
 language: en
 translations: []                           # no full translation yet (key assets bilingual; see standard §5)
 maintainers: []
-version: 0.2.0
-last_reviewed: 2026-10-11
+version: 0.3.0
+last_reviewed: 2026-10-12
 # ODA and TMF Open API are adopted as this pack's VOCABULARY (component
 # decomposition and interface language). Nothing in this pack claims conformance
 # to any maturity level or API version; see 00-context/industry-brief.md §10

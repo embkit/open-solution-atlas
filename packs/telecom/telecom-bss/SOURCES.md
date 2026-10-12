@@ -36,10 +36,34 @@
 
 ## 4. Uncited specifics to resolve
 
-- **BSS/OSS boundary ownership** — whether provisioning orchestration lives in this pack or in a dedicated OSS pack. Design choice, no source.
-- **TMF Open API conformance depth** — selecting TMF620/622/678/640 as normative (and their versions) is a pack decision, not a cited mandate; versions to confirm.
-- **"Currency-agnostic money model"** — architecture assertion with no external source.
-- **Resource/number inventory granularity** — logical-only vs physical (ports, cards, sites) is an open question; no source.
-- **GDPR retention/erasure "per data class"** — no retention periods are stated; jurisdiction- and data-class-specific, to confirm.
-- **ITU-T / 3GPP applicability** — the pack cites ITU-T generically but binds no specific recommendation; to confirm.
-- **Rating/billing immutability & reconciliation** — engineering principle asserted in AGENTS.md, no citation.
+Resolved at L2 (pack design; still need external sourcing for source-checked):
+
+- **BSS/OSS boundary** — ADR-0001 settles it as an integration contract with a
+  declared five-aspect interface contract. Still open: the **contract itself**
+  as payload shapes and state vocabulary (L3).
+- **Two catalogs + specification** — ADR-0002 settles first-class + only
+  permitted join. Still open: **specification currency** — a stale
+  specification is worse than none because it is trusted.
+- **CO/SO/RO traceability** — ADR-0003 settles both-direction links and
+  explicit partial-failure cancellation. Still open: the **reverse link** is
+  the one that decays in practice (NFR-002 measures it).
+- **Charge events / two-way reconciliation** — ADR-0004 settles immutability and
+  both directions. Still open: the **retention period** per class, in tension
+  with personal-data obligations (deliberately unresolved).
+- **Tariff rules** — BR-08 settles versioned + effective-dated + governed
+  separately from billing code. Still open: **the tariff rule content itself**,
+  deliberately not encoded (see industry-brief.md §11).
+- **ODA / TMF vocabulary** — ADR-0005 settles adoption-not-conformance. Still
+  open: **which edition**, deliberately unspecified.
+
+Still open:
+
+- **Disconnect guardrail classes** — the classes must exist as enforced state;
+  which classes apply is a regulatory input.
+- **估抄 method** — rule-bound and labelled is required; the method, period and
+  reconciliation against the next actual reading are regulatory inputs.
+- **Retention of rules, readings and approval records** — the tension with
+  erasure is real; the window is a business decision.
+- **Regulatory mapping** — 电力法, MLPS 2.0, GDPR remain **designations only**.
+  No clause-level mapping exists, per this repository's scope decision
+  (see docs/citation-audit-2026-10.md §4).
