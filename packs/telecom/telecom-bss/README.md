@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Maturity | 🟡 L1 — Brief (target L3) |
+| Maturity | 🔵 L2 — Blueprint (target L3) |
 | Domain | telecom / bss-oss |
 | Stack stance | Vendor-neutral |
 | Regulatory context | TM Forum ODA & Open APIs; ITU-T recommendations; GDPR-class privacy (EU) |
@@ -69,7 +69,58 @@ activates must stay in agreement across long-lived, multi-domain processes.
   - [x] Stakeholder list (`00-context/stakeholders.md`)
   - [x] Level-1 capability map (`01-business/capability-map.md`)
   - [x] Glossary seeded (`03-domain/glossary.md`)
-- [ ] L2 — Blueprint
+- [x] L2 — Blueprint
+  - [x] Business processes / rules (`01-business/processes.md` P-01..08,
+        `business-rules.md` BR-01..15)
+  - [x] Functional requirements with stable IDs (`02-requirements/functional.md`,
+        FR-001..FR-022)
+  - [x] NFR catalog with measurable targets and pinned formulas
+        (`02-requirements/non-functional.md`, NFR-001..NFR-012)
+  - [x] Compliance controls traced to instrument designations
+        (`02-requirements/compliance.md`, CTL-01..CTL-08)
+  - [x] Domain model incl. bounded contexts (`03-domain/domain-model.md`)
+  - [x] Architecture views (`04-architecture/overview.md`, `integration.md`,
+        `security.md`, `observability.md`)
+  - [x] ≥3 ADRs covering the load-bearing decisions (`04-architecture/adr/`,
+        0001..0005)
+  - [x] Logical data model + data dictionary (`05-data/`, 10 integrity
+        constraints)
+- [ ] L3 — Agent-ready
+  - [ ] API contracts for the BSS/OSS interface (`06-contracts/`)
+  - [ ] State machines for key lifecycle objects (`03-domain/state-machines.md`)
+  - [ ] EARS acceptance criteria with full requirement traceability
+        (`08-quality/`)
+  - [ ] Integration & data-flow specs (protocols, payloads, frequencies)
+  - [ ] Test strategy incl. performance and failure scenarios
+  - [ ] Delivery milestones + agent-executable task map (`09-delivery/`)
+  - [ ] `AGENTS.md` load order validated end-to-end
+  - [ ] Consistency review: IDs resolve, glossary terms used uniformly, no
+        contradiction between requirements, design, and contracts
+- [ ] L4 — Proven
+
+## Settled ADRs (do not relitigate)
+
+| ADR | Decision |
+|---|---|
+| **0001** | The BSS/OSS boundary is an **integration contract**, never a convenience; commercial decisions never consult network state |
+| **0002** | Two catalogs joined by **one specification**, never duplicated; the specification is the only permitted join |
+| **0003** | Order decomposition is traceable in **both directions** — "end-to-end" is the phrase that permits a forward-only implementation |
+| **0004** | Charge events are **immutable** and reconcilable against **both** the order and the inventory |
+| **0005** | ODA and TMF Open API are adopted as **vocabulary**, not claimed as conformance |
+
+## Blocking L3
+
+1. **The BSS/OSS interface contract itself** — the five declared aspects exist in
+   prose (`04-architecture/integration.md`); L3 needs them as a contract with
+   payload shapes and state vocabulary.
+2. **The CO→SO→RO state machine** — states and transitions are named across the
+   rules; L3 requires them enumerated.
+3. **Acceptance criteria for the five zero-tolerance invariants** — NFR-001,
+   NFR-005, NFR-007, NFR-009 need criteria that fail a build, not a reported
+   threshold.
+4. **Cycle-straddle split as a verification procedure** — constraint 6 says no
+   charge event is emitted for a period under a wrong version; how that is
+   *tested* is L3 work.
   - [ ] Business processes / rules (`01-business/`) — decomposition and fallout
   - [ ] Functional requirements (`02-requirements/`) with stable IDs
   - [ ] NFR catalog (`02-requirements/non-functional.md`)

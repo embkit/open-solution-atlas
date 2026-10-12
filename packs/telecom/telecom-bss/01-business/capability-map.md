@@ -39,16 +39,16 @@
 
 | # | Capability | What it must answer | Notes / L1 position |
 |---|---|---|---|
-| **01** | **Customer & party** | who is the commercial counterparty | accounts and agreements are separate objects with separate lifecycles |
-| **02** | **Commercial product catalog** | what do we sell | commercial truth; owned by product/commercial |
-| **03** | **Specification** | **what a commercial offering means in resource terms** | the join between catalogs; first-class, not a mapping table |
-| **04** | **Technical / resource catalog** | what must actually exist | distinct model from 02, never duplicated |
-| **05** | **Number & code inventory** | who holds which number, and can we get it back | a finite, externally regulated resource |
-| **06** | **Order management & orchestration** | what happens end-to-end when a customer buys | CO→SO→RO traceable both directions (`AGENTS.md`) |
-| **07** | **Rating & charge events** | what is owed, per event | **immutable**, reconcilable against order *and* inventory |
-| **08** | **Billing, invoicing & receivables** | what the customer is asked to pay | regenerable from the events that produced it |
-| **09** | **Assurance & care** | what is wrong, who is affected, what was promised | ties resource state back to the commercial relationship |
-| **10** | **Reconciliation, reporting & privacy lifecycle** | does everything agree, and is it lawfully retained | two-way reconciliation; per-class retention/erasure |
+| **CAP-01** | **Customer & party** | who is the commercial counterparty | accounts and agreements are separate objects with separate lifecycles |
+| **CAP-02** | **Commercial product catalog** | what do we sell | commercial truth; owned by product/commercial |
+| **CAP-03** | **Specification** | **what a commercial offering means in resource terms** | the join between catalogs; first-class, not a mapping table |
+| **CAP-04** | **Technical / resource catalog** | what must actually exist | distinct model from 02, never duplicated |
+| **CAP-05** | **Number & code inventory** | who holds which number, and can we get it back | a finite, externally regulated resource |
+| **CAP-06** | **Order management & orchestration** | what happens end-to-end when a customer buys | CO→SO→RO traceable both directions (`AGENTS.md`) |
+| **CAP-07** | **Rating & charge events** | what is owed, per event | **immutable**, reconcilable against order *and* inventory |
+| **CAP-08** | **Billing, invoicing & receivables** | what the customer is asked to pay | regenerable from the events that produced it |
+| **CAP-09** | **Assurance & care** | what is wrong, who is affected, what was promised | ties resource state back to the commercial relationship |
+| **CAP-10** | **Reconciliation, reporting & privacy lifecycle** | does everything agree, and is it lawfully retained | two-way reconciliation; per-class retention/erasure |
 
 ## 2. Boundaries (what each capability does *not* own)
 
