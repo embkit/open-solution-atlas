@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Maturity | 🟡 L1 — Brief (target L3) |
+| Maturity | 🔵 L2 — Blueprint (target L3) |
 | Domain | data-ai / growth-marketing-analytics |
 | Stack stance | Vendor-neutral |
 | Regulatory context | PIPL/GDPR — behavioral events are personal-data adjacent; consent, minimal collection, data residency; 广告法 constraints on messaging content |
@@ -60,7 +60,64 @@ by default.
   - [x] Stakeholder list (`00-context/stakeholders.md`)
   - [x] Level-1 capability map (`01-business/capability-map.md`)
   - [x] Glossary seeded (`03-domain/glossary.md`)
-- [ ] L2 — Blueprint
+- [x] L2 — Blueprint
+  - [x] Business processes / rules (`01-business/processes.md` P-01..08,
+        `business-rules.md` BR-01..BR-13)
+  - [x] Functional requirements with stable IDs (`02-requirements/functional.md`,
+        FR-001..FR-020)
+  - [x] NFR catalog with measurable targets and pinned formulas
+        (`02-requirements/non-functional.md`, NFR-001..NFR-012)
+  - [x] Compliance controls traced to instrument designations
+        (`02-requirements/compliance.md`, CTL-01..CTL-05)
+  - [x] Domain model incl. bounded contexts (`03-domain/domain-model.md`)
+  - [x] Architecture views (`04-architecture/overview.md`, `integration.md`,
+        `security.md`, `observability.md`)
+  - [x] ≥3 ADRs covering the load-bearing decisions (`04-architecture/adr/`,
+        0001..0004)
+  - [x] Logical data model + data dictionary (`05-data/`, 12 integrity
+        constraints)
+- [ ] L3 — Agent-ready
+  - [ ] API contracts for core services (`06-contracts/`)
+  - [ ] State machines for key lifecycle objects (`03-domain/state-machines.md`)
+  - [ ] EARS acceptance criteria with full requirement traceability
+        (`08-quality/`)
+  - [ ] Integration & data-flow specs (protocols, payloads, frequencies)
+  - [ ] Test strategy incl. performance and failure scenarios
+  - [ ] Delivery milestones + agent-executable task map (`09-delivery/`)
+  - [ ] Consistency review: IDs resolve, glossary terms used uniformly, no
+        contradiction between requirements, design, and contracts
+- [ ] L4 — Proven
+
+## Settled ADRs (do not relitigate)
+
+| ADR | Decision |
+|---|---|
+| **0001** | **No client emits an event whose schema is not declared** — an event arrives once, so schema governance is a write-time control, and a quarantine without a reason is a defect |
+| **0002** | Merges are **reversible and propagates**; deletions cover **profile, join keys and derived facts** — leaving the join keys lets the identity reform from residue |
+| **0003** | **Assignment lives in the experiment engine**, not the delivery/flag system, and the decision rule is **pre-declared** |
+| **0004** | Destinations sit **behind an abstraction** and are never the data owner; a destination's own figures are a reconciliation input |
+
+## Blocking L3
+
+1. **A statistics method text** — sample size, SRM, guardrails, holdouts and
+   peeking discipline are design requirements from `AGENTS.md`, and the pack cites
+   **no** normative source for any of them. Adopting one is a precondition for
+   verifiable experiment requirements.
+2. **Consent-state model as a contract** — the purpose-scoped, versioned state is
+   in prose; L3 needs the consent-state transition contract.
+3. **Acceptance criteria for the five zero-tolerance invariants** — NFR-001,
+   NFR-002, NFR-004, NFR-005 and the two consent checks need criteria that fail
+   a build, not a reported threshold.
+4. **Deletion verification procedure** — "all three parts removed" is the
+   requirement; how it is *verified* across derived facts is L3 work.
+
+### Explicitly unresolved (recorded, not forgotten)
+
+- **Deletion vs. aggregate recomputation** — whether cohorts and aggregates must
+  be recomputed after an erasure is undecided, and it is in genuine tension with
+  keeping an experiment's result valid.
+- **Segment re-resolution policy** — the snapshot rule is fixed, but the policy
+  for long-lived campaigns is not specified.
   - [ ] Business processes / rules (`01-business/`)
   - [ ] Functional requirements (`02-requirements/`) with stable IDs
   - [ ] NFR catalog (`02-requirements/non-functional.md`)
