@@ -50,39 +50,50 @@
 
 ## 4. Uncited specifics to resolve
 
-Resolved at L1 (now defined in the pack, still needing external sourcing at L2):
+Resolved at L2 (pack design; still need external sourcing for source-checked):
 
-- **Layering model** — now defined in `03-domain/glossary.md` §1 (raw immutable
-  → conformed → marts, each with a contract). The earlier concern that three
-  naming systems were presented as equivalent is addressed: the pack states its
-  own layers and notes the equivalence only as a reader's aid.
-- **Quality gates** — blocking vs. warning gates are now defined as *different
-  mechanisms* in `03-domain/glossary.md` §3.
-- **Lineage granularity** — field-level lineage is defined as
-  source-field → mart-column in `03-domain/glossary.md` §4.
-- **Idempotent loads / partition replay** — idempotent landing and partition
-  reprocess are defined in `03-domain/glossary.md` §2/§6.
-- **Classification & access** — platform-enforced access and
-  classification-driven policy are defined in `03-domain/glossary.md` §5.
+- **Layers as contracts** — ADR-0001 settles contract versioning, raw
+  immutability, and conformed-as-only-resolver. Still open: **forward
+  compatibility of conformed**, since a mart cannot reach raw for what conformed
+  does not expose — and the forecasts its consumers need are genuinely hard to
+  predict.
+- **Idempotency and isolation** — ADR-0002 settles per-load idempotency and
+  lineage-derived reprocess ranges. Still open: **which partition-key shapes are
+  admissible** for determinism.
+- **Blocking vs warning** — ADR-0003 settles two mechanisms and attributed
+  severity changes. Still open: **what happens when a named warning owner never
+  acts** — deliberately unresolved.
+- **Access at the platform** — ADR-0004 settles per-consumer-kind enforcement and
+  no exception surface. Still open: **the read-failure mode** when the enforcement
+  component is unavailable — failing open is not an option, but the pack does not
+  specify what the read path does.
+- **Field-level lineage** — ADR-0005 settles field-level edges with rule versions.
+  Still open: **the reprocess-range computation as an executable procedure**
+  (L3).
+- **Deletion** — ADR-0006 settles the operational pipeline and its destination
+  list. Still open: **the mechanism** for append-only raw and derived ML
+  artefacts — crypto-shredding, logical tombstones, snapshot-expiry windows and
+  bounded feature recomputation are all candidates, and the pack chooses none.
 
 Still open:
 
-- **A citation that does not exist.** The previous `manifest.yaml` listed
-  `https://www.iso.org/standard/56737.html` as a pack-level source. Searching
-  found no ISO/IEC standard with that number, and the URL could not be probed
-  (iso.org returns 403 to automated requests). It has been **removed** rather
-  than propagated. **Action for whoever promotes this pack:** confirm which ISO
-  standard, if any, was intended. Candidates seen in industry material are
-  ISO/IEC 38505-1 (data governance) and ISO/IEC 25012 (data quality model), but
-  neither number could be verified from this environment, so neither is cited.
-- **Modeling default** — open question #1 still names a recommendation with no
-  rule set.
-- **Streaming vs. batch baseline** — open question #2; no figures cited.
-- **Erasure vs. immutability** — the glossary now records the candidates
-  (tombstones, crypto-shredding, snapshot-expiry windows) and states that the
-  pack deliberately picks none at L1. The choice needs legal input.
-- **Retention / legal-hold** — still no values or sources.
-- **FinOps** — still no metric definitions or targets.
-- **Regulatory clause mapping** — 数据安全法, GB/T 43697, 等保2.0, GDPR are
-  still cited by designation only; article/clause-level mapping is a
-  precondition for `source-checked`.
+- **Retention** — a declared per-class window is required; **no value is named**.
+  The tension with recomputation is real and unresolved.
+- **Regulatory mapping** — 《数据安全法》, GB/T 43697-2024, PIPL and GDPR remain
+  **designations only**. No clause-level mapping exists, per this repository's
+  scope decision (see docs/citation-audit-2026-10.md §4).
+- **A citation that does not exist** — recorded here for continuity: the previous
+  manifest.yaml listed iso.org/standard/56737.html, for which **no ISO/IEC
+  standard with that number could be found**. It was removed in PR #13 rather
+  than propagated, and industry material suggests the intended standards were
+  ISO/IEC 38505-1 (data governance) and ISO/IEC 25012 (data quality model) —
+  **neither verified from this environment, so neither is cited.** Establishing
+  them is a precondition for source-checked.
+- **Format choice** — Iceberg, Delta Lake and Hudi are named as widely adopted
+  open table formats and **not compared**. A ariants/ overlay with selection
+  criteria would need real criteria, not a ranking.
+- **DAMA-DMBOK** — recorded as the industry reference model for data management;
+  its original link 404s, so it is named without a URL.
+- **ISO standards reachability** — iso.org returns HTTP 403 to automated
+  requests, which proves neither existence nor absence. Existence is only
+  confirmed from sources that *name* the standard and its status.

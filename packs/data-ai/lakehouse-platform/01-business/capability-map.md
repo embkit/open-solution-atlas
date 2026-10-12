@@ -39,16 +39,16 @@
 
 | # | Capability | What it must answer | Notes / L1 position |
 |---|---|---|---|
-| **01** | **Ingestion** | how data lands, and what happens when it is re-delivered | idempotent landing and replay are correctness requirements, not retries |
-| **02** | **Storage & table format** | how data is stored so reprocessing is possible | raw is immutable; the table format is an L2 decision with criteria |
-| **03** | **Transformation & modelling** | how raw becomes business-shaped, verifiably | contracts between layers are the architecture (`AGENTS.md`) |
-| **04** | **Data quality** | whether data is fit, and what happens when it is not | blocking vs. warning gates are **different mechanisms** (`AGENTS.md`) |
-| **05** | **Catalog & metadata** | what exists, who owns it, how it is classified | the substrate for governance and discovery |
-| **06** | **Lineage & impact analysis** | where a number came from, and what a change breaks | field-level, source-field → mart-column (`AGENTS.md`) |
-| **07** | **Access control & privacy** | who may read what, and how a deletion is enforced | platform-enforced; erasure is a pipeline (`AGENTS.md`) |
-| **08** | **Orchestration & operability** | how work is scheduled and safely re-run | partition reprocess must be first-class |
-| **09** | **Serving & consumption** | how consumers read, without bypassing control | the enforcement point, not a place to relocate the problem |
-| **10** | **Cost & capacity management** | whether the platform is sustainable | a correctness concern, because unaffordable recompute gets skipped |
+| **CAP-01** | **Ingestion** | how data lands, and what happens when it is re-delivered | idempotent landing and replay are correctness requirements, not retries |
+| **CAP-02** | **Storage & table format** | how data is stored so reprocessing is possible | raw is immutable; the table format is an L2 decision with criteria |
+| **CAP-03** | **Transformation & modelling** | how raw becomes business-shaped, verifiably | contracts between layers are the architecture (`AGENTS.md`) |
+| **CAP-04** | **Data quality** | whether data is fit, and what happens when it is not | blocking vs. warning gates are **different mechanisms** (`AGENTS.md`) |
+| **CAP-05** | **Catalog & metadata** | what exists, who owns it, how it is classified | the substrate for governance and discovery |
+| **CAP-06** | **Lineage & impact analysis** | where a number came from, and what a change breaks | field-level, source-field → mart-column (`AGENTS.md`) |
+| **CAP-07** | **Access control & privacy** | who may read what, and how a deletion is enforced | platform-enforced; erasure is a pipeline (`AGENTS.md`) |
+| **CAP-08** | **Orchestration & operability** | how work is scheduled and safely re-run | partition reprocess must be first-class |
+| **CAP-09** | **Serving & consumption** | how consumers read, without bypassing control | the enforcement point, not a place to relocate the problem |
+| **CAP-10** | **Cost & capacity management** | whether the platform is sustainable | a correctness concern, because unaffordable recompute gets skipped |
 
 ## 2. Boundaries (what each capability does *not* own)
 

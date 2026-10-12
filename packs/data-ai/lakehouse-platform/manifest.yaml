@@ -5,7 +5,7 @@ title_zh: 企业数据仓库与湖仓平台
 domain: data-ai
 subdomain: data-platform
 tags: [data-warehouse, lakehouse, data-modeling, ingestion, etl, elt, data-quality, data-governance, lineage, data-mart]
-maturity: L1
+maturity: L2
 provenance: llm-drafted
 verification: unverified
 stack_stance: stack-agnostic
@@ -22,8 +22,8 @@ regulatory:
 language: en
 translations: []                           # no full translation yet (key assets bilingual; see standard §5)
 maintainers: []
-version: 0.2.0
-last_reviewed: 2026-10-11
+version: 0.3.0
+last_reviewed: 2026-10-12
 sources:
   - https://iceberg.apache.org/                                  # Apache Iceberg — open table format
   - https://delta.io/                                            # Delta Lake — open table format

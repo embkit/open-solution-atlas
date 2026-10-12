@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Maturity | 🟡 L1 — Brief (target L3) |
+| Maturity | 🔵 L2 — Blueprint (target L3) |
 | Domain | data-ai / data-platform |
 | Stack stance | Vendor-neutral |
 | Regulatory context | 数据安全法; 数据分类分级 GB/T 43697; 等保2.0; GDPR right-to-erasure on subject data; ISO 27001 |
@@ -56,20 +56,74 @@ cloud-native and on-prem/信创 are variants.
 
 - [x] L1 — Brief
   - [x] Industry brief with sources (`00-context/industry-brief.md`)
-  - [x] Regulatory landscape with citations (`00-context/regulatory-landscape.md`)
+  - [x] Regulatory landscape (`00-context/regulatory-landscape.md`)
   - [x] Stakeholder list (`00-context/stakeholders.md`)
   - [x] Level-1 capability map (`01-business/capability-map.md`)
   - [x] Glossary seeded (`03-domain/glossary.md`)
-- [ ] L2 — Blueprint
-  - [ ] Business processes / rules (`01-business/`)
-  - [ ] Functional requirements (`02-requirements/`) with stable IDs
-  - [ ] NFR catalog with measurable targets (`02-requirements/non-functional.md`)
-  - [ ] Compliance controls traced to `regulatory-landscape.md` — **requires
-        the GB/T 43697-2024 clause mapping and the ISO designations to be
-        confirmed first**
-  - [ ] Domain model incl. bounded contexts (`03-domain/domain-model.md`)
-  - [ ] Architecture views + ≥3 ADRs (`04-architecture/`)
-  - [ ] Logical data model + data dictionary (`05-data/`)
+- [x] L2 — Blueprint
+  - [x] Business processes / rules (`01-business/processes.md` P-01..08,
+        `business-rules.md` BR-01..BR-14)
+  - [x] Functional requirements with stable IDs (`02-requirements/functional.md`,
+        FR-001..FR-022)
+  - [x] NFR catalog with measurable targets and pinned formulas
+        (`02-requirements/non-functional.md`, NFR-001..NFR-014)
+  - [x] Compliance controls traced to instrument designations
+        (`02-requirements/compliance.md`, CTL-01..CTL-06)
+  - [x] Domain model incl. bounded contexts (`03-domain/domain-model.md`)
+  - [x] Architecture views (`04-architecture/overview.md`, `integration.md`,
+        `security.md`, `observability.md`)
+  - [x] >=3 ADRs covering the load-bearing decisions
+        (`04-architecture/adr/`, 0001..0006)
+  - [x] Logical data model + data dictionary (`05-data/`, 10 integrity
+        constraints)
+- [ ] L3 — Agent-ready
+  - [ ] API contracts for core services (`06-contracts/`)
+  - [ ] State machines for key lifecycle objects
+        (`03-domain/state-machines.md`)
+  - [ ] EARS acceptance criteria with full requirement traceability
+        (`08-quality/`)
+  - [ ] Integration & data-flow specs (protocols, payloads, frequencies)
+  - [ ] Test strategy incl. performance and failure scenarios
+  - [ ] Delivery milestones + agent-executable task map (`09-delivery/`)
+  - [ ] Consistency review: IDs resolve, glossary terms used uniformly, no
+        contradiction between requirements, design, and contracts
+- [ ] L4 — Proven
+
+## Settled ADRs (do not relitigate)
+
+| ADR | Decision |
+|---|---|
+| **0001** | Layers are **contracts**; raw is **immutable**; **conformed is the only resolver** -- a mart never reads raw |
+| **0002** | Every load is **idempotent**, and reprocessing is **isolated to a partition range** derived from lineage |
+| **0003** | Blocking and warning gates are **different mechanisms** -- blocking *withholds*, warning *routes*; conflating them fails twice |
+| **0004** | Classification-driven access is enforced **by the platform for every consumer kind**; a consumer that cannot accept that is not onboarded |
+| **0005** | Lineage is **field-level with rule versions on every edge**, because table-level lineage stops one level above the answer |
+| **0006** | Deletion is an **operational pipeline** whose destinations include caches, snapshots, exports and **derived ML data** |
+
+## Blocking L3
+
+1. **How deletion reaches append-only raw and derived ML artefacts** -- BR-12
+   fixes the requirement; the mechanism (crypto-shredding, logical tombstones,
+   snapshot-expiry windows, bounded feature recomputation) is a deployment choice
+   the pack deliberately does not make.
+2. **The reprocess range computation as an executable procedure** -- FR-018
+   requires it to be derived from lineage; *how* is L3 work.
+3. **Acceptance criteria for the six zero-tolerance invariants** -- NFR-001,
+   NFR-002, NFR-005, NFR-007, NFR-010 and the consumer-path check need criteria
+   that fail a build rather than a reported threshold.
+4. **Partition-key determinism** -- ADR-0002's isolation depends on a
+   deterministic key; which key shapes are admissible is undecided.
+
+### Explicitly unresolved (recorded, not forgotten)
+
+- **Retention window vs. recomputation** -- raw must be retained to recompute;
+  personal-data obligations push the other way. The mechanism is named, the window
+  is a business decision, and the pack names no value.
+- **Read-failure mode for access control** -- failing open is not an option; the
+  pack does not specify what the read path does when the enforcement component is
+  unavailable.
+- **A named warning owner who never acts** -- BR-07 requires an owner; the pack
+  does not resolve the case where the owner does nothing.
 - [ ] L3 — Agent-ready
 - [ ] L4 — Proven
 
