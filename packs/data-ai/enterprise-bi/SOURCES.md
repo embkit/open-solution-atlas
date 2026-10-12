@@ -42,10 +42,34 @@
 
 ## 4. Uncited specifics to resolve
 
-- **"One number, one definition" governance** — the central claim (versioned, owned metric definitions; certification levels) is asserted as a practice with no cited standard or method; confirm a reference (e.g. a metrics-layer spec or analytics-engineering source).
-- **RLS/CLS "part of the semantic model, not dashboard config"** — architectural stance (see AGENTS.md); no standard prescribes this placement; to be justified at L2.
-- **Freshness & certification visibility** — "freshness and certification must be visible on every artifact" is asserted with no defined freshness threshold or certification taxonomy.
-- **Self-service promotion workflow** — "certified vs. user content with promotion workflow" is described but has no defined states/gates or source.
-- **Headless BI / metrics-store API depth** — open question #1; no interface spec cited.
-- **Regulatory mapping** — PIPL/GDPR/ISO 27001/等保2.0 are named in README without article-level or Annex-A citations; confirm the exact obligations that constrain datasets and export controls.
-- **L1 breadth** — no requirements/NFR chapter yet, so no numeric targets exist to audit; the items above are the load-bearing claims to source when L2 is written.
+Resolved at L2 (pack design; still need external sourcing for source-checked):
+
+- **The join key and its enforcement** — ADR-0001 settles comparability
+  ⇔ one declared join key, and that a same-name/different-semantics pair is a
+  defect. Still open: **where it is enforced** (model time, query time, or both).
+- **Permission in the semantic layer** — ADR-0002 settles layer-only reads,
+  identity-context evaluation, and fail-closed identity. Still open: **which
+  surfaces are excluded** when identity cannot be supplied (scheduled exports,
+  file-based feeds) — deliberately unenumerated.
+- **Artifact version pinning** — ADR-0003 settles pinning and impact-report-
+  before-publish. Still open: **the impact-report procedure** and its cost at
+  scale.
+- **Freshness and certification** — ADR-0004 settles contract-relative freshness
+  and computed certification. Still open: **what is displayed when a model has no
+  freshness contract** — deliberately not specified.
+- **Promotion** — ADR-0005 settles the two-state split with a reviewed path.
+  Still open: **what triggers promotion and what the certified criteria are** —
+  L2 rules not yet written.
+- **A metric owner leaving** — BR-01 requires a named person; the vacancy is
+  deliberately unresolved.
+
+Still open:
+
+- **RLS/CLS external standard** — stated as design positions from AGENTS.md.
+  The pack names **no** external standard or clause.
+- **Regulatory mapping** — ISO/IEC 27001, PIPL and GDPR-class instruments remain
+  **designations only**. The chapter is deliberately lean: no instrument here
+  changes a design decision AGENTS.md had not already made, and none was
+  verified. See docs/citation-audit-2026-10.md §4.
+- **Metric reuse floor** — NFR-001's (A) target of 70% is policy; the floor
+  below which the layer is judged copy-paste is undecided.
