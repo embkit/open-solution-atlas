@@ -39,16 +39,16 @@
 
 | # | Capability | What it must answer | Notes / L1 position |
 |---|---|---|---|
-| **01** | **Semantic model** | what joins to what, and on which key | the **join key** is the mechanism by which two metrics are comparable at all (`AGENTS.md`) |
-| **02** | **Metric definitions (口径)** | what a number *means*, who owns it, which version this artifact uses | versioned + owned (`AGENTS.md`); the pack's core object |
-| **03** | **Access control (RLS/CLS)** | which rows and columns a given user may see | **in the semantic model, not dashboard config** (`AGENTS.md`) |
-| **04** | **Authoring & exploration** | how a question becomes a saved query | the raw material for self-service |
-| **05** | **Certified artifacts** | what is trustworthy, and does the user know it | pinned to a model version; certification visible without interaction |
-| **06** | **Self-service & promotion** | how user content becomes certified | the certified/user split **with** a promotion path (`AGENTS.md`) |
-| **07** | **Serving, embeds & distribution** | how metrics reach people and products | embeds must be under the same RLS/CLS, not a bypass |
-| **08** | **Freshness & certification computation** | when is an artifact current, and **computed** against what | derived from the model contract, never hand-labelled |
-| **09** | **Governance, audit & lifecycle** | what exists, what is stale, who saw what | the answer to "why does this old dashboard say that?" |
-| **10** | **Platform operations & cost** | is the platform runnable and affordable | capacity, scheduling, materialization, attribution |
+| **CAP-01** | **Semantic model** | what joins to what, and on which key | the **join key** is the mechanism by which two metrics are comparable at all (`AGENTS.md`) |
+| **CAP-02** | **Metric definitions (口径)** | what a number *means*, who owns it, which version this artifact uses | versioned + owned (`AGENTS.md`); the pack's core object |
+| **CAP-03** | **Access control (RLS/CLS)** | which rows and columns a given user may see | **in the semantic model, not dashboard config** (`AGENTS.md`) |
+| **CAP-04** | **Authoring & exploration** | how a question becomes a saved query | the raw material for self-service |
+| **CAP-05** | **Certified artifacts** | what is trustworthy, and does the user know it | pinned to a model version; certification visible without interaction |
+| **CAP-06** | **Self-service & promotion** | how user content becomes certified | the certified/user split **with** a promotion path (`AGENTS.md`) |
+| **CAP-07** | **Serving, embeds & distribution** | how metrics reach people and products | embeds must be under the same RLS/CLS, not a bypass |
+| **CAP-08** | **Freshness & certification computation** | when is an artifact current, and **computed** against what | derived from the model contract, never hand-labelled |
+| **CAP-09** | **Governance, audit & lifecycle** | what exists, what is stale, who saw what | the answer to "why does this old dashboard say that?" |
+| **CAP-10** | **Platform operations & cost** | is the platform runnable and affordable | capacity, scheduling, materialization, attribution |
 
 ## 2. Boundaries (what each capability does *not* own)
 

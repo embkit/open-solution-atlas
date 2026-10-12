@@ -5,7 +5,7 @@ title_zh: 企业BI与自助分析平台
 domain: data-ai
 subdomain: bi-analytics
 tags: [bi, reporting, dashboard, semantic-layer, metrics-store, olap, self-service, data-apps, row-level-security]
-maturity: L1
+maturity: L2
 provenance: llm-drafted
 verification: unverified
 stack_stance: stack-agnostic
@@ -18,8 +18,8 @@ regulatory:
 language: en
 translations: []                           # no full translation yet (key assets bilingual; see standard §5)
 maintainers: []
-version: 0.2.0
-last_reviewed: 2026-10-11
+version: 0.3.0
+last_reviewed: 2026-10-12
 sources:
   - https://www.getdbt.com/analytics-engineering          # dbt Labs — analytics engineering practice (vendor reference, not normative)
   - https://www.iso.org/standard/27001                    # ISO/IEC 27001 — information security (designation only)
