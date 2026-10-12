@@ -4,9 +4,125 @@ All notable changes to Open Solution Atlas. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); versions are repository-wide
 releases (individual packs carry their own `version` in `manifest.yaml`).
 
-## [Unreleased]
+## [0.2.0] — 2026-10-13
 
-### Fixed — repository hygiene (outsider-facing)
+Twelve packs raised to L2, eleven completed at L1, and the tooling that found
+what review missed. 86 ADRs, 148 business rules, 342 functional requirements,
+139 NFRs across the shelf. `validate-packs.py` reports **0 errors and 0
+warnings** — the §6 checklist debt carried since the initial import is cleared.
+
+### Added — L1 checklist completed (11 packs)
+
+`validate-packs.py` emitted 55 warnings for the §6 L1 chapters that eleven packs
+lacked. All eleven now carry the five required chapters:
+
+- `horizontal/workflow-bpm` · `data-ai/lakehouse-platform` ·
+  `government-public/data-exchange` · `government-public/one-stop-service` ·
+  `healthcare/his-emr` · `data-ai/enterprise-bi` · `data-ai/growth-analytics` ·
+  `telecom/telecom-bss` · `data-ai/mlops-platform` ·
+  `energy-utilities/power-marketing-cis` · `retail-commerce/omnichannel-commerce`
+
+Each pack's regulatory landscape states what an instrument **forces the software
+to do**, rather than quoting it — per this repository's scope decision that legal
+accuracy matters only where it changes a design decision.
+
+### Added — L2 Blueprint (12 packs)
+
+Twelve packs raised from L1 to L2, each with a domain model, architecture views,
+a logical data model with store-enforced integrity constraints, and 4–8 ADRs
+covering the load-bearing decisions:
+
+| Pack | ADRs | The decision the pack exists to make |
+|---|---|---|
+| `one-stop-service` | 8 | the anti-double-submission rule is **per field**, and its failure mode is the system being helpful |
+| `his-emr` | 7 | a signed document is **evidence**; clinical and billing records have a **one-way** dependency |
+| `workflow-bpm` | 6 | the Chinese approval vocabulary is **defined here**, because BPMN 2.0 does not define it |
+| `data-exchange` | 6 | a classification grade **derives** rules per class; a dataset-scoped override is illegal |
+| `telecom-bss` | 5 | tariff arithmetic is a **governed input**, never a platform decision |
+| `lakehouse-platform` | 6 | layers **are** contracts, and deletion reaches caches, snapshots and derived ML data |
+| `mlops-platform` | 5 | feature store exists for **point-in-time correctness**; a replay equals training values is the test for skew |
+| `omnichannel-commerce` | 5 | inventory deduction is a **business bet** tabled per product, not a global setting |
+| `enterprise-bi` | 5 | the metric definition is the core object, and the **join key** is the mechanism of comparability |
+| `growth-analytics` | 4 | an event arrives once, so schema governance is a **write-time** control |
+| `power-marketing-cis` | 4 | tariff calculation is regulated math; a rate change inside billing code is indistinguishable from a bug fix |
+| `data-exchange` | 6 | no data transfer exists without a recorded, revocable, **purpose-matching** grant |
+
+### Added — tooling that found what review missed
+
+- **`tools/check-ids.py` in-pack gap detection.** A missing ID was previously
+  classified by asking every pack whether that ID was defined *anywhere*, which
+  made a collision silently green: a pack defining `ADR-1..4` and citing
+  `ADR-5` was reported as an INFO because an unrelated pack also defined an
+  `ADR-5`. References into a pack's **own** numbering sequence (within +2 of its
+  maximum) are now in-pack gap errors. This caught **five** real defects across
+  the L2 batch — dangling references in `omnichannel-commerce`, `telecom-bss`,
+  `mlops-platform` and `data-exchange` — each of which had reached a commit
+  before being caught by other means.
+- `tests/test_check_ids.py`: 4 new tests covering both directions (a collision
+  no longer masking a local gap; a genuinely distant cross-pack reference still
+  an INFO) plus the helper directly. Suite: 62 → 65 tests.
+
+### Fixed — citations that could not be verified
+
+- `packs/data-ai/lakehouse-platform`: the manifest's only pack-level source was
+  `iso.org/standard/56737.html`, for which **no ISO/IEC standard with that
+  number could be found**. Removed rather than propagated, and the finding
+  recorded in `SOURCES.md` with the follow-up action, so the next person to
+  promote the pack inherits the investigation rather than the fabricated
+  reference.
+- `packs/government-public/data-exchange`: the gov.cn policy URL guessed in the
+  original manifest 404'd. Replaced with the published text of 国发〔2016〕51号
+  from the State Council Gazette.
+- `docs/citation-audit-2026-10.md` — a repository-wide audit of whether the
+  cited instruments are still in force, prompted by discovering that
+  **《网络安全法》was amended on 2025-10-28 and renumbered** (effective
+  2026-01-01): the graded-protection duties moved from Article 21 to Article 23,
+  so every pre-2026 article number is stale. The audit records that the
+  repository had never cited an article number of that law, so no historical
+  content was wrong — but the hazard is live for any future citation, and the
+  warning is now carried in the packs that name the law.
+- The audit also states the **limits of the method**, which matter more than
+  the findings: the national standards search endpoint returns HTTP 200 for a
+  standard number that does not exist, so reachability is not existence — and
+  anti-bot 403/412 responses prove neither existence nor absence.
+
+### Changed — pack template
+
+`templates/pack-template` gained the conventions the L2 packs actually use,
+rather than only the file layout: settled-ADR tables, chapter maps, the load
+order in the order traceability flows, and hard rules learned rather than
+copied (settled ADRs are not relitigated; IDs are immutable; invariants are
+distinguished from service levels; a rule is stated by what it prevents).
+
+### Fixed — legal content that was wrong or unavailable
+
+- `国办发〔2025〕33号《电子印章管理办法》` retrieved in full. Its Article 27 —
+  business systems of administrative and public-service bodies **shall support**
+  compliant electronic seals — turns a mandate into an obligation on the
+  `one-stop-service` platform's own architecture, and was previously recorded
+  as an open question with no answer available.
+- 国务院令第716号's article numbers and dates were verified against the
+  Ministry of Justice's National Administrative Regulations Database rather
+  than asserted from memory.
+- GB/T 36901–36906-2018 (electronic licence, six standards) confirmed real
+  against the national standards platform — published 2018-11-15, effective
+  2019-01-01, in force.
+
+### Deliberately not done
+
+- **`verification` above `source-checked`** — `practitioner-reviewed` and
+  `field-proven` both remain 0. Rung 3 requires `verified_by` entries naming a
+  human, which no agent can supply.
+- **Conformance claims** — ODA/TMF, BPMN 2.0, NIST AI RMF, ISO/IEC 42001 and
+  the EU AI Act are all adopted as **vocabulary and shape**, with no maturity
+  level, API version or clause claimed.
+- **Retention values, tariff content, estimation methods, seal primitives** —
+  each is recorded as a gap with the requirement stated, rather than filled
+  with plausible content.
+- **Currency tracking** — per the repository's scope decision, no instrument is
+  re-verified for amendments after drafting.
+
+### Fixed — repository hygiene & the outsider-facing surface
 
 - `.github/ISSUE_TEMPLATE/config.yml`: both `contact_links` pointed at
   `github.com/USERNAME/...` — placeholders left over from the pre-rename push.
@@ -108,7 +224,7 @@ releases (individual packs carry their own `version` in `manifest.yaml`).
 - Fixed 17 broken `pack-standard` links in pack `SOURCES.md` files
   (one directory short).
 
-## [0.1.0] — 2026-10-08
+## [0.1.0] — 2026-10-10
 
 Initial repository state: pack standard draft, taxonomy, roadmap, 17-pack
 shelf (1× L3, 1× L2, 15× L1 at that point), contribution guides, issue/PR
