@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Maturity | 🟡 L1 — Brief (target L3) |
+| Maturity | 🔵 L2 — Blueprint (target L3) |
 | Domain | retail-commerce / commerce-platform |
 | Stack stance | Vendor-neutral |
 | Regulatory context | 电子商务法 & PIPL (CN); PCI-DSS applies wherever card data is touched (default design: never touch it — PSP-hosted fields) |
@@ -48,10 +48,33 @@ as variants behind one order core.
 
 ## Open questions
 
-1. Inventory consistency pattern: reservation saga vs. redis-deduction
-  canonical — specified as options with load-bearing ADRs at L2.
-2. POS/offline depth: variant or core channel adapter?
+1. ~~Inventory consistency pattern: reservation saga vs. redis-deduction
+  canonical~~ — **settled by ADR-0001**: per-product hold policy, with reserve and consume as distinct operations and mandatory reserve expiry. Store-level choice is left to the deployment.
+2. ~~POS/offline depth: variant or core channel adapter?~~ — **settled by ADR-0004**: a variant, never a fork; POS declares the channel contract like any other channel.
 3. Promotion engine: rule DSL scope and simulation fidelity.
+
+## Settled ADRs (do not relitigate)
+
+| ADR | Decision |
+|---|---|
+| **0001** | Inventory deduction is **per-product**; reserve and consume are distinct operations; reserve expiry is mandatory |
+| **0002** | Pricing is frozen into an **immutable snapshot** at capture and never recomputed; the snapshot records its ruleset version |
+| **0003** | Money-operation **idempotency keys are platform-issued**, not the PSP's, because the PSP's key does not cover POS or marketplace paths |
+| **0004** | A channel is a **variant over the shared core**, never a fork; onboarding is gated by the channel contract |
+| **0005** | PCI scope is excluded by **PSP-hosted fields**, and the exclusion is **demonstrated per channel**, not asserted once for the architecture |
+
+## Chapter map
+
+```
+00-context   industry-brief · regulatory-landscape · stakeholders
+01-business  capability-map (CAP-01..10) · processes (P-01..08) · business-rules (BR-01..15)
+02-requirements  functional (FR-001..028) · non-functional (NFR-001..012 + pinned formulas)
+             · compliance (CTL-01..08)
+03-domain   domain-model (contexts, aggregates, invariants) · glossary
+04-architecture  overview · integration (I-01..09, F-01..06) · security · observability
+             · adr/0001..0005
+05-data     logical-data-model (10 integrity constraints) · data-dictionary
+```
 
 ## Maturity roadmap
 
@@ -61,25 +84,44 @@ as variants behind one order core.
   - [x] Stakeholder list (`00-context/stakeholders.md`)
   - [x] Level-1 capability map (`01-business/capability-map.md`)
   - [x] Glossary seeded (`03-domain/glossary.md`)
-- [ ] L2 — Blueprint
-  - [ ] Business processes / rules (`01-business/`) — order state transitions,
-        hold policies, reversal paths
-  - [ ] Functional requirements (`02-requirements/`) with stable IDs
-  - [ ] NFR catalog with concurrency targets (`02-requirements/non-functional.md`)
-  - [ ] Compliance controls traced to `regulatory-landscape.md`
-  - [ ] Domain model incl. bounded contexts (`03-domain/domain-model.md`)
-  - [ ] Architecture views + ≥3 ADRs (`04-architecture/`)
-  - [ ] Logical data model + data dictionary (`05-data/`)
+- [x] L2 — Blueprint
+  - [x] Business processes / rules (`01-business/processes.md` P-01..08,
+        `business-rules.md` BR-01..15)
+  - [x] Functional requirements with stable IDs (`02-requirements/functional.md`,
+        FR-001..028)
+  - [x] NFR catalog with measurable targets and pinned formulas
+        (`02-requirements/non-functional.md`, NFR-001..012)
+  - [x] Compliance controls traced to instrument designations
+        (`02-requirements/compliance.md`, CTL-01..08)
+  - [x] Domain model incl. bounded contexts (`03-domain/domain-model.md`)
+  - [x] Architecture views (`04-architecture/overview.md`, `integration.md`,
+        `security.md`, `observability.md`)
+  - [x] ≥3 ADRs covering the load-bearing decisions (`04-architecture/adr/`,
+        0001..0005)
+  - [x] Logical data model + data dictionary (`05-data/`, 10 integrity
+        constraints)
 - [ ] L3 — Agent-ready
+  - [ ] API contracts for core services (`06-contracts/`)
+  - [ ] State machines for key lifecycle objects (`03-domain/state-machines.md`)
+  - [ ] EARS acceptance criteria with full requirement traceability
+        (`08-quality/`)
+  - [ ] Integration & data-flow specs (protocols, payloads, frequencies)
+  - [ ] Test strategy incl. performance and failure scenarios
+  - [ ] Delivery milestones + agent-executable task map (`09-delivery/`)
+  - [ ] `AGENTS.md` load order validated end-to-end
+  - [ ] Consistency review: IDs resolve, glossary terms used uniformly, no
+        contradiction between requirements, design, and contracts
 - [ ] L4 — Proven
 
-### Blocking L2
+### Blocking L3
 
-1. **Hold policy granularity** — the glossary fixes "per product, with expiry",
-   but the *set* of supported policies and their transitions between them (a
-   cart that moves from reserve-at-add to consume-at-capture) is undecided.
-2. **The order state machine itself** — states and transitions are named in the
-   glossary but not enumerated. This is the load-bearing artefact and must be
-   specified before requirements can reference it.
-3. **Promotion snapshot retention period** — the chapter records that retention
-   is not optional for transparency reasons, but the period is a business decision.
+1. **The order state machine itself** — states and transitions are named across
+   the rules and requirements; L3 requires them enumerated in
+   `03-domain/state-machines.md`.
+2. **Contract for the channel adapter interface** — the five declared aspects
+   exist in prose (`04-architecture/integration.md`); L3 needs it as a contract.
+3. **Acceptance criteria for the three zero-tolerance invariants** — NFR-001,
+   NFR-004 and NFR-005 need criteria that fail a build, not a threshold that is
+   reported.
+4. **Reconciliation closure procedures per gap type** — BR-13 requires closure;
+   the per-type procedures are not yet specified.
