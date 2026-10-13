@@ -3,8 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#f6f9fc" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#0a2540" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f6f9fc">
 <title>审批词汇实验室 · workflow-bpm</title>
 <style>
   /* The demo carries the app's tokens inline because it must open on its own:
@@ -13,7 +12,8 @@
      — the brand indigo is LOCKED in the contract, and the neutrals are cold by
      rule. Repeating values is how a second palette appears, so this block is
      byte-identical across every demo and a test keeps it that way. */
-  :root{
+  /* The demo is light-only, and the site and the demo share one theme. */
+  :root{ color-scheme:light;
     --page:#f6f9fc; --surface:#ffffff; --surface-2:#fafbfd; --surface-3:#eef2f7;
     --line:#e8edf3; --line-strong:#d3dae3;
     --navy:#0a2540; --text:#0a2540; --text-2:#425466; --text-3:#5f6b79;
@@ -36,18 +36,6 @@
     --bad:var(--danger); --bad-soft:var(--danger-soft);
     --bg:var(--page); --elev:var(--surface); --fg:var(--text);
     --border:var(--line); --border-strong:var(--line-strong);
-  }
-  @media (prefers-color-scheme:dark){
-    :root{
-      --page:#0a2540; --surface:#0f2c4d; --surface-2:#143253; --surface-3:#1a3a5e;
-      --line:#1e4067; --line-strong:#2a517d; --text:#eaf0f7; --text-2:#b6c4d4; --text-3:#9fb2c6;
-      --primary:#818cf8; --primary-hover:#a5b4fc; --primary-active:#c7d2fe;
-      --primary-tint:#1a2b52; --primary-ring:rgba(129,140,248,.32); --on-primary:#0a2540;
-      --ok:#4ade9f; --ok-soft:#10312a; --warn:#f0b062; --warn-soft:#33260f;
-      --danger:#f0939a; --danger-soft:#3a1c1f;
-      --shadow-card:0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.28);
-      --shadow-pop:0 12px 32px rgba(0,0,0,.4);
-    }
   }
   *{box-sizing:border-box}
   /* An identifier is one token: `FR-018` was breaking after the hyphen in

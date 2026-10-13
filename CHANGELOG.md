@@ -1,3 +1,9 @@
+# Changelog
+
+All notable changes to Open Solution Atlas. Format loosely follows
+[Keep a Changelog](https://keepachangelog.com/); versions are repository-wide
+releases (individual packs carry their own `version` in `manifest.yaml`).
+
 ## [Unreleased]
 
 ### Changed — the catalog adopts the product's theme
@@ -79,14 +85,80 @@ tokens, vendored at `docs/embkit-ui-contract.md`.
 - Chapter slugs wrapped to three lines inside the contract's fixed 36px nav
   row; they truncate to one line now.
 
+### Changed — one theme, not two
+
+Dark mode is gone. It was **derived** from the contract's navy rather than
+transcribed from §1, which made it the one part of the theme with no source of
+truth — and it cost more than it gave. Inline code rendered at **1.49:1** in
+dark, and the audit meant to catch it graded the *light* palette, because dark
+was driven by `@media (prefers-color-scheme: dark)` while the kit's
+`axe_audit.mjs --dark` sets `data-theme="dark"`.
+
+The contract does not mention a dark theme at all, so removing it is not a
+deviation from anything: it is one palette to get right instead of two.
+`color-scheme: light` is pinned in the stylesheet, so a reader whose OS prefers
+dark does not get this sheet with the browser's own inverted form controls and
+scrollbars. A test asserts there is no second palette anywhere, in the site or
+in the demos.
+
+### Fixed — what the kit's verifiers found, run against this site
+
+`scripts/lint_hardcodes.py`, `lint_taste.py`, `axe_audit.mjs` and the `verify_*`
+family are the house tooling, and the contract names two of them as its
+acceptance method. Running them replaced guessing with findings, and every one
+below is a defect that reading the stylesheet had not revealed.
+
+- **123 hardcoded values** → now `OK: no hardcoded values found`. The fix names
+  the numbers rather than inlining fewer of them: a component-metrics block, and
+  off-scale literals (6px, 10px, 13.5px) snapped onto §5's scale.
+- **110 nodes below 4.5:1** — tertiary text on `--page`, `--surface-2` and
+  `--surface-3`, not on the `--surface` where the contract's value was checked.
+- **Two unlabelled form elements** (critical): the inline prompt's textarea and
+  the demo's completion-policy select had no accessible name.
+- **Links inside text blocks** are underlined, so they do not rely on colour.
+- **`node_modules` was discovered as content**, which put a dependency's READMEs
+  on the site and broke the link checker on a file inside a package.
+
+### Fixed — what a real browser found that the suite did not
+
+Serving the built site and reading it found four defects that the published
+site, the test suite and the audits had all passed.
+
+- **The catalog had no page gutter.** `render_catalog` never wrapped its body in
+  `.wrap`, the container that carries the measure and the gutter, so the first
+  facet label was clipped at x=0 and the hero and trust note sat against the
+  viewport edge. Their own padding made everything *look* inset, which is why a
+  screenshot had not exposed it either.
+- **The trust note was a flex container.** It is a sentence with inline `code`
+  and `strong` in it, and flex blockified those children and put a gap before the
+  punctuation, so it read as fragments.
+- **The anti-double-submission demo threw on load**: its script wrote to a `#log`
+  the page never declared. The harness passed it because the stub minted a node
+  for any id asked for — a stub that answers every question is not a test.
+- **Identifiers in the demos' tables no longer wrap** (`FR-018` was splitting
+  after the hyphen, which stops it reading as an identifier).
+
+### Added — the demo harness moved into the repository
+
+`tools/demo-harness/`, run by `tests/test_demo_harness.py` so CI runs it. It was
+a scratch-directory script, which is how a demo that dies on load could ship: the
+check that should have caught it was not reproducible by anyone else. The stub
+now registers the ids the HTML declares and returns **null** for the rest, which
+is what a browser does.
+
+### Added — the third demo
+
+`packs/government-public/data-exchange/10-demo/` — the closed-loop sharing lab.
+Authorization → approval → share → lineage is a **cycle**, and breaking it
+anywhere produces the same thing: a transfer nobody can attribute. A transfer
+with no grant lights `BR-08` and `FR-018`; a purpose-mismatched transfer is the
+subtler case, because a grant that exists but does not cover this transfer's
+purpose is not a grant for it; and a revocation recorded while access persists
+lights `BR-07`, because revocation's value is the lead time until access is
+actually removed.
+
 `verification` unchanged: this changes how the content is presented, not what
-any pack claims. 147 tests, ruff clean, 0 broken links.
-
-# Changelog
-
-All notable changes to Open Solution Atlas. Format loosely follows
-[Keep a Changelog](https://keepachangelog.com/); versions are repository-wide
-releases (individual packs carry their own `version` in `manifest.yaml`).
+any pack claims. 161 tests, ruff clean, 0 broken links.
 
 ## [0.3.0] — 2026-10-14
 
