@@ -1267,14 +1267,21 @@ def render_card(pack: Pack) -> str:
     tags = "".join(f'<span class="tag">{html.escape(t)}</span>' for t in pack.tags[:8])
     summary = str(pack.manifest.get("_summary", ""))
     zh = f'<p class="zh" lang="zh-CN">{html.escape(pack.title_zh)}</p>' if pack.title_zh else ""
+    # Three explicit columns, so the register reads as aligned columns rather
+    # than whatever the grid's auto-placement happens to produce: the name and
+    # its description on the left, the marks in the middle, the tags on the
+    # right. `card-sum` used to force a full-width second line here, which put
+    # the Chinese title in the middle column.
     return (
         f'<article class="card" data-slug="{html.escape(pack.slug)}"'
         f' data-domain="{html.escape(pack.domain)}"'
         f' data-maturity="{html.escape(pack.maturity)}"'
         f' data-verification="{html.escape(pack.verification)}">'
+        '<div class="card-main">'
         f'<a class="card-link" href="{pack.index_url}">'
         f'<h3>{html.escape(pack.title)}</h3></a>{zh}'
         f'<p class="card-sum">{html.escape(summary)}</p>'
+        '</div>'
         f'<div class="card-meta">{pack_pills(pack)}'
         f'<span class="meta-plain">{html.escape(pack.domain)}</span></div>'
         f'<div class="tags">{tags}</div>'

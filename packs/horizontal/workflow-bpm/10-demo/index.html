@@ -5,63 +5,85 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>审批词汇实验室 · workflow-bpm</title>
 <style>
+  /* The demo carries the atlas's own tokens, inline, because it must open on
+     its own — a demo that depends on the site's stylesheet cannot be opened
+     from the repository or from a file:// path. Six values, no radius, no
+     shadow, and red means violated and nothing else. */
   :root{
-    --bg:#fbfaf7; --elev:#fff; --fg:#1c1b19; --muted:#6b6862;
-    --border:#e2ded6; --border-strong:#cbc6bb;
-    --accent:#b45309; --accent-soft:#fdf0dc; --link:#8a4b08;
-    --bad:#b91c1c; --bad-soft:#fee2e2; --ok:#166534; --ok-soft:#dcfce7;
-    --mono:ui-monospace,"SF Mono","Cascadia Mono",Menlo,Consolas,monospace;
-    --radius:10px;
+    --vellum:#edeede; --vellum-2:#e4e5df;
+    --ink:#1c1f1d; --muted:#5b625c;
+    --rule:#a8afa5; --rule-strong:#7f877c;
+    --draft:#2a5580; --draft-soft:#dde5ee;
+    --revise:#a32020; --revise-soft:#f2dede;
+    --bg:var(--vellum); --elev:var(--vellum); --fg:var(--ink);
+    --border:var(--rule); --border-strong:var(--rule-strong);
+    --accent:var(--draft); --accent-soft:var(--draft-soft); --link:var(--draft);
+    --bad:var(--revise); --bad-soft:var(--revise-soft);
+    --mono:ui-monospace,"SF Mono","Cascadia Mono","DejaVu Sans Mono",Menlo,Consolas,monospace;
   }
   @media (prefers-color-scheme:dark){
-    :root{--bg:#121316;--elev:#191b1f;--fg:#e8e6e1;--muted:#9d9a93;--border:#2a2d33;
-      --border-strong:#3a3e45;--accent:#f0a442;--accent-soft:#2a2216;--link:#f0b365;
-      --bad:#fca5a5;--bad-soft:#3b1414;--ok:#86efac;--ok-soft:#10281a;}
+    :root{--vellum:#14171a;--vellum-2:#191d21;--ink:#dde1de;--muted:#8d968f;
+      --rule:#454c52;--rule-strong:#61696f;--draft:#7fa8d4;--draft-soft:#1d2a37;
+      --revise:#e08a8a;--revise-soft:#331c1c;--bg:var(--vellum);--elev:var(--vellum);
+      --fg:var(--ink);--border:var(--rule);--border-strong:var(--rule-strong);
+      --accent:var(--draft);--accent-soft:var(--draft-soft);--link:var(--draft);
+      --bad:var(--revise);--bad-soft:var(--revise-soft);}
   }
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--fg);
     font:15px/1.55 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif}
-  .wrap{max-width:1120px;margin:0 auto;padding:1.4rem 1.1rem 4rem}
-  header{border-bottom:1px solid var(--border);padding-bottom:.9rem;margin-bottom:1.2rem}
-  h1{font-size:1.35rem;margin:0 0 .25rem}
-  .sub{color:var(--muted);font-size:.86rem;margin:0}
-  .grid{display:grid;grid-template-columns:300px minmax(0,1fr) 290px;gap:1rem;align-items:start}
-  @media (max-width:960px){.grid{grid-template-columns:1fr}}
-  .panel{background:var(--elev);border:1px solid var(--border);border-radius:var(--radius);padding:.85rem}
-  .panel h2{font-size:.82rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);
-    margin:0 0 .6rem;font-weight:700}
-  .panel h3{font-size:.95rem;margin:0 0 .35rem}
-  button{font:inherit;font-size:.82rem;cursor:pointer;background:var(--elev);color:var(--fg);
-    border:1px solid var(--border-strong);border-radius:999px;padding:.26rem .72rem;margin:.12rem .16rem .12rem 0}
-  button:hover{border-color:var(--accent);color:var(--accent)}
-  button[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent);font-weight:600}
-  button:disabled{opacity:.4;cursor:not-allowed}
-  select{font:inherit;font-size:.82rem;background:var(--elev);color:var(--fg);
-    border:1px solid var(--border-strong);border-radius:6px;padding:.3rem .5rem;width:100%}
+  .wrap{max-width:1200px;margin:0 auto;padding:1.4rem 1.1rem 4rem}
+  /* A sheet, not a card: ruled frame, no radius, no shadow. */
+  header{border-bottom:1px solid var(--rule-strong);padding-bottom:.9rem;margin-bottom:1.2rem}
+  h1{font:650 1.35rem/1.2 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;
+    margin:0 0 .3rem;letter-spacing:-.01em}
+  .sub{color:var(--muted);font-size:.86rem;margin:0;max-width:80ch;line-height:1.6}
+  .grid{display:grid;grid-template-columns:300px minmax(0,1fr) 290px;gap:0;align-items:start;
+    border:1px solid var(--ink)}
+  .grid > .panel{border-right:1px solid var(--rule)}
+  .grid > .panel:last-child{border-right:0}
+  @media (max-width:960px){
+    .grid{grid-template-columns:1fr}
+    .grid > .panel{border-right:0;border-bottom:1px solid var(--rule)}
+  }
+  .panel{padding:.9rem}
+  .panel h2{font:600 12px/1.5 var(--mono);letter-spacing:.06em;color:var(--muted);
+    margin:0 0 .6rem;font-weight:600;border-bottom:1px solid var(--rule);padding-bottom:.35rem}
+  .panel h3{font-size:.95rem;margin:1rem 0 .35rem;font-weight:600}
+  button{font:500 12px/1 var(--mono);cursor:pointer;background:var(--bg);color:var(--fg);
+    border:1px solid var(--rule-strong);border-radius:0;padding:.3rem .6rem;margin:.12rem .18rem .12rem 0}
+  button:hover{border-color:var(--draft);color:var(--draft)}
+  button[aria-pressed="true"]{background:var(--draft);border-color:var(--draft);color:var(--vellum);font-weight:600}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  select{font:400 12px/1 var(--mono);background:var(--bg);color:var(--fg);
+    border:1px solid var(--rule-strong);border-radius:0;padding:.4rem .5rem;width:100%}
   code{font-family:var(--mono);font-size:.76rem}
-  .kv{display:flex;gap:.5rem;font-size:.82rem;margin:.18rem 0}
-  .kv b{color:var(--muted);font-weight:600;min-width:5.4rem}
-  .log{max-height:230px;overflow:auto;font-family:var(--mono);font-size:.74rem;
-    background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:.5rem .6rem}
-  .log div{padding:.1rem 0;border-bottom:1px dotted var(--border)}
+  .kv{display:flex;gap:.5rem;font:400 12.5px/1.7 var(--mono);margin:.18rem 0}
+  .kv b{color:var(--muted);font-weight:600;min-width:5.2rem}
+  .log{max-height:230px;overflow:auto;font-family:var(--mono);font-size:11.5px;line-height:1.7;
+    background:var(--vellum-2);border:1px solid var(--rule);border-radius:0;padding:.5rem .6rem}
+  .log div{padding:.1rem 0;border-bottom:1px solid var(--rule)}
   .log div:last-child{border:0}
-  .viol{background:var(--bad-soft);border:1px solid var(--bad);border-radius:8px;
-    padding:.5rem .65rem;font-size:.8rem;margin:.35rem 0;color:var(--bad)}
-  .ok{background:var(--ok-soft);border:1px solid var(--ok);border-radius:8px;
-    padding:.5rem .65rem;font-size:.8rem;margin:.35rem 0;color:var(--ok)}
-  .sig{display:inline-block;font-family:var(--mono);font-size:.66rem;font-weight:700;
-    padding:.08rem .38rem;border-radius:4px;border:1px solid currentColor;vertical-align:.08em}
+  /* Red means violated. The non-violated state is quiet — a green "all clear"
+     would be a second semantic colour and would teach the reader to skim. */
+  .viol{background:var(--bad-soft);border:0;border-left:3px solid var(--bad);
+    padding:.5rem .65rem;font-size:12.5px;line-height:1.55;margin:.35rem 0;color:var(--bad)}
+  .ok{background:none;border:0;border-left:3px solid var(--rule-strong);
+    padding:.5rem .65rem;font-size:12.5px;line-height:1.55;margin:.35rem 0;color:var(--muted)}
+  .sig{display:inline-block;font:700 10.5px/1.4 var(--mono);letter-spacing:.03em;
+    padding:.1rem .32rem;border:1px solid currentColor;vertical-align:.08em}
   .sev1{color:var(--bad)} .sev2{color:var(--accent)}
-  table{width:100%;border-collapse:collapse;font-size:.78rem}
-  th,td{text-align:left;padding:.3rem .4rem;border-bottom:1px solid var(--border);vertical-align:top}
-  th{color:var(--muted);font-size:.7rem;text-transform:uppercase;letter-spacing:.04em}
-  .note{font-size:.76rem;color:var(--muted);margin:.5rem 0 0}
-  .def{font-size:.79rem;margin:.3rem 0}
+  table{width:100%;border-collapse:collapse;font:400 12px/1.6 var(--mono)}
+  th,td{text-align:left;padding:.32rem .4rem;border-bottom:1px solid var(--rule);vertical-align:top}
+  th{color:var(--muted);font-size:11px;letter-spacing:.05em;font-weight:600}
+  .note{font-size:12px;color:var(--muted);margin:.5rem 0 0;line-height:1.6}
+  .def{font-size:12.5px;line-height:1.6;margin:.35rem 0}
   .def b{color:var(--link)}
-  details{margin:.4rem 0}
-  summary{cursor:pointer;font-size:.78rem;color:var(--muted)}
+  details{margin:.5rem 0}
+  summary{cursor:pointer;font:500 12px/1.5 var(--mono);color:var(--muted)}
   a{color:var(--link)}
-  .src{font-size:.72rem;color:var(--muted);margin-top:1rem;border-top:1px solid var(--border);padding-top:.7rem}
+  .src{font:400 11.5px/1.7 var(--mono);color:var(--muted);margin-top:1.4rem;
+    border-top:1px solid var(--rule-strong);padding-top:.8rem;max-width:100ch}
 </style>
 </head>
 <body>
