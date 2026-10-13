@@ -1,0 +1,479 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>反重复提交实验室 · one-stop-service</title>
+<style>
+  /* The demo carries the atlas's own tokens, inline, because it must open on
+     its own — a demo that depends on the site's stylesheet cannot be opened
+     from the repository or from a file:// path. Six values, no radius, no
+     shadow, and red means violated and nothing else. */
+  :root{
+    --vellum:#edeede; --vellum-2:#e4e5df;
+    --ink:#1c1f1d; --muted:#5b625c;
+    --rule:#a8afa5; --rule-strong:#7f877c;
+    --draft:#2a5580; --draft-soft:#dde5ee;
+    --revise:#a32020; --revise-soft:#f2dede;
+    --bg:var(--vellum); --elev:var(--vellum); --fg:var(--ink);
+    --border:var(--rule); --border-strong:var(--rule-strong);
+    --accent:var(--draft); --accent-soft:var(--draft-soft); --link:var(--draft);
+    --bad:var(--revise); --bad-soft:var(--revise-soft);
+    --mono:ui-monospace,"SF Mono","Cascadia Mono","DejaVu Sans Mono",Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{--vellum:#14171a;--vellum-2:#191d21;--ink:#dde1de;--muted:#8d968f;
+      --rule:#454c52;--rule-strong:#61696f;--draft:#7fa8d4;--draft-soft:#1d2a37;
+      --revise:#e08a8a;--revise-soft:#331c1c;--bg:var(--vellum);--elev:var(--vellum);
+      --fg:var(--ink);--border:var(--rule);--border-strong:var(--rule-strong);
+      --accent:var(--draft);--accent-soft:var(--draft-soft);--link:var(--draft);
+      --bad:var(--revise);--bad-soft:var(--revise-soft);}
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);
+    font:15px/1.55 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif}
+  .wrap{max-width:1240px;margin:0 auto;padding:1.4rem 1.1rem 4rem}
+  header{border-bottom:1px solid var(--rule-strong);padding-bottom:.9rem;margin-bottom:1.2rem}
+  h1{font:650 1.35rem/1.2 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;
+    margin:0 0 .3rem;letter-spacing:-.01em}
+  .sub{color:var(--muted);font-size:.86rem;margin:0;max-width:84ch;line-height:1.65}
+  .grid{display:grid;grid-template-columns:290px minmax(0,1fr) 270px;gap:0;align-items:start;
+    border:1px solid var(--ink)}
+  .grid>.panel{border-right:1px solid var(--rule)}
+  .grid>.panel:last-child{border-right:0}
+  @media (max-width:980px){
+    .grid{grid-template-columns:1fr}
+    .grid>.panel{border-right:0;border-bottom:1px solid var(--rule)}
+  }
+  .panel{padding:.9rem}
+  .panel h2{font:600 12px/1.5 var(--mono);letter-spacing:.06em;color:var(--muted);
+    margin:0 0 .6rem;font-weight:600;border-bottom:1px solid var(--rule);padding-bottom:.35rem}
+  .panel h3{font-size:.95rem;margin:1rem 0 .35rem;font-weight:600}
+  button{font:500 12px/1 var(--mono);cursor:pointer;background:var(--bg);color:var(--fg);
+    border:1px solid var(--rule-strong);border-radius:0;padding:.3rem .6rem;margin:.12rem .18rem .12rem 0}
+  button:hover{border-color:var(--draft);color:var(--draft)}
+  button[aria-pressed="true"]{background:var(--draft);border-color:var(--draft);color:var(--vellum);font-weight:600}
+  select{font:400 12px/1 var(--mono);background:var(--bg);color:var(--fg);
+    border:1px solid var(--rule-strong);border-radius:0;padding:.4rem .5rem;width:100%}
+  input[type=text]{font:400 12px/1.4 var(--mono);background:var(--bg);color:var(--fg);
+    border:1px solid var(--rule-strong);border-radius:0;padding:.35rem .5rem;width:100%}
+  code{font-family:var(--mono);font-size:.76rem}
+  .kv{display:flex;gap:.5rem;font:400 12.5px/1.7 var(--mono);margin:.18rem 0}
+  .kv b{color:var(--muted);font-weight:600;min-width:6.6rem}
+  .log{max-height:210px;overflow:auto;font-family:var(--mono);font-size:11.5px;line-height:1.7;
+    background:var(--vellum-2);border:1px solid var(--rule);border-radius:0;padding:.5rem .6rem}
+  .log div{padding:.1rem 0;border-bottom:1px solid var(--rule)}
+  .log div:last-child{border:0}
+  /* Red means violated. The passing state is quiet — a green "all clear" would
+     be a second semantic colour and would train the reader to skim. */
+  .viol{background:var(--bad-soft);border:0;border-left:3px solid var(--bad);
+    padding:.5rem .65rem;font-size:12.5px;line-height:1.55;margin:.35rem 0;color:var(--bad)}
+  .ok{background:none;border:0;border-left:3px solid var(--rule-strong);
+    padding:.5rem .65rem;font-size:12.5px;line-height:1.55;margin:.35rem 0;color:var(--muted)}
+  .sig{display:inline-block;font:700 10.5px/1.4 var(--mono);letter-spacing:.03em;
+    padding:.1rem .32rem;border:1px solid currentColor;vertical-align:.08em}
+  table{width:100%;border-collapse:collapse;font:400 12px/1.6 var(--mono)}
+  th,td{text-align:left;padding:.32rem .4rem;border-bottom:1px solid var(--rule);vertical-align:top}
+  th{color:var(--muted);font-size:11px;letter-spacing:.05em;font-weight:600}
+  .note{font-size:12px;color:var(--muted);margin:.5rem 0 0;line-height:1.65}
+  .def{font-size:12.5px;line-height:1.65;margin:.35rem 0}
+  .def b{color:var(--draft)}
+  details{margin:.5rem 0}
+  summary{cursor:pointer;font:500 12px/1.5 var(--mono);color:var(--muted)}
+  a{color:var(--link)}
+  .field{border:1px solid var(--rule);padding:.55rem .65rem;margin:.4rem 0}
+  .field.obtainable{border-left:3px solid var(--draft)}
+  .field.demanded{border-left:3px solid var(--bad);background:var(--bad-soft)}
+  .field-head{display:flex;gap:.5rem;align-items:baseline;flex-wrap:wrap}
+  .field-head b{font-size:13px}
+  .cls{font:600 10.5px/1.4 var(--mono);letter-spacing:.04em;padding:.1rem .3rem;border:1px solid currentColor}
+  .cls.share{color:var(--draft)} .cls.own{color:var(--muted)}
+  .row{display:flex;gap:.4rem;align-items:baseline;flex-wrap:wrap;font:400 12px/1.7 var(--mono);margin-top:.3rem}
+  .row span.k{color:var(--muted);min-width:4.6rem}
+  .src{font:400 11.5px/1.8 var(--mono);color:var(--muted);margin-top:1.4rem;
+    border-top:1px solid var(--rule-strong);padding-top:.8rem;max-width:110ch}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>反重复提交实验室 <span style="font-weight:400;color:var(--muted)">Anti-double-submission lab</span></h1>
+  <p class="sub">
+    本页演示 <code>packs/government-public/one-stop-service</code> 的核心决策（ADR-0005）：
+    <strong>行政机构能通过数据共享获得的信息，不得要求相对人另行提供</strong>。
+    需要这个 demo 的理由：这条规则是被<strong>系统的自然方向</strong>违反的，不是被缺陷违反的——
+    索要一份文件很容易，证明它本来就有很难，一个默认索要的平台看起来更友好，<strong>并且不合规</strong>。
+    所以控制在<strong>字段</strong>这一层，因为那是它唯一能衰减的层级。
+  </p>
+</header>
+
+<div class="grid">
+
+<!-- ────────── 左：字段与共享状态 ────────── -->
+<section class="panel">
+  <h2>字段 · glossary §2</h2>
+  <div id="fields"></div>
+  <p class="note">
+    每个字段都被分类为「<b>可共享获取</b>」或「<b>不可</b>」——<strong>逐字段</strong>，不是逐表单。
+    按表单分类会漏掉那个本不该被问到的字段，而规则只在这一层衰减。
+  </p>
+  <details>
+    <summary>本包刻意留白的：许可替代集</summary>
+    <p class="note">
+      FR-013 要求查找失败走「<strong>已定义的许可替代</strong>」，但<b>那个集合本身尚未设计</b>——
+      它是 L3 的设计任务，也正是决定这条规则在实践中是否可执行的那一项。
+      本 demo 因此要求你<b>显式选择</b>一个替代，而不是替你猜一个。
+    </p>
+  </details>
+</section>
+
+<!-- ────────── 中：表单渲染与动作 ────────── -->
+<section class="panel">
+  <h2>表单如何渲染</h2>
+  <div id="render"></div>
+
+  <h3>对共享源执行一次查找</h3>
+  <div id="lookupActs"></div>
+  <p class="note" id="lookupNote"></p>
+
+  <h3>申请人视角</h3>
+  <div id="applicant"></div>
+</section>
+
+<!-- ────────── 右：不变量 ────────── -->
+<section class="panel">
+  <h2>零容忍不变量</h2>
+  <div id="violations"></div>
+  <p class="note">
+    下面是本包的 11 个不可交易不变量。它们不是阈值：任何一个非零，第七条就不再成立。
+    <strong>三个共享同一种形状</strong>——它们<b>一次一个字段</b>地失败，
+    而每一个单独实例看起来都有帮助、正确或无害。<b>汇总数字永远不暴露逐实例的违反。</b>
+  </p>
+  <table>
+    <thead><tr><th>ID</th><th>要求</th><th>状态</th></tr></thead>
+    <tbody id="invTable"></tbody>
+  </table>
+</section>
+
+</div>
+
+<p class="src">
+  内容来源：<code>01-business/business-rules.md</code>（BR-05）、
+  <code>02-requirements/functional.md</code>（FR-010..FR-014）、
+  <code>03-domain/glossary.md</code> §2、<code>04-architecture/adr/0005</code>、
+  <code>05-data/logical-data-model.md</code>（约束 6/7/8）。
+  本页为手写演示：它编码本包的语义，不声称符合任何 profile。<code>verification: unverified</code>。
+</p>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ---- 词汇：只列本包定义的语义 ---- */
+var PERMITTED_ALTERNATIVES = [
+  {id:"verify-in-person", label:"窗口现场核验（一次）"},
+  {id:"authoritative-copy", label:"提交权威机构出具的副本"},
+  {id:"self-declare", label:"申请人申报 + 后台复核"},
+  {id:"defer", label:"暂存待补（有期限，不得无限期）"}
+];
+
+/* 字段：可共享获取的那个是第七条的对象 */
+var FIELDS = [
+  {id:"name",       label:"申请人姓名",   obtainable:true,  note:"公安部人口库可核验"},
+  {id:"id-number",  label:"身份证号",     obtainable:true,  note:"同上，可直接回填"},
+  {id:"marital",    label:"婚姻状况",     obtainable:true,  note:"民政库可核验——最常被多问的一项"},
+  {id:"employer",   label:"工作单位",     obtainable:false, note:"无共享来源，确需本人提供"}
+];
+
+var INVARIANTS = [
+  {id:"FR-010", what:"每个字段都带共享分类", sev:1},
+  {id:"FR-011", what:"可获取字段绝不设为必填", sev:1},
+  {id:"FR-012", what:"可获取字段被预填或核验", sev:1},
+  {id:"FR-013", what:"查找失败走已定义许可替代，不再问", sev:1},
+  {id:"FR-014", what:"豁免必须留痕与理由", sev:1},
+  {id:"NFR-001", what:"可共享获取的字段被索要 = 0", sev:1},
+  {id:"NFR-002", what:"字段分类完整性 100%", sev:1},
+  {id:"NFR-003", what:"豁免留痕 100%", sev:1}
+];
+
+var state = {
+  lookups: {},        // fieldId -> {outcome, alternative?}
+  exemptions: {},     // fieldId -> reason
+  demanded: {},       // fieldId -> true（被强行索要）
+  events: []
+};
+
+/* ---- 工具 ---- */
+function el(id){ return document.getElementById(id); }
+function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function append(text){
+  state.events.push(text);
+  if (state.events.length > 60) state.events.shift();
+  renderLog();
+}
+
+/* ---- 字段清单 ---- */
+function renderFields(){
+  var box = el("fields"); box.innerHTML = "";
+  FIELDS.forEach(function(f){
+    var d = document.createElement("div");
+    d.className = "field" + (f.obtainable ? " obtainable" : "");
+    d.innerHTML =
+      '<div class="field-head"><b>' + esc(f.label) + '</b>'
+      + '<span class="cls ' + (f.obtainable ? "share" : "own") + '">'
+      + (f.obtainable ? "可共享获取" : "不可共享") + '</span></div>'
+      + '<div class="row"><span class="k">字段 ID</span><code>' + esc(f.id) + "</code></div>"
+      + '<div class="row"><span class="k">分类依据</span>' + esc(f.note) + "</div>";
+    box.appendChild(d);
+  });
+}
+
+/* ---- 表单渲染：这是第七条真正被检验的地方 ---- */
+function renderForm(){
+  var box = el("render"); box.innerHTML = "";
+  FIELDS.forEach(function(f){
+    var lk = state.lookups[f.id];
+    var dem = !!state.demanded[f.id];
+    var ex = state.exemptions[f.id];
+    var d = document.createElement("div");
+    d.className = "field" + (f.obtainable ? " obtainable" : "") + (dem ? " demanded" : "");
+
+    var body = '<div class="field-head"><b>' + esc(f.label) + "</b>"
+      + '<span class="cls ' + (f.obtainable ? "share" : "own") + '">'
+      + (f.obtainable ? "可共享获取" : "不可共享") + "</span></div>";
+
+    if (!f.obtainable) {
+      // 不可共享：本人提供是合法的
+      body += '<div class="row"><span class="k">输入</span><input type="text" placeholder="由申请人填写"></div>'
+            + '<div class="row"><span class="k">必填</span><code>false / true</code>（本包语义：不可共享字段才可要求）</div>';
+    } else if (dem) {
+      // 被强行索要：违反 FR-011 / NFR-001
+      body += '<div class="row"><span class="k">输入</span><input type="text" placeholder="请上传/填写"> '
+            + '<span class="sig" style="color:var(--revise)">sev-1</span></div>'
+            + '<div class="row" style="color:var(--revise)">强制索要一个本可共享获取的字段</div>';
+    } else if (lk && lk.outcome === "ok") {
+      body += '<div class="row"><span class="k">值</span><code>' + esc(lk.value) + '</code> '
+            + '<span class="sig" style="color:var(--muted)">已回填 · 未询问</span></div>'
+            + '<div class="row"><span class="k">必填</span><code>false</code>（FR-011）</div>';
+    } else if (lk && lk.outcome === "failed") {
+      var alt = PERMITTED_ALTERNATIVES.filter(function(a){ return a.id === lk.alternative; })[0];
+      body += '<div class="row"><span class="k">状态</span>共享源查找失败</div>';
+      if (alt) {
+        body += '<div class="row"><span class="k">许可替代</span><code>' + esc(alt.label) + '</code> '
+              + '<span class="sig" style="color:var(--muted)">已定义 · 未再问</span></div>';
+      } else {
+        body += '<div class="row" style="color:var(--revise)">'
+              + '<span class="k">许可替代</span>未选择——FR-013 要求的是「已定义」</div>';
+      }
+    } else {
+      body += '<div class="row"><span class="k">状态</span>尚未查找</div>';
+    }
+
+    if (ex) {
+      body += '<div class="row"><span class="k">豁免</span>' + esc(ex)
+            + (ex.trim() ? ' <span class="sig" style="color:var(--muted)">已留痕</span>'
+                         : ' <span class="sig" style="color:var(--revise)">无理由</span>')
+            + "</div>";
+    }
+
+    d.innerHTML = body;
+
+    // 动作：豁免 / 强行索要
+    var acts = document.createElement("div");
+    if (f.obtainable && !lk) {
+      var b1 = document.createElement("button");
+      b1.type = "button"; b1.textContent = "设为豁免";
+      b1.setAttribute("data-action", "exempt"); b1.setAttribute("data-field", f.id);
+      b1.onclick = function(){
+        var r = prompt("豁免理由（FR-014 要求留痕）：", "");
+        if (r === null) return;
+        state.exemptions[f.id] = r;
+        append("exemption on " + f.id + " reason=" + (r.trim() ? "recorded" : "EMPTY"));
+        render();
+      };
+      acts.appendChild(b1);
+    }
+    if (f.obtainable) {
+      var b2 = document.createElement("button");
+      b2.type = "button";
+      b2.textContent = state.demanded[f.id] ? "撤销索要" : "强行索要";
+      b2.setAttribute("data-action", "demand"); b2.setAttribute("data-field", f.id);
+      b2.onclick = function(){
+        if (state.demanded[f.id]) { delete state.demanded[f.id]; append("demand withdrawn on " + f.id); }
+        else { state.demanded[f.id] = true; append("DEMAND " + f.id + " — violates FR-011/NFR-001"); }
+        render();
+      };
+      acts.appendChild(b2);
+    }
+    d.appendChild(acts);
+    box.appendChild(d);
+  });
+}
+
+/* ---- 查找动作 ---- */
+function renderLookups(){
+  var box = el("lookupActs"); box.innerHTML = "";
+  var pending = FIELDS.filter(function(f){ return f.obtainable && !state.lookups[f.id]; });
+  if (!pending.length) {
+    box.innerHTML = '<span class="sig" style="color:var(--muted)">已无可查找字段</span>';
+  } else {
+    pending.forEach(function(f){
+      var ok = document.createElement("button");
+      ok.type = "button"; ok.textContent = "查 " + f.label + " · 成功";
+      ok.setAttribute("data-action", "lookup-ok"); ok.setAttribute("data-field", f.id);
+      ok.onclick = function(){
+        state.lookups[f.id] = {outcome:"ok", value: sampleFor(f.id)};
+        append("lookup " + f.id + " -> prefilled (FR-012), not asked");
+        render();
+      };
+      var bad = document.createElement("button");
+      bad.type = "button"; bad.textContent = "查 " + f.label + " · 失败";
+      bad.setAttribute("data-action", "lookup-fail"); bad.setAttribute("data-field", f.id);
+      bad.onclick = function(){
+        state.lookups[f.id] = {outcome:"failed", alternative: ""};
+        append("lookup " + f.id + " -> FAILED: a permitted alternative is now required (FR-013)");
+        render();
+      };
+      box.appendChild(ok); box.appendChild(bad);
+    });
+  }
+
+  // 对失败的查找，选择许可替代
+  var failed = FIELDS.filter(function(f){ return state.lookups[f.id] && state.lookups[f.id].outcome === "failed"; });
+  if (failed.length) {
+    var h = document.createElement("h3");
+    h.textContent = "为失败的查找选择许可替代";
+    box.appendChild(h);
+    failed.forEach(function(f){
+      var sel = document.createElement("select");
+      sel.innerHTML = '<option value="">— 未选择 —</option>'
+        + PERMITTED_ALTERNATIVES.map(function(a){
+            return '<option value="' + a.id + '"' + (state.lookups[f.id].alternative === a.id ? " selected" : "") + ">"
+              + esc(a.label) + "</option>";
+          }).join("");
+      sel.onchange = function(){
+        state.lookups[f.id].alternative = this.value;
+        append("permitted alternative for " + f.id + " -> " + (this.value || "none"));
+        render();
+      };
+      var wrap = document.createElement("div");
+      wrap.style.marginBottom = ".4rem";
+      wrap.innerHTML = '<div class="row"><span class="k" style="min-width:6rem">' + esc(f.label) + "</span></div>";
+      wrap.appendChild(sel);
+      box.appendChild(wrap);
+    });
+  }
+  var note = el("lookupNote");
+  if (failed.length && failed.some(function(f){ return !state.lookups[f.id].alternative; })) {
+    note.innerHTML = '<span class="sig" style="color:var(--revise)">FR-013</span> 有失败的查找尚未选择许可替代。'
+      + ' <strong>唯一允许的下一步不是「再问申请人一次」。</strong>';
+  } else if (failed.length) {
+    note.innerHTML = '<span class="sig" style="color:var(--muted)">defined</span> 失败查找均有许可替代。';
+  } else {
+    note.textContent = "";
+  }
+}
+
+/* ---- 申请人视角：这是"好心"出现的地方 ---- */
+function renderApplicant(){
+  var box = el("applicant"); box.innerHTML = "";
+  var asked = FIELDS.filter(function(f){
+    if (!f.obtainable) return false;
+    if (state.demanded[f.id]) return true;
+    var lk = state.lookups[f.id];
+    return lk && lk.outcome === "failed" && !lk.alternative;  // 没有替代时回落成再问
+  });
+  if (asked.length) {
+    var d = document.createElement("div");
+    d.className = "viol";
+    d.innerHTML = '<span class="sig" style="color:var(--revise)">sev-1</span> 申请人被要求提供：'
+      + asked.map(function(f){ return "<code>" + esc(f.label) + "</code>"; }).join("、")
+      + "<br>这些字段本可共享获取。第七条对<b>申请人</b>的承诺，在这里被违反。";
+    box.appendChild(d);
+  } else {
+    var okv = document.createElement("div");
+    okv.className = "ok";
+    okv.textContent = "✓ 申请人未被要求提供任何可共享获取的字段";
+    box.appendChild(okv);
+  }
+}
+
+function sampleFor(id){
+  return {name:"张三", "id-number":"110101********1234", marital:"已婚", employer:""}[id] || "（已回填）";
+}
+
+function renderLog(){
+  var box = el("log"); box.innerHTML = "";
+  state.events.slice().reverse().forEach(function(e){
+    var d = document.createElement("div"); d.textContent = e; box.appendChild(d);
+  });
+}
+
+/* ---- 不变量检查 ---- */
+function checkInvariants(){
+  var v = {};
+  FIELDS.forEach(function(f){
+    if (!f.obtainable) return;
+    if (state.demanded[f.id]) { v["FR-011"] = true; v["NFR-001"] = true; }
+    var lk = state.lookups[f.id];
+    if (lk) {
+      if (lk.outcome === "ok") { /* FR-012 满足 */ }
+      else if (!lk.alternative) { v["FR-013"] = true; }
+    } else if (!state.demanded[f.id]) {
+      // 未查找且未被索要：字段尚未被满足——NFR-002 的分类完整，但回填未发生
+    }
+    if (f.id in state.exemptions && !String(state.exemptions[f.id]).trim()) v["NFR-003"] = true;
+  });
+  // NFR-002：有字段没分类。本 demo 的字段表恒定分类，故此处置 false；
+  // 真实系统里它由架构检查器强制。
+  v["NFR-002"] = false;
+  state.violations = v;
+  return v;
+}
+
+function renderViolations(){
+  var v = checkInvariants();
+  var box = el("violations"); box.innerHTML = "";
+  var keys = Object.keys(v).filter(function(k){ return v[k]; });
+  if (!keys.length) {
+    var ok = document.createElement("div");
+    ok.className = "ok";
+    ok.textContent = "✓ 当前配置未违反任何零容忍不变量";
+    box.appendChild(ok);
+  } else {
+    keys.forEach(function(k){
+      var d = document.createElement("div");
+      d.className = "viol";
+      d.innerHTML = '<span class="sig" style="color:var(--revise)">sev-1</span> <code>' + k + "</code> "
+        + (INVARIANTS.filter(function(i){return i.id===k;})[0] || {}).what
+        + " — 已记录。真实系统里这是一个会 <strong>失败构建</strong> 的缺陷。";
+      box.appendChild(d);
+    });
+  }
+}
+
+function renderTable(){
+  var tb = el("invTable"); tb.innerHTML = "";
+  var v = state.violations;
+  INVARIANTS.forEach(function(i){
+    var bad = v[i.id];
+    var tr = document.createElement("tr");
+    tr.innerHTML = "<td><code>" + i.id + '</code></td><td>' + i.what + '</td><td>'
+      + (bad ? '<span class="sig" style="color:var(--revise)">violated</span>'
+             : '<span class="sig" style="color:var(--muted)">held</span>') + "</td>";
+    tb.appendChild(tr);
+  });
+}
+
+function render(){
+  renderFields(); renderForm(); renderLookups(); renderApplicant();
+  renderViolations(); renderTable();
+}
+
+append("form rendered · 4 fields classified per-field (FR-010)");
+render();
+})();
+</script>
+</body>
+</html>
