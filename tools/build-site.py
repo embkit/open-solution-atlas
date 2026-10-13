@@ -406,8 +406,11 @@ HEAD = """<!doctype html>
 <meta property="og:description" content="{description}">
 <meta property="og:site_name" content="Open Solution Atlas">
 <meta name="twitter:card" content="summary">
-<meta name="theme-color" content="#fbfaf7" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#121316" media="(prefers-color-scheme: dark)">
+<!-- The browser's own chrome on mobile. These are the contract's page grounds,
+     so the address bar matches the sheet rather than keeping the previous
+     palette alive outside the stylesheet. -->
+<meta name="theme-color" content="#f6f9fc" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0a2540" media="(prefers-color-scheme: dark)">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='24' font-size='24'>{icon}</text></svg>">
 <link rel="stylesheet" href="{prefix}assets/style.css">
 </head>
