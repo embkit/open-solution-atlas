@@ -4,7 +4,12 @@ All notable changes to Open Solution Atlas. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); versions are repository-wide
 releases (individual packs carry their own `version` in `manifest.yaml`).
 
-## [Unreleased]
+## [0.4.0] — 2026-10-14
+
+The catalog became EmbKit's shop window, and building it then found what the shop
+window had been hiding: a page with no gutter, a demo that died on load, a trust
+note that was a flex container, and a second palette that no audit was looking
+at. Three interactive demos ship. Three is not seventeen.
 
 ### Changed — the catalog adopts the product's theme
 
@@ -156,6 +161,20 @@ subtler case, because a grant that exists but does not cover this transfer's
 purpose is not a grant for it; and a revocation recorded while access persists
 lights `BR-07`, because revocation's value is the lead time until access is
 actually removed.
+
+### Deliberately not done
+
+- **Fourteen demos.** A demo has to demonstrate the pack's own rule rather than a
+  generic interaction, so they are written one at a time and each takes the shape
+  of the invariant it exists to show. `wms` is next.
+- **Dark mode is removed rather than fixed.** It was the only part of the theme
+  derived instead of transcribed, and it shipped a contrast failure the audit
+  could not see. Reverting it is the fix; adding it back would need a source of
+  truth in the contract first, and there is none.
+- `practitioner-reviewed` and `field-proven` remain 0. Both need a named human.
+- The remaining packs' controls and capabilities stay structured at 13/17 — the
+  structured view is what showed the gaps, and filling them is content work
+  rather than tooling.
 
 `verification` unchanged: this changes how the content is presented, not what
 any pack claims. 161 tests, ruff clean, 0 broken links.
