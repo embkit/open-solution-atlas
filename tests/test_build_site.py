@@ -131,9 +131,17 @@ def test_pack_chapter_nav_is_collapsible(built_site):
 
 
 def test_top_nav_is_a_details_toggle_on_mobile(built_site):
+    """The toggle is a details/summary, so it opens without JavaScript.
+
+    The hamburger used to be a text glyph; it is now an inline SVG drawn to the
+    UI contract's icon spec (stroke 2, round caps, 24 viewBox). The affordance
+    is what this test is about, so it asserts the SVG rather than the character.
+    """
     index_html = _html_index(built_site)
     assert 'class="navmenu"' in index_html
-    assert "☰" in index_html
+    assert "<summary" in index_html
+    assert 'class="navmenu-icon"' in index_html
+    assert "<svg" in index_html, "the toggle lost its affordance"
 
 
 def test_search_index_includes_cjk_ngrams(built_site):
@@ -366,7 +374,7 @@ def test_view_switch_is_usable_without_javascript(built_site):
     assert 'id="vs-doc"' in html_text and 'id="vs-spec"' in html_text
     # The radios are siblings of the two views so CSS alone can toggle them.
     doc = html_text.find('id="vs-spec"')
-    assert html_text.find('<div class="layout">', doc) > doc
+    assert html_text.find('<div class="shell">', doc) > doc
     assert html_text.find('<section class="spec"', doc) > doc
 
 

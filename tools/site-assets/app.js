@@ -15,6 +15,8 @@
   var hits = document.getElementById("hits");
   var count = document.getElementById("count");
   var clearBtn = document.getElementById("clear");
+  var emptyBtn = document.getElementById("empty-clear");
+  var empty = document.getElementById("empty");
   var status = document.getElementById("index-status");
   if (!q || !cards) return;
 
@@ -83,6 +85,17 @@
       render();
     });
   });
+
+  function resetFilters() {
+    Object.keys(active).forEach(function (k) { active[k].clear(); });
+    document.querySelectorAll('.chip[aria-pressed="true"]').forEach(function (c) {
+      c.setAttribute("aria-pressed", "false");
+    });
+    if (q) q.value = "";
+    render();
+  }
+
+  if (emptyBtn) emptyBtn.addEventListener("click", resetFilters);
 
   if (clearBtn) {
     clearBtn.addEventListener("click", function () {

@@ -31,8 +31,11 @@ ignore = [
     # emitted in Chinese by build-site.py. The ambiguity the rule guards
     # against (`（` where `(` was meant) is a real hazard, but not one this
     # repository has: the fullwidth characters here are the ones the corpus
-    # itself uses, not typos.
+    # itself uses, not typos. RUF002/RUF003 are the same rule for docstrings
+    # and comments.
     "RUF001",
+    "RUF002",
+    "RUF003",
 
     # Shebang-vs-executable-bit. These scripts ship `#!/usr/bin/env python3`
     # and are invoked as `python tools/<tool>.py` everywhere (CI, CONTRIBUTING,

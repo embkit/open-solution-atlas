@@ -5,58 +5,77 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>反重复提交实验室 · one-stop-service</title>
 <style>
-  /* The demo carries the atlas's own tokens, inline, because it must open on
-     its own — a demo that depends on the site's stylesheet cannot be opened
-     from the repository or from a file:// path. Six values, no radius, no
-     shadow, and red means violated and nothing else. */
+  /* The demo carries the app's tokens inline because it must open on its own:
+     a demo that depends on the site's stylesheet cannot be opened from the
+     repository or from a file:// path. These are EmbKit's values and no others
+     — the brand indigo is LOCKED in the contract, and the neutrals are cold by
+     rule. Repeating values is how a second palette appears, so this block is
+     byte-identical across every demo and a test keeps it that way. */
   :root{
-    --vellum:#edeede; --vellum-2:#e4e5df;
-    --ink:#1c1f1d; --muted:#5b625c;
-    --rule:#a8afa5; --rule-strong:#7f877c;
-    --draft:#2a5580; --draft-soft:#dde5ee;
-    --revise:#a32020; --revise-soft:#f2dede;
-    --bg:var(--vellum); --elev:var(--vellum); --fg:var(--ink);
-    --border:var(--rule); --border-strong:var(--rule-strong);
-    --accent:var(--draft); --accent-soft:var(--draft-soft); --link:var(--draft);
-    --bad:var(--revise); --bad-soft:var(--revise-soft);
-    --mono:ui-monospace,"SF Mono","Cascadia Mono","DejaVu Sans Mono",Menlo,Consolas,monospace;
+    --page:#f6f9fc; --surface:#ffffff; --surface-2:#fafbfd; --surface-3:#eef2f7;
+    --line:#e8edf3; --line-strong:#d3dae3;
+    --navy:#0a2540; --text:#0a2540; --text-2:#425466; --text-3:#6b7785;
+    --primary:#4f46e5; --primary-hover:#4338ca; --primary-active:#3730a3;
+    --primary-tint:#eef2ff; --primary-ring:rgba(79,70,229,.28); --on-primary:#ffffff;
+    --ok:#0e7c5a; --ok-soft:#dff5ec;
+    --warn:#8a5409; --warn-soft:#fdf1dc;
+    --danger:#c2373c; --danger-soft:#fdeaeb;
+    --r-sm:6px; --r-md:8px; --r-lg:10px; --r-xl:12px; --r-2xl:14px; --r-full:999px;
+    --shadow-card:0 1px 2px rgba(15,23,42,.04), 0 8px 24px rgba(15,23,42,.06);
+    --shadow-pop:0 12px 32px rgba(15,23,42,.12);
+    --sans:"Inter","MiSans","HarmonyOS Sans SC","PingFang SC","Microsoft YaHei",-apple-system,"Segoe UI",sans-serif;
+    --mono:ui-monospace,"SF Mono","Cascadia Mono",Menlo,Consolas,monospace;
+    /* aliases the demo bodies already use */
+    --vellum:var(--page); --vellum-2:var(--surface-3); --ink:var(--text);
+    --muted:var(--text-3); --rule:var(--line); --rule-strong:var(--line-strong);
+    --draft:var(--primary); --draft-soft:var(--primary-tint);
+    --accent:var(--primary); --accent-soft:var(--primary-tint); --link:var(--primary);
+    --revise:var(--danger); --revise-soft:var(--danger-soft);
+    --bad:var(--danger); --bad-soft:var(--danger-soft);
+    --bg:var(--page); --elev:var(--surface); --fg:var(--text);
+    --border:var(--line); --border-strong:var(--line-strong);
   }
   @media (prefers-color-scheme:dark){
-    :root{--vellum:#14171a;--vellum-2:#191d21;--ink:#dde1de;--muted:#8d968f;
-      --rule:#454c52;--rule-strong:#61696f;--draft:#7fa8d4;--draft-soft:#1d2a37;
-      --revise:#e08a8a;--revise-soft:#331c1c;--bg:var(--vellum);--elev:var(--vellum);
-      --fg:var(--ink);--border:var(--rule);--border-strong:var(--rule-strong);
-      --accent:var(--draft);--accent-soft:var(--draft-soft);--link:var(--draft);
-      --bad:var(--revise);--bad-soft:var(--revise-soft);}
+    :root{
+      --page:#0a2540; --surface:#0f2c4d; --surface-2:#143253; --surface-3:#1a3a5e;
+      --line:#1e4067; --line-strong:#2a517d; --text:#eaf0f7; --text-2:#b6c4d4; --text-3:#8fa3b8;
+      --primary:#818cf8; --primary-hover:#a5b4fc; --primary-active:#c7d2fe;
+      --primary-tint:#1a2b52; --primary-ring:rgba(129,140,248,.32); --on-primary:#0a2540;
+      --ok:#4ade9f; --ok-soft:#10312a; --warn:#f0b062; --warn-soft:#33260f;
+      --danger:#f0939a; --danger-soft:#3a1c1f;
+      --shadow-card:0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.28);
+      --shadow-pop:0 12px 32px rgba(0,0,0,.4);
+    }
   }
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--fg);
-    font:15px/1.55 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif}
+    font-family:var(--sans);font-size:13px;line-height:1.6}
   .wrap{max-width:1240px;margin:0 auto;padding:1.4rem 1.1rem 4rem}
   header{border-bottom:1px solid var(--rule-strong);padding-bottom:.9rem;margin-bottom:1.2rem}
-  h1{font:650 1.35rem/1.2 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;
-    margin:0 0 .3rem;letter-spacing:-.01em}
+  h1{font-family:var(--sans);font-size:20px;font-weight:600;line-height:1.35;
+    letter-spacing:-.015em;margin:0 0 6px}
   .sub{color:var(--muted);font-size:.86rem;margin:0;max-width:84ch;line-height:1.65}
   .grid{display:grid;grid-template-columns:290px minmax(0,1fr) 270px;gap:0;align-items:start;
     border:1px solid var(--ink)}
-  .grid>.panel{border-right:1px solid var(--rule)}
-  .grid>.panel:last-child{border-right:0}
+  .grid>.panel{border-right:1px solid var(--line)}
+  .grid>.panel:last-child{border-right:1px solid var(--line)}
   @media (max-width:980px){
     .grid{grid-template-columns:1fr}
     .grid>.panel{border-right:0;border-bottom:1px solid var(--rule)}
   }
-  .panel{padding:.9rem}
+  .panel{padding:20px;background:var(--surface);border:1px solid var(--line);
+    border-radius:var(--r-xl);box-shadow:var(--shadow-card)}
   .panel h2{font:600 12px/1.5 var(--mono);letter-spacing:.06em;color:var(--muted);
     margin:0 0 .6rem;font-weight:600;border-bottom:1px solid var(--rule);padding-bottom:.35rem}
   .panel h3{font-size:.95rem;margin:1rem 0 .35rem;font-weight:600}
   button{font:500 12px/1 var(--mono);cursor:pointer;background:var(--bg);color:var(--fg);
-    border:1px solid var(--rule-strong);border-radius:0;padding:.3rem .6rem;margin:.12rem .18rem .12rem 0}
+    border:1px solid var(--line);border-radius:var(--r-md);padding:6px 12px;margin:2px 4px 2px 0}
   button:hover{border-color:var(--draft);color:var(--draft)}
   button[aria-pressed="true"]{background:var(--draft);border-color:var(--draft);color:var(--vellum);font-weight:600}
   select{font:400 12px/1 var(--mono);background:var(--bg);color:var(--fg);
-    border:1px solid var(--rule-strong);border-radius:0;padding:.4rem .5rem;width:100%}
+    border:1px solid var(--line);border-radius:var(--r-md);padding:6px 10px;width:100%}
   input[type=text]{font:400 12px/1.4 var(--mono);background:var(--bg);color:var(--fg);
-    border:1px solid var(--rule-strong);border-radius:0;padding:.35rem .5rem;width:100%}
+    border:1px solid var(--line);border-radius:var(--r-md);padding:6px 10px;width:100%}
   code{font-family:var(--mono);font-size:.76rem}
   .kv{display:flex;gap:.5rem;font:400 12.5px/1.7 var(--mono);margin:.18rem 0}
   .kv b{color:var(--muted);font-weight:600;min-width:6.6rem}
@@ -66,10 +85,12 @@
   .log div:last-child{border:0}
   /* Red means violated. The passing state is quiet — a green "all clear" would
      be a second semantic colour and would train the reader to skim. */
-  .viol{background:var(--bad-soft);border:0;border-left:3px solid var(--bad);
-    padding:.5rem .65rem;font-size:12.5px;line-height:1.55;margin:.35rem 0;color:var(--bad)}
-  .ok{background:none;border:0;border-left:3px solid var(--rule-strong);
-    padding:.5rem .65rem;font-size:12.5px;line-height:1.55;margin:.35rem 0;color:var(--muted)}
+  .viol{background:var(--danger-soft);border:1px solid var(--danger);
+    border-radius:var(--r-md);padding:10px 12px;font-size:12px;line-height:1.6;margin:8px 0;color:var(--danger)}
+  /* The passing state is a quiet note, not a green banner: a second semantic
+   colour for "all clear" trains a reader to skim past the states that matter. */
+.ok{background:var(--surface-3);border:1px solid var(--line);
+    border-radius:var(--r-md);padding:10px 12px;font-size:12px;line-height:1.6;margin:8px 0;color:var(--text-3)}
   .sig{display:inline-block;font:700 10.5px/1.4 var(--mono);letter-spacing:.03em;
     padding:.1rem .32rem;border:1px solid currentColor;vertical-align:.08em}
   table{width:100%;border-collapse:collapse;font:400 12px/1.6 var(--mono)}
@@ -81,9 +102,9 @@
   details{margin:.5rem 0}
   summary{cursor:pointer;font:500 12px/1.5 var(--mono);color:var(--muted)}
   a{color:var(--link)}
-  .field{border:1px solid var(--rule);padding:.55rem .65rem;margin:.4rem 0}
+  .field{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:12px 14px;margin:8px 0}
   .field.obtainable{border-left:3px solid var(--draft)}
-  .field.demanded{border-left:3px solid var(--bad);background:var(--bad-soft)}
+  .field.demanded{border-color:var(--danger);background:var(--danger-soft)}
   .field-head{display:flex;gap:.5rem;align-items:baseline;flex-wrap:wrap}
   .field-head b{font-size:13px}
   .cls{font:600 10.5px/1.4 var(--mono);letter-spacing:.04em;padding:.1rem .3rem;border:1px solid currentColor}
