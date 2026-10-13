@@ -313,13 +313,21 @@ def discover_markdown() -> list[Path]:
     Excludes hidden directories (``.github``, ``.pytest_cache`` …) and
     non-content trees (``templates/`` is scaffolding, ``site-assets/`` holds
     vendored libraries, ``tests/`` is test code, ``_site/`` is output).
+
+    Build outputs are excluded by their **leading underscore**, not by name:
+    the build target is whichever directory a caller passes with ``--out``
+    (``_site``, ``_compat_site`` …), and the emitted prompt bundles are
+    Markdown — so a content scanner that only knew about ``_site`` treated a
+    previous build's ``prompts/*.md`` as repository content, and the CI
+    compatibility job, which builds before it tests, built a site containing
+    its own prompts.
     """
     files: list[Path] = []
     for path in sorted(ROOT.rglob("*.md")):
         parts = path.relative_to(ROOT).parts
-        if any(part.startswith(".") for part in parts):
+        if any(part.startswith((".", "_")) for part in parts):
             continue
-        if "_site" in parts or "templates" in parts or "tests" in parts:
+        if "templates" in parts or "tests" in parts:
             continue
         if "site-assets" in parts:  # vendored third-party libs, not content
             continue

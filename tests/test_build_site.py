@@ -505,3 +505,35 @@ def test_prompt_section_declares_its_provenance(built_site):
         encoding="utf-8"
     )
     assert "tools/prompts.py" in html_text
+
+
+def test_build_output_is_never_discovered_as_content(build_site, tmp_path):
+    """The CI compatibility job builds before it tests, into `_compat_site`.
+
+    The emitted prompt bundles are Markdown, so a content scanner that only
+    knew the name `_site` treated the previous build's `prompts/*.md` as
+    repository content — and the site then contained its own prompts as
+    documents. The exclusion is by leading underscore, so any --out target is
+    safe.
+    """
+    first = tmp_path / "_compat_site"
+    assert build_site.build(first, "/", "", "en") == 0
+    prompt_files = sorted(first.rglob("prompts/*.md"))
+    assert prompt_files, "expected prompt .md files in the build output"
+
+    # A second build, with the first build's output still present, must not
+    # treat that output as content.
+    second = tmp_path / "_site"
+    assert build_site.build(second, "/", "", "en") == 0
+    # A prompt .md rendered as a document page is the bug: it means the
+    # previous build's output was discovered as repository content.
+    rendered_prompts = sorted(
+        p.relative_to(second).as_posix()
+        for p in second.rglob("prompts/*.html")
+        if p.stem != "index"
+    )
+    assert not rendered_prompts, (
+        f"the build discovered its own output as content: {rendered_prompts[:5]}"
+    )
+    # The directory listing is legitimate and expected.
+    assert (second / "packs/horizontal/workflow-bpm/prompts/index.html").is_file()
