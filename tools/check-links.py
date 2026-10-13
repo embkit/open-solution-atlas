@@ -77,10 +77,21 @@ def check_file(md: Path) -> list[str]:
 
 
 def iter_markdown() -> list[Path]:
+    """Repository Markdown only — never a build output directory.
+
+    The build emits `.md` prompt bundles into `_site/` (whatever `--out` names
+    the target), and those files carry links relative to the *pack* they were
+    assembled from. Scanning them reports 161 broken links that are not broken
+    on the site, and the scanner learns nothing. Build outputs are excluded by
+    their leading underscore, which is the property that matters rather than
+    the name `_site` — the same rule `build-site.py:discover_markdown` uses.
+    """
     return [
         md
         for md in sorted(ROOT.rglob("*.md"))
-        if ".git" not in md.parts and "node_modules" not in md.parts
+        if ".git" not in md.parts
+        and "node_modules" not in md.parts
+        and not any(part.startswith(("_", ".")) for part in md.relative_to(ROOT).parts)
     ]
 
 

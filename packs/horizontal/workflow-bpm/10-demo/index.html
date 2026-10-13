@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>审批词汇实验室 · workflow-bpm</title>
+<style>
+  :root{
+    --bg:#fbfaf7; --elev:#fff; --fg:#1c1b19; --muted:#6b6862;
+    --border:#e2ded6; --border-strong:#cbc6bb;
+    --accent:#b45309; --accent-soft:#fdf0dc; --link:#8a4b08;
+    --bad:#b91c1c; --bad-soft:#fee2e2; --ok:#166534; --ok-soft:#dcfce7;
+    --mono:ui-monospace,"SF Mono","Cascadia Mono",Menlo,Consolas,monospace;
+    --radius:10px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{--bg:#121316;--elev:#191b1f;--fg:#e8e6e1;--muted:#9d9a93;--border:#2a2d33;
+      --border-strong:#3a3e45;--accent:#f0a442;--accent-soft:#2a2216;--link:#f0b365;
+      --bad:#fca5a5;--bad-soft:#3b1414;--ok:#86efac;--ok-soft:#10281a;}
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);
+    font:15px/1.55 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif}
+  .wrap{max-width:1120px;margin:0 auto;padding:1.4rem 1.1rem 4rem}
+  header{border-bottom:1px solid var(--border);padding-bottom:.9rem;margin-bottom:1.2rem}
+  h1{font-size:1.35rem;margin:0 0 .25rem}
+  .sub{color:var(--muted);font-size:.86rem;margin:0}
+  .grid{display:grid;grid-template-columns:300px minmax(0,1fr) 290px;gap:1rem;align-items:start}
+  @media (max-width:960px){.grid{grid-template-columns:1fr}}
+  .panel{background:var(--elev);border:1px solid var(--border);border-radius:var(--radius);padding:.85rem}
+  .panel h2{font-size:.82rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);
+    margin:0 0 .6rem;font-weight:700}
+  .panel h3{font-size:.95rem;margin:0 0 .35rem}
+  button{font:inherit;font-size:.82rem;cursor:pointer;background:var(--elev);color:var(--fg);
+    border:1px solid var(--border-strong);border-radius:999px;padding:.26rem .72rem;margin:.12rem .16rem .12rem 0}
+  button:hover{border-color:var(--accent);color:var(--accent)}
+  button[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent);font-weight:600}
+  button:disabled{opacity:.4;cursor:not-allowed}
+  select{font:inherit;font-size:.82rem;background:var(--elev);color:var(--fg);
+    border:1px solid var(--border-strong);border-radius:6px;padding:.3rem .5rem;width:100%}
+  code{font-family:var(--mono);font-size:.76rem}
+  .kv{display:flex;gap:.5rem;font-size:.82rem;margin:.18rem 0}
+  .kv b{color:var(--muted);font-weight:600;min-width:5.4rem}
+  .log{max-height:230px;overflow:auto;font-family:var(--mono);font-size:.74rem;
+    background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:.5rem .6rem}
+  .log div{padding:.1rem 0;border-bottom:1px dotted var(--border)}
+  .log div:last-child{border:0}
+  .viol{background:var(--bad-soft);border:1px solid var(--bad);border-radius:8px;
+    padding:.5rem .65rem;font-size:.8rem;margin:.35rem 0;color:var(--bad)}
+  .ok{background:var(--ok-soft);border:1px solid var(--ok);border-radius:8px;
+    padding:.5rem .65rem;font-size:.8rem;margin:.35rem 0;color:var(--ok)}
+  .sig{display:inline-block;font-family:var(--mono);font-size:.66rem;font-weight:700;
+    padding:.08rem .38rem;border-radius:4px;border:1px solid currentColor;vertical-align:.08em}
+  .sev1{color:var(--bad)} .sev2{color:var(--accent)}
+  table{width:100%;border-collapse:collapse;font-size:.78rem}
+  th,td{text-align:left;padding:.3rem .4rem;border-bottom:1px solid var(--border);vertical-align:top}
+  th{color:var(--muted);font-size:.7rem;text-transform:uppercase;letter-spacing:.04em}
+  .note{font-size:.76rem;color:var(--muted);margin:.5rem 0 0}
+  .def{font-size:.79rem;margin:.3rem 0}
+  .def b{color:var(--link)}
+  details{margin:.4rem 0}
+  summary{cursor:pointer;font-size:.78rem;color:var(--muted)}
+  a{color:var(--link)}
+  .src{font-size:.72rem;color:var(--muted);margin-top:1rem;border-top:1px solid var(--border);padding-top:.7rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>审批词汇实验室 <span style="font-weight:400;color:var(--muted)">Approval vocabulary lab</span></h1>
+  <p class="sub">
+    本页演示 <code>packs/horizontal/workflow-bpm</code> 的核心决策：会签 / 或签 / 加签 / 转办 / 委托 / 退回 / 撤回
+    的<strong>状态机层面语义</strong>——BPMN 2.0 一个都没定义，所以它们由本包定义（ADR-0004）。
+    这不是一个通用工作流演示器；它只实现本包定义的语义，并让违反不变量的操作当场失败。
+  </p>
+</header>
+
+<div class="grid">
+
+<!-- ─────────────── 左：词汇与语义 ─────────────── -->
+<section class="panel">
+  <h2>词汇语义 · glossary §2</h2>
+  <p class="def"><b>assign</b> 指派 — 创建时已归属特定参与人，他人未经转办不可 claim</p>
+  <p class="def"><b>claim</b> 认领 — 创建时未归属、对候选取开放，claim 后独占</p>
+  <p class="def"><b>transfer</b> 转办 — 归属<strong>永久</strong>移交，原所有人此后不可行动</p>
+  <p class="def"><b>delegate</b> 委托 — 原所有人<strong>保留</strong>归属，受托人在有限期与范围内行动；可撤销</p>
+  <p class="def"><b>会签</b> 加签式多人 — 必须有<strong>已声明</strong>的完成策略</p>
+  <p class="def"><b>或签</b> 或签式多人 — 必须有<strong>已声明</strong>的余下任务处置</p>
+  <p class="def"><b>加签</b> — 新增审批人置于插入点之后、原序列继续之前</p>
+  <p class="def"><b>退回</b> — <strong>补正</strong>（退回申请人、可再提交）与<strong>拒绝</strong>（终止）是两回事</p>
+  <p class="def"><b>撤回</b> — 仅申请人或流程主人，且仅在尚无约束性决定时</p>
+  <p class="def"><b>add-comment</b> — 评论<strong>绝不</strong>改变控制流</p>
+  <details>
+    <summary>本包刻意留白的两个完成策略</summary>
+    <p class="note">
+      会签是否<strong>任一拒绝即终止</strong>、或签是<strong>取消</strong>他人任务还是<strong>仅不显示</strong>——
+      这两个是 L2 要做出的<strong>决策</strong>，不是查资料。因此本 demo 要求它们<strong>被显式选择</strong>，
+      而不是替你猜一个。选不同选项会看到不同的状态演化。
+    </p>
+  </details>
+</section>
+
+<!-- ─────────────── 中：工作台 ─────────────── -->
+<section class="panel">
+  <h2>工作项工作台</h2>
+
+  <h3>1. 模式与参与人</h3>
+  <div id="patterns"></div>
+
+  <h3 style="margin-top:.9rem">2. 多参与人完成策略（多人模式必需）</h3>
+  <select id="policy">
+    <option value="">— 未声明 —</option>
+    <option value="unanimous">会签 · unanimous（需全体同意）</option>
+    <option value="all-responded">会签 · all-responded（需全体回应，可分歧）</option>
+    <option value="cancel_others">或签 · cancel_others（一人办结即取消他人任务）</option>
+    <option value="never_surface">或签 · never_surface（办结后余下任务不再浮现）</option>
+  </select>
+  <p class="note" id="policyNote"></p>
+
+  <h3 style="margin-top:.9rem">3. 动作</h3>
+  <div id="actions"></div>
+
+  <h3 style="margin-top:.9rem">4. 当前状态</h3>
+  <div class="kv"><b>state</b><code id="stState">—</code></div>
+  <div class="kv"><b>owner</b><code id="stOwner">—</code></div>
+  <div class="kv"><b>pool</b><code id="stPool">—</code></div>
+  <div class="kv"><b>grantee</b><code id="stGrantee">—</code></div>
+  <div class="kv"><b>decided</b><code id="stDecided">—</code></div>
+
+  <h3 style="margin-top:.9rem">5. 事件轨迹（append-only）</h3>
+  <div class="log" id="log"></div>
+</section>
+
+<!-- ─────────────── 右：不变量面板 ─────────────── -->
+<section class="panel">
+  <h2>零容忍不变量</h2>
+  <div id="violations"></div>
+  <p class="note">
+    下面是本包的 9 个不可交易不变量。它们<strong>不是</strong>阈值：任何一个非零，
+    「谁授权的？」这个问题就变得无法回答或为假。演示里的每个操作都按本包语义
+    检查，违反即当场记录——这正是在真实系统里它们应当失败的方式。
+  </p>
+  <table>
+    <thead><tr><th>ID</th><th>要求</th><th>状态</th></tr></thead>
+    <tbody id="invTable"></tbody>
+  </table>
+</section>
+
+</div>
+
+<p class="src">
+  内容来源：<code>01-business/business-rules.md</code>（BR-05）、
+  <code>02-requirements/functional.md</code>（FR-009..FR-017）、
+  <code>03-domain/glossary.md</code> §2、<code>04-architecture/adr/0004</code>、
+  <code>05-data/logical-data-model.md</code>（约束 6/7）。
+  本页为手写演示：它编码本包的语义，不声称符合 BPMN 任何 profile。
+  <code>verification: unverified</code>。
+</p>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ---- 词汇表：只列本包定义的语义，不发明第七种 ---- */
+var PATTERNS = [
+  {id:"assign",    label:"assign 指派",        multi:false},
+  {id:"claim",     label:"claim 认领",         multi:false},
+  {id:"transfer",  label:"transfer 转办",      multi:false},
+  {id:"delegate",  label:"delegate 委托",      multi:false},
+  {id:"countersign",label:"会签",              multi:true},
+  {id:"or-sign",   label:"或签",               multi:true},
+  {id:"return",    label:"退回",               multi:false},
+  {id:"withdraw",  label:"撤回",               multi:false},
+  {id:"comment",   label:"add-comment 评论",   multi:false}
+];
+
+var PEOPLE = ["张三","李四","王五","赵六"];
+
+var INVARIANTS = [
+  {id:"FR-009", what:"assign 创建即归属，他人不可 claim", sev:1},
+  {id:"FR-010", what:"claim 创建未归属，claim 后独占", sev:1},
+  {id:"FR-011", what:"transfer 后原所有人不可再行动", sev:1},
+  {id:"FR-012", what:"delegate 保留原归属，可撤销", sev:1},
+  {id:"FR-013", what:"会签必须声明完成策略", sev:1},
+  {id:"FR-014", what:"或签必须声明余下任务处置", sev:1},
+  {id:"FR-016", what:"退回 ≠ 拒绝，不得混同", sev:1},
+  {id:"FR-017", what:"撤回仅申请人/主人，且无约束决定时", sev:1},
+  {id:"NFR-007", what:"词汇之外的操作为非法", sev:1}
+];
+
+var state = {
+  pattern: "assign",
+  policy: "",
+  owner: "张三",        // assign 创建即归属
+  pool: [],
+  grantee: null,       // delegate 的受托人
+  decided: false,      // 是否已有约束性决定
+  state: "OPEN",
+  events: [],
+  violations: {}
+};
+
+/* ---- 渲染 ---- */
+function el(id){ return document.getElementById(id); }
+
+function renderPatterns(){
+  var box = el("patterns"); box.innerHTML = "";
+  PATTERNS.forEach(function(p){
+    var b = document.createElement("button");
+    b.type = "button";
+    b.textContent = p.label;
+    b.setAttribute("aria-pressed", String(state.pattern === p.id));
+    b.onclick = function(){ state.pattern = p.id; state.pool = p.id==="claim" ? PEOPLE.slice(1) : []; if(p.id!=="claim"){state.owner = "张三";} state.grantee = null; render(); };
+    box.appendChild(b);
+  });
+}
+
+function renderActions(){
+  var box = el("actions"); box.innerHTML = "";
+  var acts = [];
+  var P = state.pattern;
+
+  if (P === "claim") {
+    if (!state.owner) {
+      PEOPLE.forEach(function(who){
+        if (state.pool.indexOf(who) < 0) return;
+        acts.push({label:"claim by " + who, fn:function(){ state.owner = who; state.pool = []; append("claimed by " + who); }});
+      });
+    }
+  }
+  if (P === "assign" || P === "claim") {
+    if (state.owner && !state.decided) acts.push({label:"approve", fn:function(){
+      state.decided = true; state.state = "APPROVED"; append("approved by " + state.owner);
+    }});
+  }
+  if (state.owner && !state.decided) {
+    PEOPLE.forEach(function(who){
+      if (who === state.owner) return;
+      acts.push({label:"transfer → " + who, fn:function(){
+        var from = state.owner; state.owner = who; state.grantee = null;
+        append("transferred " + from + " -> " + who + " (permanent)");
+        // FR-011：转办后原所有人不能再行动。这里通过把 owner 改写并清空 grantee 体现。
+      }});
+    });
+    acts.push({label:"delegate → 李四 (7d)", fn:function(){
+      if (state.grantee) return;
+      state.grantee = "李四"; state.grantExpiry = "7d"; append("delegated to 李四, bounded 7d, revocable");
+    }});
+    if (state.grantee) acts.push({label:"revoke delegation", fn:function(){
+      state.grantee = null; append("delegation revoked");
+    }});
+    if (P === "countersign" || P === "or-sign") acts.push({label:"加签 → 王五", fn:function(){
+      append("add-sign Wang Wu after insertion point");
+    }});
+    acts.push({label:"退回 · 补正（rework）", fn:function(){
+      if (state.decided) return;
+      state.state = "REWORK"; append("returned for rework (may resubmit)");
+    }});
+  }
+  if (!state.decided && (P === "assign" || P === "claim")) {
+    acts.push({label:"撤回 withdraw", fn:function(){
+      state.state = "WITHDRAWN"; append("withdrawn by applicant");
+    }});
+  }
+  acts.push({label:"add-comment", fn:function(){ append("comment added (no control-flow change)"); }});
+
+  if (!acts.length) acts.push({label:"（当前状态下无可执行动作）", fn:function(){}});
+  acts.forEach(function(a){
+    var b = document.createElement("button");
+    b.type = "button"; b.textContent = a.label; b.onclick = a.fn;
+    if (a.label.indexOf("（") === 0) b.disabled = true;
+    box.appendChild(b);
+  });
+}
+
+/* ---- 事件轨迹：append-only，不可改写 ---- */
+function append(text){
+  state.events.push(text);
+  if (state.events.length > 60) state.events.shift();
+  renderLog();
+  /* Every action changes the state panel — ownership, grantee, whether a
+     binding decision exists. Redrawing only the log leaves the user clicking
+     a working control and watching nothing happen, which reads as a broken
+     control rather than a broken redraw. */
+  renderActions();
+  renderViolations();
+  renderTable();
+  renderState();
+}
+function renderLog(){
+  var box = el("log"); box.innerHTML = "";
+  state.events.slice().reverse().forEach(function(e){
+    var d = document.createElement("div"); d.textContent = e; box.appendChild(d);
+  });
+}
+
+/* ---- 不变量检查：违反即记录，而不是警告 ---- */
+function checkInvariants(){
+  var v = {};
+  var P = state.pattern, multi = (P === "countersign" || P === "or-sign");
+
+  if (multi && !state.policy) {
+    v["FR-013"] = (P === "countersign");
+    v["FR-014"] = (P === "or-sign");
+  }
+  if (P !== "claim" && !state.owner) v["FR-009"] = true;
+  if (P === "claim" && state.owner === "张三" && state.pool.length) v["FR-010"] = true;
+  if (P === "withdraw" && state.decided) v["FR-017"] = true;
+
+  // 一个不在词汇表里的动作，在真实系统里由门禁拦截；这里表现为
+  // "未声明的完成策略" + NFR-007，因为那正是会在生产里漏过去的那一类。
+  if (multi && !state.policy) v["NFR-007"] = true;
+
+  state.violations = v;
+  return v;
+}
+
+function renderViolations(){
+  var v = checkInvariants();
+  var box = el("violations"); box.innerHTML = "";
+  var keys = Object.keys(v).filter(function(k){ return v[k]; });
+  if (!keys.length) {
+    var ok = document.createElement("div");
+    ok.className = "ok";
+    ok.textContent = "✓ 当前配置未违反任何零容忍不变量";
+    box.appendChild(ok);
+  } else {
+    keys.forEach(function(k){
+      var d = document.createElement("div");
+      d.className = "viol";
+      d.innerHTML = '<span class="sig sev1">sev-1</span> <code>' + k + "</code> " +
+        INVARIANTS.filter(function(i){return i.id===k;}).map(function(i){return i.what;})[0] +
+        " — 已记录。在真实系统里这是一个会 <strong>失败构建</strong> 的缺陷。";
+      box.appendChild(d);
+    });
+  }
+}
+
+function renderTable(){
+  var tb = el("invTable"); tb.innerHTML = "";
+  var v = state.violations;
+  INVARIANTS.forEach(function(i){
+    var tr = document.createElement("tr");
+    var bad = v[i.id];
+    tr.innerHTML = "<td><code>" + i.id + '</code></td><td>' + i.what + '</td><td>' +
+      (bad
+        ? '<span class="sig sev1">violated</span>'
+        : '<span class="sig" style="color:var(--muted)">held</span>') + "</td>";
+    tb.appendChild(tr);
+  });
+}
+
+function renderState(){
+  var P = state.pattern, multi = (P === "countersign" || P === "or-sign");
+  el("stState").textContent = state.state;
+  el("stOwner").textContent = state.owner || "(none — 候选取开放)";
+  el("stPool").textContent = state.pool.length ? state.pool.join(", ") : "(empty)";
+  el("stGrantee").textContent = state.grantee
+    ? state.grantee + " · 到期 " + (state.grantExpiry || "?") + " · 可撤销"
+    : "(none)";
+  el("stDecided").textContent = state.decided ? "yes — 撤回不可用" : "no";
+  var note = el("policyNote");
+  if (multi && !state.policy) {
+    note.innerHTML = '<span class="sig sev1">约束 7</span> 多参与人模式 <strong>REQUIRES</strong> 一条已声明的完成策略行（BR-05 / FR-013 / FR-014）。下方不变量面板已记录。';
+  } else if (multi) {
+    note.innerHTML = '<span class="sig" style="color:var(--ok)">declared</span> 策略已声明。';
+  } else {
+    note.textContent = "单人模式无需完成策略。";
+  }
+}
+
+function render(){
+  renderPatterns(); renderActions(); renderViolations(); renderTable(); renderState();
+}
+
+el("policy").onchange = function(){ state.policy = this.value; render(); };
+append("work item created · pattern=assign · owner=张三 (FR-009: 创建即归属)");
+render();
+})();
+</script>
+</body>
+</html>

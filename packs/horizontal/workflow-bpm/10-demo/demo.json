@@ -1,0 +1,20 @@
+{
+  "title": "审批词汇实验室 — Approval vocabulary lab",
+  "kind": "invariant-lab",
+  "summary": "会签/或签/加签/转办/委托/退回/撤回 的状态机语义，以及哪些操作会触发 BR-05、NFR-007 与 storage 约束 7 的零容忍信号。",
+  "entry": "index.html",
+  "demonstrates": [
+    "BR-05",
+    "FR-009",
+    "FR-010",
+    "FR-011",
+    "FR-012",
+    "FR-013",
+    "FR-014",
+    "FR-015",
+    "FR-016",
+    "FR-017",
+    "NFR-007",
+    "ADR-0004"
+  ]
+}
