@@ -31,6 +31,13 @@ in-pack gap error regardless of what other packs define: a pack that defines
 `ADR-1..4` and cites `ADR-5` has a broken internal reference, not a legitimate
 cross-reference.
 
+A pack's ``10-demo/demo.json`` is scanned too, and its ``demonstrates`` list
+is checked the same way. The demo pages are hand-written, so they are the one
+part of a pack that can drift from the pack's content: a demo still
+demonstrating ``ADR-0004`` after that ADR was renumbered is worse than no
+demo, because it asserts a decision that no longer exists. A missing ID is
+therefore a build failure, not a discovery made by a reader.
+
 Leading zeros are normalized (FR-001 == FR-1, AC-N01 == AC-N1) so packs with
 different padding conventions compare correctly.
 
@@ -46,6 +53,7 @@ Exit:   0 = no errors (info allowed unless --strict); 1 = errors.
 
 from __future__ import annotations
 
+import json
 import re
 import sys
 from pathlib import Path
@@ -117,6 +125,69 @@ def _rel(path: Path) -> str:
         return str(path)
 
 
+# A demo manifest is a pack's only JSON artefact. Its shape is small and the
+# pack standard fixes it, so an unknown or missing field is reported rather
+# than ignored — a manifest that silently drops `demonstrates` would disarm
+# the drift check exactly where it matters.
+DEMO_REQUIRED = ("title", "kind", "entry", "demonstrates")
+
+
+def check_demo_manifest(pack_dir: Path, definitions: dict[str, set[str]]) -> list[str]:
+    """Errors for one pack's ``10-demo/demo.json``, or an empty list.
+
+    Two things are checked. The manifest must carry the fixed fields, because
+    a manifest missing ``demonstrates`` would disable the drift check it is
+    there to give. And every ID it declares must be defined **in this pack**:
+    a demo demonstrating another pack's decision is a demo of a decision this
+    pack does not make.
+    """
+    rel_dir = f"packs/{pack_dir.parent.name}/{pack_dir.name}"
+    path = pack_dir / "10-demo" / "demo.json"
+    if not path.is_file():
+        return []
+
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        return [f"{rel_dir}/10-demo/demo.json: cannot be parsed ({exc})"]
+    if not isinstance(data, dict):
+        return [f"{rel_dir}/10-demo/demo.json: must be a JSON object"]
+
+    errors: list[str] = []
+    for field_name in DEMO_REQUIRED:
+        if field_name not in data:
+            errors.append(
+                f"{rel_dir}/10-demo/demo.json: missing required field `{field_name}`"
+            )
+    if not isinstance(data.get("demonstrates"), list):
+        errors.append(f"{rel_dir}/10-demo/demo.json: `demonstrates` must be a list")
+        return errors
+
+    entry = str(data.get("entry", "")).strip()
+    if entry and not (pack_dir / "10-demo" / entry).is_file():
+        errors.append(
+            f"{rel_dir}/10-demo/demo.json: `entry` names `{entry}`, which does not exist"
+        )
+
+    for raw in data["demonstrates"]:
+        token = str(raw).strip()
+        m = ID_RE.search(token)
+        if not m:
+            errors.append(
+                f"{rel_dir}/10-demo/demo.json: `{token}` is not a traceability ID"
+            )
+            continue
+        norm = normalize(m.group("kind"), m.group("num"))
+        if norm not in definitions:
+            near = in_pack_gap(norm, definitions)
+            errors.append(
+                f"{rel_dir}/10-demo/demo.json: `{token}` is not defined in this pack"
+                + (" (in-pack gap: it sits among the pack's own IDs)"
+                   if near else "")
+            )
+    return errors
+
+
 def pack_markdown_files(pack_dir: Path) -> list[Path]:
     return sorted(
         p
@@ -170,6 +241,18 @@ def main() -> int:
     errors: list[str] = []
     infos: list[str] = []
     total_ids = 0
+    demo_manifests = 0
+
+    # The demo manifests are checked against the pack they live in, using the
+    # same definitions the reference scan collected.
+    for pack_dir in pack_dirs:
+        pack_id = f"packs/{pack_dir.parent.name}/{pack_dir.name}"
+        _pid, defs, _refs = per_pack[pack_id]
+        demo_path = pack_dir / "10-demo" / "demo.json"
+        if not demo_path.is_file():
+            continue
+        demo_manifests += 1
+        errors.extend(check_demo_manifest(pack_dir, defs))
 
     for pack_id, (_pid, defs, refs) in per_pack.items():
         total_ids += len(defs)
@@ -204,7 +287,10 @@ def main() -> int:
                     f"({', '.join(sorted(files))})"
                 )
 
-    print(f"checked {len(pack_dirs)} packs, {total_ids} distinct ID definitions")
+    print(
+        f"checked {len(pack_dirs)} packs, {total_ids} distinct ID definitions, "
+        f"{demo_manifests} demo manifest(s)"
+    )
     for line in infos:
         print(line)
     for line in errors:

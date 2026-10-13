@@ -641,6 +641,28 @@ def build(out: Path, base_url: str, site_url: str = "", lang: str = "en") -> int
             write(out / pack.rel_dir / "prompts" / fname, text)
             prompts_written += 1
 
+    # Interactive demos. They are hand-written per pack — bespoke, because a
+    # generated demo demonstrates the engine rather than the pack — so they are
+    # copied verbatim, and `10-demo/demo.json` declares which pack IDs each one
+    # demonstrates so a drifting demo fails check-ids instead of quietly
+    # asserting a decision that no longer exists.
+    demos_copied = 0
+    for pack in packs:
+        src_dir = ROOT / pack.rel_dir / "10-demo"
+        if not src_dir.is_dir():
+            continue
+        for asset in sorted(src_dir.iterdir()):
+            if not asset.is_file():
+                continue
+            # Only HTML is served; the manifest is data for the checker and the
+            # index, and has nothing to render as a page of its own.
+            if asset.suffix not in (".html", ".css", ".js"):
+                continue
+            dest = out / pack.rel_dir / "demo" / asset.name
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(asset, dest)
+            demos_copied += 1
+
     # ---- assets ------------------------------------------------------------
     assets_out = out / "assets"
     assets_out.mkdir(exist_ok=True)
@@ -696,6 +718,7 @@ def build(out: Path, base_url: str, site_url: str = "", lang: str = "en") -> int
         f"{x['nfrs']} NFRs, {x['controls']} controls, {x['adrs']} ADRs, "
         f"{x['constraints']} constraints ({x['store_constraints']} store-enforced)"
     )
+    print(f"emitted {prompts_written} prompt file(s), {demos_copied} demo file(s)")
 
     broken = verify_internal_links(out)
     if broken:
