@@ -77,21 +77,11 @@ def _rules(css: str) -> list[tuple[str, str]]:
     return re.findall(r"([^{}]+)\{([^{}]*)\}", css)
 
 
-def _root_block(css: str, dark: bool = False) -> str:
-    if dark:
-        # Dark answers to an explicit attribute as well as the OS preference,
-        # because that is the selector the kit's axe/verify scripts set. Prefer
-        # the explicit one: it is the one that must stay complete.
-        m = re.search(r':root\[data-theme="dark"\]\s*\{(.*?)\n\s*\}', css, re.DOTALL)
-        if not m:
-            m = re.search(
-                r"@media \(prefers-color-scheme: dark\)\s*\{\s*"
-                r':root(?::not\(\[data-theme="light"\]\))?\s*\{(.*?)\n\s*\}',
-                css, re.DOTALL)
-    else:
-        # the demos indent their inline :root, the site stylesheet does not
-        m = re.search(r"^\s*:root\s*\{(.*?)\n\s*\}", css, re.DOTALL | re.MULTILINE)
-    assert m, f"could not find the :root block (dark={dark})"
+def _root_block(css: str) -> str:
+    """The one token block. There is one theme, so there is one block."""
+    # the demos indent their inline :root, the site stylesheet does not
+    m = re.search(r"^\s*:root\s*\{(.*?)\n\s*\}", css, re.DOTALL | re.MULTILINE)
+    assert m, "could not find the :root block"
     return m.group(1)
 
 
@@ -125,11 +115,6 @@ def light(css) -> dict[str, str]:
     return _tokens(_root_block(css))
 
 
-@pytest.fixture(scope="module")
-def dark(css) -> dict[str, str]:
-    return _tokens(_root_block(css, dark=True))
-
-
 # --------------------------------------------------------------------------- #
 # The contract is present and is the contract
 # --------------------------------------------------------------------------- #
@@ -145,16 +130,10 @@ def test_the_contract_is_vendored():
 # Brand — locked
 # --------------------------------------------------------------------------- #
 
-def test_primary_is_the_locked_indigo(light, dark):
+def test_primary_is_the_locked_indigo(light):
     assert light["primary"] == LOCKED_PRIMARY, (
         f"primary is {light['primary']}; the contract LOCKs {LOCKED_PRIMARY}"
     )
-    assert dark["primary"] != LOCKED_PRIMARY, (
-        "the dark scheme needs a lifted indigo, not the locked light value"
-    )
-    # the dark value must still be the same hue family — blue-dominant, and
-    # clearly brighter than the ground it sits on
-    assert int(dark["primary"].lstrip("#")[4:6], 16) > 200
 
 
 def test_no_former_brand_colour_survives(css):
@@ -187,27 +166,23 @@ def test_page_is_darker_than_surface(light):
 # Contrast
 # --------------------------------------------------------------------------- #
 
-def test_text_pairs_clear_aa(light, dark):
+def test_text_pairs_clear_aa(light):
     pairs = [
         ("text", "page"), ("text", "surface"), ("text-2", "surface"),
         ("text-3", "surface"), ("primary", "surface"), ("on-primary", "primary"),
         ("danger", "danger-soft"), ("ok", "ok-soft"), ("warn", "warn-soft"),
         ("text", "surface-3"), ("primary", "primary-tint"),
     ]
-    for scheme, values in (("light", light), ("dark", dark)):
-        for fg, bg in pairs:
-            if fg not in values or bg not in values:
-                continue
-            ratio = contrast(values[fg], values[bg])
-            assert ratio >= 4.0, (
-                f"{scheme}: {fg} on {bg} is {ratio:.2f}:1"
-            )
+    for fg, bg in pairs:
+        if fg not in light or bg not in light:
+            continue
+        ratio = contrast(light[fg], light[bg])
+        assert ratio >= 4.0, f"{fg} on {bg} is {ratio:.2f}:1"
 
 
-def test_control_borders_clear_the_non_text_floor(light, dark):
-    for scheme, values in (("light", light), ("dark", dark)):
-        ratio = contrast(values["line-strong"], values["surface"])
-        assert ratio >= 1.3, f"{scheme}: control borders are invisible ({ratio:.2f}:1)"
+def test_control_borders_clear_the_non_text_floor(light):
+    ratio = contrast(light["line-strong"], light["surface"])
+    assert ratio >= 1.3, f"control borders are invisible ({ratio:.2f}:1)"
 
 
 # --------------------------------------------------------------------------- #
@@ -378,7 +353,7 @@ def test_no_hardcoded_values_outside_token_declarations(css):
     )
 
 
-def test_tertiary_text_clears_aa_on_every_ground(light, dark):
+def test_tertiary_text_clears_aa_on_every_ground(light):
     """axe-core found 110 nodes below 4.5:1 before this was fixed.
 
     `--text-3` carries facet labels, chip counts and card metadata, so it sits
@@ -387,13 +362,9 @@ def test_tertiary_text_clears_aa_on_every_ground(light, dark):
     correction (#6b7785) still failed on the darker grounds; a test on
     `--surface` alone would have missed all of it.
     """
-    grounds = ("page", "surface", "surface-2", "surface-3")
-    for scheme, values in (("light", light), ("dark", dark)):
-        for ground in grounds:
-            ratio = contrast(values["text-3"], values[ground])
-            assert ratio >= 4.5, (
-                f"{scheme}: --text-3 on --{ground} is {ratio:.2f}:1"
-            )
+    for ground in ("page", "surface", "surface-2", "surface-3"):
+        ratio = contrast(light["text-3"], light[ground])
+        assert ratio >= 4.5, f"--text-3 on --{ground} is {ratio:.2f}:1"
 
 
 def test_no_opacity_reduced_text(css):
@@ -436,57 +407,29 @@ def test_demo_selects_have_accessible_names():
                 f"{demo.parent.parent.name}: an unnamed <select> ({tag[:60]})"
             )
 
-def test_dark_mode_is_reachable_by_both_selectors(css):
-    """The kit's tooling sets `data-theme="dark"`; the reader's OS sets nothing.
+def test_the_site_has_exactly_one_theme(css):
+    """No second palette, anywhere.
 
-    `scripts/axe_audit.mjs --dark` toggles the attribute, and so do the
-    `verify_*` scripts. While dark was driven only by the media query, the dark
-    audit graded the *light* palette and reported OK — and a real failure (inline
-    code at 1.49:1) shipped. Both selectors must carry the same declarations.
+    Dark was derived from the contract's navy and was the one part of the theme
+    that was not a 1:1 transcription. It cost more than it gave: it produced a
+    real contrast failure (inline code at 1.49:1) and the audit meant to catch it
+    graded the light palette, because dark was driven by `@media` while the kit's
+    tooling sets `data-theme`. One palette is one palette to get right.
+
+    `color-scheme: light` is part of it: without it a reader whose OS prefers
+    dark gets this sheet with the browser's own inverted form controls.
     """
-    explicit = re.search(r':root\[data-theme="dark"\]\s*\{(.*?)\n\s*\}', css, re.DOTALL)
-    assert explicit, "no :root[data-theme=\"dark\"] block"
-    media = re.search(
-        r"@media \(prefers-color-scheme: dark\)\s*\{\s*"
-        r':root:not\(\[data-theme="light"\]\)\s*\{(.*?)\n\s*\}',
-        css, re.DOTALL)
-    assert media, "no prefers-color-scheme block gated on the light opt-out"
-    a, b = _tokens(explicit.group(1)), _tokens(media.group(1))
-    assert a == b, (
-        "the explicit dark block and the media-query one disagree: "
-        f"{ {k: (a.get(k), b.get(k)) for k in set(a) | set(b) if a.get(k) != b.get(k)} }"
-    )
+    assert "prefers-color-scheme" not in css, "a dark media query survives"
+    assert "data-theme" not in css, "a data-theme block survives"
+    assert "color-scheme: light" in css, "the light scheme is not pinned"
+
+    for demo in sorted((ROOT / "packs").glob("*/*/10-demo/index.html")):
+        text = demo.read_text(encoding="utf-8")
+        name = demo.parent.parent.name
+        assert "prefers-color-scheme" not in text, f"{name}: a dark media query survives"
+        assert "data-theme" not in text, f"{name}: a data-theme block survives"
+        assert "color-scheme:light" in text, f"{name}: the light scheme is not pinned"
+        # one unconditional chrome colour, not one per scheme
+        assert text.count('name="theme-color"') == 1, f"{name}: theme-color is not single"
 
 
-def test_colour_tokens_used_for_text_are_redefined_in_dark(light, dark, css):
-    """A palette token used as `color` and absent from dark keeps its light value.
-
-    This is the shape of the bug that shipped: `code { color: var(--navy-2) }`
-    with `--navy-2: #425466` defined only in the light `:root`, so dark rendered
-    #425466 on #1a3a5e — 1.49:1, invisible, and no human or tool had looked.
-
-    Only `color` is checked. The category icon tokens (`--cat-*-fg`) are a
-    matched light/dark *pair that neither side redefines*, so a tint and its
-    foreground move together and the contrast is preserved; flagging them would
-    be a false positive.
-    """
-    used = set()
-    for _selector, body in _rules(css):
-        for decl in body.split(";"):
-            prop, _, value = decl.partition(":")
-            if prop.strip() != "color":
-                continue
-            used |= set(re.findall(r"var\(--([a-z0-9-]+)\)", value))
-    offenders = sorted(n for n in used if n in light and n not in dark)
-    assert not offenders, (
-        "used as `color`, defined in the light :root, missing from dark: "
-        f"{offenders} — they keep their light value on a dark ground"
-    )
-
-
-def test_secondary_text_clears_aa_on_the_surfaces_it_sits_on(light, dark):
-    """`--text-2` carries body copy *and* inline code on `--surface-3`."""
-    for scheme, values in (("light", light), ("dark", dark)):
-        for ground in ("page", "surface", "surface-2", "surface-3"):
-            ratio = contrast(values["text-2"], values[ground])
-            assert ratio >= 4.5, f"{scheme}: --text-2 on --{ground} is {ratio:.2f}:1"
