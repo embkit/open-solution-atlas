@@ -337,7 +337,11 @@ def discover_markdown() -> list[Path]:
         parts = path.relative_to(ROOT).parts
         if any(part.startswith((".", "_")) for part in parts):
             continue
-        if "templates" in parts or "tests" in parts:
+        # node_modules is a tool install (the kit's browser verifiers resolve
+        # Playwright from there), and templates/ and tests/ are scaffolding and
+        # test code. None of them is content, and a scanner that missed one of
+        # them fails the build with links inside somebody else's README.
+        if "templates" in parts or "tests" in parts or "node_modules" in parts:
             continue
         if "site-assets" in parts:  # vendored third-party libs, not content
             continue
@@ -1079,7 +1083,10 @@ def render_prompt_section(entry: dict, prefix: str, pack_dir: Path) -> str:
         '<button type="button" class="copybtn" data-copy="prm-implement">复制提示词</button>'
         '<a class="prm-dl" href="' + _esc(prefix + base + "implement.md") + '" download>下载 .md</a>'
         '</div>'
-        '<textarea class="prm-text" id="prm-implement" readonly spellcheck="false">'
+        '<textarea class="prm-text" id="prm-implement" readonly spellcheck="false" '
+        'aria-label="Prompt: implement this pack" '
+        'aria-describedby="prm-implement-hint">'
+        + '<span id="prm-implement-hint" hidden>Generated from this pack by tools/prompts.py</span>'
         + _esc(inline) + "</textarea>"
     )
 

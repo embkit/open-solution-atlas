@@ -71,6 +71,12 @@ def contrast(a: str, b: str) -> float:
     return (hi + 0.05) / (lo + 0.05)
 
 
+def _rules(css: str) -> list[tuple[str, str]]:
+    """(selector, declarations) pairs, comments stripped."""
+    css = re.sub(r"/\*.*?\*/", "", css, flags=re.DOTALL)
+    return re.findall(r"([^{}]+)\{([^{}]*)\}", css)
+
+
 def _root_block(css: str, dark: bool = False) -> str:
     if dark:
         m = re.search(
@@ -297,3 +303,113 @@ def test_keyboard_focus_is_visible(css):
 def test_mobile_breakpoints_exist(css):
     for width in ("1100px", "900px", "820px"):
         assert width in css, f"missing the {width} breakpoint"
+
+# --------------------------------------------------------------------------- #
+# The kit's central checks, held repo-side so CI can guard them
+# --------------------------------------------------------------------------- #
+#
+# `scripts/lint_hardcodes.py`, `lint_taste.py` and `axe_audit.mjs` come from the
+# ux-ui-agent-skills kit, which is a local tool install rather than repository
+# content (251 files, 140 of them crosswalks for other products). CI therefore
+# cannot run them, so the findings they produced are asserted here instead —
+# the same properties, checked without the kit:
+#
+#   lint_hardcodes   "OK: no hardcoded values found"   -> test_no_hardcoded_values
+#   axe_audit        "OK: 0 violations"                -> test_tertiary_text_..., test_prompt_has_accessible_name
+#   verify_target_size / verify_states / verify_reduced_motion  -> build-site tests + the motion check above
+#
+# Run the kit's own verifiers locally before a design change; they cover more
+# than these do (axe runs 80+ rules, the state verifier walks hover and focus on
+# every interactive element).
+
+TOKEN_DECLARATION = re.compile(r"--[a-z0-9-]+:\s*[^;]+;")
+
+
+def test_no_hardcoded_values_outside_token_declarations(css):
+    """The contract's §11 iron rule, and the kit's central check.
+
+    A literal colour or length inside a rule is how a design system stops being
+    one: the value is right today and drifts tomorrow, because nothing names it.
+    Token declarations themselves are the only place a literal belongs — plus
+    zero, `calc`, and any line carrying the kit's own exception marker.
+    """
+    offenders = []
+    for selector, body in _rules(css):
+        if selector.strip().startswith(":"):
+            continue  # the token blocks
+        for decl in body.split(";"):
+            if not decl.strip() or "ds-allow-hardcode" in decl:
+                continue
+            head = decl.split(":", 1)
+            if len(head) < 2:
+                continue
+            value = head[1]
+            # a bare 0, a negative shadow offset, calc/repeat with tokens, and
+            # `1px` on a hairline are all fine; a new colour or size is not
+            for literal in re.findall(r"#[0-9a-fA-F]{3,8}\b|\b\d+(?:\.\d+)?px\b", value):
+                if literal in ("0px",):
+                    continue
+                offenders.append(f"{selector.strip()} -> {head[0].strip()}: {literal}")
+    assert not offenders, (
+        "hardcoded values outside token declarations:\n  "
+        + "\n  ".join(sorted(set(offenders))[:20])
+    )
+
+
+def test_tertiary_text_clears_aa_on_every_ground(light, dark):
+    """axe-core found 110 nodes below 4.5:1 before this was fixed.
+
+    `--text-3` carries facet labels, chip counts and card metadata, so it sits
+    on `--page`, `--surface`, `--surface-2` and `--surface-3` — not just
+    `--surface`. The contract's own value (#8792a2) fails, and EmbKit's
+    correction (#6b7785) still failed on the darker grounds; a test on
+    `--surface` alone would have missed all of it.
+    """
+    grounds = ("page", "surface", "surface-2", "surface-3")
+    for scheme, values in (("light", light), ("dark", dark)):
+        for ground in grounds:
+            ratio = contrast(values["text-3"], values[ground])
+            assert ratio >= 4.5, (
+                f"{scheme}: --text-3 on --{ground} is {ratio:.2f}:1"
+            )
+
+
+def test_no_opacity_reduced_text(css):
+    """axe blends an alpha'd colour before judging it.
+
+    `opacity: 0.75` on a small label over `--surface-3` dropped it below 4.5:1
+    even though the *declared* colour passed. De-emphasis uses an explicit
+    colour now.
+    """
+    offenders = [
+        sel.strip()
+        for sel, body in _rules(css)
+        if re.search(r"opacity:\s*0?\.[1-9]", body)
+    ]
+    # `opacity: 0` and `opacity: 1` are fine; a partial one on text is the risk
+    assert not offenders, f"partial opacity on text: {offenders}"
+
+
+def test_inline_prompt_has_an_accessible_name():
+    """axe reported `#prm-implement` as an unlabelled form element (critical)."""
+    src = (ROOT / "tools" / "build-site.py").read_text(encoding="utf-8")
+    marker = 'id="prm-implement"'
+    assert marker in src
+    window = src[src.index(marker) : src.index(marker) + 400]
+    assert "aria-label" in window or "aria-labelledby" in window, (
+        "the inline prompt textarea has no accessible name"
+    )
+
+
+def test_demo_selects_have_accessible_names():
+    """axe reported the demo's completion-policy select (critical).
+
+    A preceding `<h3>` groups visually; it is not a label association, and axe
+    is right to distinguish them.
+    """
+    for demo in (ROOT / "packs").glob("*/*/10-demo/index.html"):
+        text = demo.read_text(encoding="utf-8")
+        for tag in re.findall(r"<select[^>]*>", text):
+            assert "aria-label" in tag or "aria-labelledby" in tag, (
+                f"{demo.parent.parent.name}: an unnamed <select> ({tag[:60]})"
+            )
