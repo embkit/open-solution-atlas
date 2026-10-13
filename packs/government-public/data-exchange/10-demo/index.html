@@ -50,6 +50,10 @@
     }
   }
   *{box-sizing:border-box}
+  /* An identifier is one token: `FR-018` was breaking after the hyphen in
+     the narrow ID column, which stops it reading as an identifier. Scope it
+     to table cells so the long paths in the source note can still wrap. */
+  td code, th code { white-space: nowrap; }
   body{margin:0;background:var(--bg);color:var(--fg);
     font-family:var(--sans);font-size:13px;line-height:1.6}
   .wrap{max-width:1240px;margin:0 auto;padding:20px 16px 56px}

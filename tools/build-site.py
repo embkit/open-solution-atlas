@@ -1311,7 +1311,12 @@ def render_catalog(
     )
 
     body = (
-        hero
+        # `.wrap` is the page's gutter and measure. The hero and the trust note
+        # are rounded panels designed to sit inside it, so without it their left
+        # edge landed on the viewport edge and the facet labels were clipped at
+        # x=0 — the panels' own padding made them *look* inset.
+        '<div class="wrap">'
+        + hero
         + '<p class="trustnote">Every pack is <code>llm-drafted</code>; none has been '
           '<strong>field-verified</strong>. Maturity measures completeness, not '
           'correctness &mdash; check each pack&rsquo;s <code>SOURCES.md</code>.</p>'
@@ -1329,6 +1334,7 @@ def render_catalog(
         + f'<div class="cards" id="cards">{cards}{empty}</div>'
         + '<p class="hint">Search is loaded on first use, so browsing never pays for '
           'the index.</p>'
+        + '</div>'
     )
     return page_shell(
         title="Open Solution Atlas — blueprints for real enterprise systems",
