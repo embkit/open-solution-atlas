@@ -1,0 +1,18 @@
+{
+  "title": "反重复提交实验室 — Anti-double-submission lab",
+  "kind": "form-lab",
+  "summary": "第七条逐字段强制：可获取字段绝不设为必填、查找失败走已定义的许可替代、豁免必须留痕。演示这条规则的失败模式——系统太好心了。",
+  "entry": "index.html",
+  "demonstrates": [
+    "BR-05",
+    "FR-010",
+    "FR-011",
+    "FR-012",
+    "FR-013",
+    "FR-014",
+    "NFR-001",
+    "NFR-002",
+    "NFR-003",
+    "ADR-0005"
+  ]
+}
