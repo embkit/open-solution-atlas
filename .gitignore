@@ -11,6 +11,13 @@ env/
 .coverage
 htmlcov/
 
+# --- Node ---
+# The kit's browser verifiers resolve Playwright from here; it is a tool
+# install, not a dependency of the published site.
+node_modules/
+package.json
+package-lock.json
+
 # --- OS / editor ---
 .DS_Store
 Thumbs.db
@@ -33,6 +40,26 @@ desktop.ini
 # convention is ignored by prefix — the same rule discover_markdown() and
 # check-links.py use to stay out of build output.
 /_*/
+
+# --- The ux-ui-agent-skills kit (local tool install, not repository content) ---
+# 251 files of generic design doctrine, 140 of them crosswalks for other
+# products' design systems. The project's actual standard is the vendored
+# `docs/embkit-ui-contract.md`; the kit is the tooling the `redesign` /
+# `design-review` / `a11y-audit` skills read from, and EmbKit does not commit it
+# either. Install with:
+#     npx ux-ui-skills add tokens taste workflows scripts accessibility rules \
+#         components design-systems frameworks content agents
+# Leave `templates` out: this repository already has one at that path.
+/tokens/
+/taste/
+/components/
+/design-systems/
+/frameworks/
+/content/
+/workflows/
+/accessibility/
+/scripts/
+/.claude/
 
 # --- Local env / secrets ---
 .env
