@@ -421,15 +421,23 @@ def parse_controls(text: str) -> list[dict]:
 # --------------------------------------------------------------------------- #
 
 def parse_store_claimed(text: str) -> set[int]:
-    """Which numbered constraints the data model claims are store-enforced.
+    r"""Which numbered constraints the data model claims are store-enforced.
 
     The sentence is prose — ``Constraints 1, 4, 7 and 10 are enforced in the
     store`` — and it is routinely wrapped mid-phrase, so it is flattened
     first. This parses numbers *out of a claim*, which is why the resulting
     flag is presented as claimed rather than verified.
+
+    The clause is matched with a negated character class rather than a
+    structure like ``(?:\d+\s*(?:,|and)?\s*)+?``: the nested quantifiers of
+    that form backtrack exponentially on a long digit run, and CodeQL flagged
+    it on this repository. The numbers are then pulled out of the clause by a
+    separate, unambiguous ``\d+`` scan.
     """
     flat = _flat(text)
-    m = re.search(r"Constraints?\s+((?:\d+\s*(?:,|\band\b)?\s*)+?)\s+are\s+enforced\s+in\s+the\s+store", flat)
+    m = re.search(
+        r"Constraints?\s+([^.;:]+?)\s+(?:are|is)\s+enforced\s+in\s+the\s+store", flat
+    )
     if not m:
         return set()
     return {int(n) for n in re.findall(r"\d+", m.group(1))}

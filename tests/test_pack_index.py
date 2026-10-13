@@ -149,6 +149,25 @@ def test_store_enforcement_survives_a_line_wrap(pack_index):
     assert [c["store"] for c in out] == [True, True]
 
 
+def test_store_clause_accepts_the_singular_form(pack_index):
+    assert pack_index.parse_store_claimed("Constraint 6 is enforced in the store") == {6}
+
+
+def test_store_clause_is_regex_backtracking_safe(pack_index):
+    """A nested-quantifier form of this clause is a ReDoS; CodeQL flagged it.
+
+    The clause is matched with a negated character class, so a long digit run
+    costs linear time rather than exponential. This asserts the property
+    directly, because a future tightening of the regex would reintroduce it.
+    """
+    import time
+
+    hostile = "Constraints " + "9" * 4000 + " are enforced in the store"
+    start = time.monotonic()
+    pack_index.parse_store_claimed(hostile)
+    assert time.monotonic() - start < 1.0, "store clause regex backtracks"
+
+
 def test_store_enforcement_is_absent_without_the_claim(pack_index):
     text = "| 1 | a | BR-01 |\n\nConstraints are listed above.\n"
     assert pack_index.parse_constraints(text)[0]["store"] is False
