@@ -1,0 +1,514 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>共享闭环实验室 · data-exchange</title>
+<style>
+  /* The demo carries the app's tokens inline because it must open on its own:
+     a demo that depends on the site's stylesheet cannot be opened from the
+     repository or from a file:// path. These are EmbKit's values and no others
+     — the brand indigo is LOCKED in the contract, and the neutrals are cold by
+     rule. Repeating values is how a second palette appears, so this block is
+     byte-identical across every demo and a test keeps it that way. */
+  :root{
+    --page:#f6f9fc; --surface:#ffffff; --surface-2:#fafbfd; --surface-3:#eef2f7;
+    --line:#e8edf3; --line-strong:#d3dae3;
+    --navy:#0a2540; --text:#0a2540; --text-2:#425466; --text-3:#5f6b79;
+    --primary:#4f46e5; --primary-hover:#4338ca; --primary-active:#3730a3;
+    --primary-tint:#eef2ff; --primary-ring:rgba(79,70,229,.28); --on-primary:#ffffff;
+    --ok:#0e7c5a; --ok-soft:#dff5ec;
+    --warn:#8a5409; --warn-soft:#fdf1dc;
+    --danger:#c2373c; --danger-soft:#fdeaeb;
+    --r-sm:6px; --r-md:8px; --r-lg:10px; --r-xl:12px; --r-2xl:14px; --r-full:999px;
+    --shadow-card:0 1px 2px rgba(15,23,42,.04), 0 8px 24px rgba(15,23,42,.06);
+    --shadow-pop:0 12px 32px rgba(15,23,42,.12);
+    --sans:"Inter","MiSans","HarmonyOS Sans SC","PingFang SC","Microsoft YaHei",-apple-system,"Segoe UI",sans-serif;
+    --mono:ui-monospace,"SF Mono","Cascadia Mono",Menlo,Consolas,monospace;
+    /* aliases the demo bodies already use */
+    --vellum:var(--page); --vellum-2:var(--surface-3); --ink:var(--text);
+    --muted:var(--text-3); --rule:var(--line); --rule-strong:var(--line-strong);
+    --draft:var(--primary); --draft-soft:var(--primary-tint);
+    --accent:var(--primary); --accent-soft:var(--primary-tint); --link:var(--primary);
+    --revise:var(--danger); --revise-soft:var(--danger-soft);
+    --bad:var(--danger); --bad-soft:var(--danger-soft);
+    --bg:var(--page); --elev:var(--surface); --fg:var(--text);
+    --border:var(--line); --border-strong:var(--line-strong);
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --page:#0a2540; --surface:#0f2c4d; --surface-2:#143253; --surface-3:#1a3a5e;
+      --line:#1e4067; --line-strong:#2a517d; --text:#eaf0f7; --text-2:#b6c4d4; --text-3:#9fb2c6;
+      --primary:#818cf8; --primary-hover:#a5b4fc; --primary-active:#c7d2fe;
+      --primary-tint:#1a2b52; --primary-ring:rgba(129,140,248,.32); --on-primary:#0a2540;
+      --ok:#4ade9f; --ok-soft:#10312a; --warn:#f0b062; --warn-soft:#33260f;
+      --danger:#f0939a; --danger-soft:#3a1c1f;
+      --shadow-card:0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.28);
+      --shadow-pop:0 12px 32px rgba(0,0,0,.4);
+    }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);
+    font-family:var(--sans);font-size:13px;line-height:1.6}
+  .wrap{max-width:1240px;margin:0 auto;padding:20px 16px 56px}
+  header{border-bottom:1px solid var(--line);padding-bottom:14px;margin-bottom:20px}
+  h1{font-family:var(--sans);font-size:20px;font-weight:600;line-height:1.35;
+    letter-spacing:-.015em;margin:0 0 6px}
+  .sub{color:var(--muted);font-size:12px;margin:0;max-width:86ch;line-height:1.65}
+  .grid{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:var(--sp-3,12px);align-items:start}
+  @media (max-width:980px){.grid{grid-template-columns:1fr}}
+  .panel{padding:20px;background:var(--surface);border:1px solid var(--line);
+    border-radius:var(--r-xl);box-shadow:var(--shadow-card);margin-bottom:12px}
+  .panel h2{font-size:12px;font-weight:600;letter-spacing:.04em;color:var(--muted);
+    margin:0 0 12px;border-bottom:1px solid var(--line);padding-bottom:6px}
+  .panel h3{font-size:14px;font-weight:600;margin:16px 0 6px}
+  button{font-family:var(--sans);font-size:12px;font-weight:600;cursor:pointer;
+    background:var(--surface);color:var(--fg);
+    border:1px solid var(--line);border-radius:var(--r-md);padding:6px 12px;margin:2px 4px 2px 0}
+  button:hover{border-color:var(--primary);color:var(--primary)}
+  button[aria-pressed="true"]{background:var(--primary);border-color:var(--primary);color:var(--on-primary)}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  select{font-family:var(--sans);font-size:12px;background:var(--surface);color:var(--fg);
+    border:1px solid var(--line);border-radius:var(--r-md);padding:6px 10px;width:100%}
+  code{font-family:var(--mono);font-size:12px;background:var(--surface-3);
+    padding:1px 4px;border-radius:var(--r-sm);color:var(--text-2)}
+  .kv{display:flex;gap:8px;font-family:var(--mono);font-size:12px;margin:3px 0}
+  .kv b{color:var(--muted);font-weight:600;min-width:7rem}
+  .log{max-height:200px;overflow:auto;font-family:var(--mono);font-size:11px;line-height:1.7;
+    background:var(--surface-3);border:1px solid var(--line);border-radius:var(--r-md);padding:10px 12px}
+  .log div{padding:1px 0;border-bottom:1px solid var(--line)}
+  .log div:last-child{border:0}
+  .viol{background:var(--danger-soft);border:1px solid var(--danger);border-radius:var(--r-md);
+    padding:10px 12px;font-size:12px;line-height:1.6;margin:8px 0;color:var(--danger)}
+  .ok{background:var(--surface-3);border:1px solid var(--line);border-radius:var(--r-md);
+    padding:10px 12px;font-size:12px;line-height:1.6;margin:8px 0;color:var(--text-3)}
+  .sig{display:inline-block;font-family:var(--mono);font-size:11px;font-weight:600;
+    padding:1px 5px;border:1px solid currentColor;border-radius:var(--r-sm);vertical-align:1px}
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  th,td{text-align:left;padding:5px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--muted);font-size:11px;font-weight:600}
+  .note{font-size:12px;color:var(--muted);margin:8px 0 0;line-height:1.65}
+  details{margin:8px 0}
+  summary{cursor:pointer;font-size:12px;color:var(--muted)}
+  a{color:var(--link)}
+  .loop{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-family:var(--mono);font-size:11px;margin:10px 0}
+  .node{border:1px solid var(--line);border-radius:var(--r-md);padding:4px 8px;color:var(--muted)}
+  .node.on{background:var(--primary);border-color:var(--primary);color:var(--on-primary)}
+  .node.bad{background:var(--danger-soft);border-color:var(--danger);color:var(--danger)}
+  .src{font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:24px;
+    border-top:1px solid var(--line);padding-top:12px;max-width:110ch;line-height:1.8}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>共享闭环实验室 <span style="font-weight:400;color:var(--muted)">Closed-loop sharing lab</span></h1>
+  <p class="sub">
+    本页演示 <code>packs/government-public/data-exchange</code> 的核心决策（ADR-0005）：
+    <strong>授权 → 审批 → 共享 → 血缘是一个「环」而不是一条线</strong>。
+    每次共享都能走回到授权，每个授权都能走回到审批，血缘闭合回源资源
+    （BR-08 / FR-018）。需要这个 demo 的理由：这个闭环里<strong>任何一处断掉，
+    就是一次无法归因的传输</strong>——数据出去了，而没人说得清是谁基于什么授权的。
+  </p>
+</header>
+
+<div class="grid">
+<div>
+
+<!-- 闭环 -->
+<section class="panel">
+  <h2>闭环 · the loop is a cycle</h2>
+  <div class="loop" id="loop"></div>
+  <p class="note" id="loopNote"></p>
+
+  <h3>1. 目录条目（根对象）</h3>
+  <div id="catalog"></div>
+
+  <h3>2. 请求与审批</h3>
+  <div id="request"></div>
+
+  <h3>3. 传输</h3>
+  <div id="transfer"></div>
+
+  <h3>4. 撤销</h3>
+  <div id="revoke"></div>
+</section>
+
+<!-- 血缘 -->
+<section class="panel">
+  <h2>血缘追溯 · lineage</h2>
+  <div id="lineage"></div>
+  <h3>事件轨迹</h3>
+  <div class="log" id="log"></div>
+</section>
+
+</div>
+<div>
+
+<!-- 不变量 -->
+<section class="panel">
+  <h2>零容忍不变量</h2>
+  <div id="violations"></div>
+  <p class="note">
+    本包 7 个不可交易不变量。它们不是阈值：任何一个非零，<strong>「谁授权的？」</strong>
+    就变得无法回答或为假。第七个看起来像延迟信号而<b>不是</b>——
+    已记录而访问仍存在的撤销，是<strong>被撤消费者仍在读</b>的那个窗口，
+    <strong>而那些读每一次都不可归因</strong>。
+  </p>
+  <table>
+    <thead><tr><th>ID</th><th>要求</th><th>状态</th></tr></thead>
+    <tbody id="invTable"></tbody>
+  </table>
+</section>
+
+<section class="panel">
+  <h2>本包刻意留白的</h2>
+  <details>
+    <summary>渠道组成（table-to-table / file / interface）</summary>
+    <p class="note">
+      BR-09 要求所有渠道都是<strong>已声明的一等公民</strong>，但「三者是否都一等、
+      还是有一条是主渠道」是<strong>记录的开放问题</strong>。本 demo 因此只提供
+      <strong>一种</strong>渠道，并标明这一点，而不是替你选一条主渠道。
+    </p>
+  </details>
+  <details>
+    <summary>结构化用途的表达能力</summary>
+    <p class="note">
+      FR-013 要求用途<strong>可被检验</strong>——「消费者是否守约了？」不是一个平台
+      能对<b>一个句子</b>回答的问题。但<b>覆盖真实用途的那个结构尚未设计</b>；
+      它是 L3 的设计任务。本 demo 因此用一组<b>固定选项</b>，而不是一个自由文本框。
+    </p>
+  </details>
+</section>
+
+</div>
+</div>
+
+<p class="src">
+  内容来源：<code>01-business/business-rules.md</code>（BR-01/04/05/07/08/09）、
+  <code>02-requirements/functional.md</code>（FR-013/016/017/018）、
+  <code>04-architecture/adr/0005-declared-purpose-is-structural.md</code>、
+  <code>05-data/logical-data-model.md</code>（约束 1/6/7/10/11/12）。
+  本页为手写演示：它编码本包的语义，不声称符合任何 profile。<code>verification: unverified</code>。
+</p>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+var PURPOSES = [
+  {id:"social-security", label:"社会保障待遇核验"},
+  {id:"market-regulation", label:"市场监管抽查"},
+  {id:"planning", label:"国土空间规划编制"}
+];
+
+var INVARIANTS = [
+  {id:"BR-01", what:"授权针对目录条目，绝不针对源系统"},
+  {id:"BR-04", what:"等级驱动规则，无数据集级覆盖"},
+  {id:"BR-05", what:"授权记录结构化用途、范围、期限"},
+  {id:"BR-07", what:"撤销按访问真正被移除的时延衡量"},
+  {id:"BR-08", what:"无生效授权的传输 = 0"},
+  {id:"FR-018", what:"每次共享都能走回到审批（血缘闭合）"},
+  {id:"NFR-001", what:"传输必须有生效且用途匹配的授权"}
+];
+
+var state = {
+  entry: null,          // 目录条目
+  approval: null,
+  grant: null,
+  transfers: [],
+  revokedAt: null,
+  accessRemovedAt: null,
+  events: [],
+  violations: {}
+};
+
+function el(id){ return document.getElementById(id); }
+function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function bt(label, action, extra){
+  var b = document.createElement("button");
+  b.type = "button"; b.textContent = label;
+  b.setAttribute("data-action", action);
+  if (extra) b.setAttribute("data-field", extra);
+  return b;
+}
+function append(text){
+  state.events.push(text);
+  if (state.events.length > 60) state.events.shift();
+  renderLog();
+  renderActions();
+  renderViolations();
+  renderTable();
+}
+
+/* ---- 目录条目 ---- */
+function renderCatalog(){
+  var box = el("catalog"); box.innerHTML = "";
+  if (!state.entry) {
+    var b = bt("登记资源 → 目录条目 CAP-01", "register");
+    b.onclick = function(){
+      state.entry = {
+        id: "CE-014",
+        resource: "城乡居民参保信息（13 字段）",
+        grade: "一般数据 · 三级",
+        shareType: "conditional",
+        owner: "市人社局"
+      };
+      append("catalog entry CE-014 created (graded, share_type=conditional)");
+    };
+    box.appendChild(b);
+    var p = document.createElement("p");
+    p.className = "note";
+    p.textContent = "授权必须针对这个条目，而不是源系统——关于一个数据库的授权说不出到底传了什么（BR-01）。资源不在目录里就不可共享，这是刻意的。";
+    box.appendChild(p);
+  } else {
+    var e = state.entry;
+    var d = document.createElement("div");
+    d.innerHTML =
+      '<div class="kv"><b>条目</b><code>' + esc(e.id) + "</code></div>" +
+      '<div class="kv"><b>资源</b>' + esc(e.resource) + "</div>" +
+      '<div class="kv"><b>等级</b>' + esc(e.grade) + ' <span class="sig" style="color:var(--muted)">规则由此派生</span></div>' +
+      '<div class="kv"><b>共享类型</b><code>' + esc(e.shareType) + "</code></div>" +
+      '<div class="kv"><b>提供方</b>' + esc(e.owner) + "</div>";
+    box.appendChild(d);
+  }
+}
+
+/* ---- 请求与审批 ---- */
+function renderRequest(){
+  var box = el("request"); box.innerHTML = "";
+  if (!state.entry) {
+    box.innerHTML = '<p class="note">先登记目录条目。</p>';
+    return;
+  }
+  if (!state.approval) {
+    var sel = document.createElement("select");
+    sel.id = "purpose";
+    sel.setAttribute("aria-label", "申报用途");
+    sel.innerHTML = '<option value="">— 选择结构化用途 —</option>' +
+      PURPOSES.map(function(p){ return '<option value="' + p.id + '">' + esc(p.label) + "</option>"; }).join("");
+    var wrap = document.createElement("div");
+    wrap.innerHTML = '<div class="kv"><b>申报用途</b></div>';
+    wrap.appendChild(sel);
+    box.appendChild(wrap);
+    var b = bt("提交请求并审批", "request");
+    b.onclick = function(){
+      var v = el("purpose").value;
+      if (!v) { append("request rejected: purpose is required (FR-013)"); return; }
+      state.approval = { id:"AP-207", consumer:"市医保局", purpose:v, ts:"T0" };
+      append("approval AP-207 granted, purpose=" + v + " (structured, checkable)");
+    };
+    box.appendChild(b);
+    var p = document.createElement("p");
+    p.className = "note";
+    p.textContent = "用途是结构化的、可被检验的授权属性——自由文本满足了形式、不满足实质，「消费者是否守约了？」不是一个平台能对一个句子回答的问题（FR-013 / ADR-0005）。";
+    box.appendChild(p);
+    return;
+  }
+  var a = state.approval;
+  var pn = (PURPOSES.filter(function(p){ return p.id === a.purpose; })[0] || {}).label || a.purpose;
+  var d = document.createElement("div");
+  d.innerHTML =
+    '<div class="kv"><b>审批</b><code>' + esc(a.id) + "</code></div>" +
+    '<div class="kv"><b>消费者</b>' + esc(a.consumer) + "</div>" +
+    '<div class="kv"><b>用途</b>' + esc(pn) + ' <span class="sig" style="color:var(--muted)">structured</span></div>';
+  box.appendChild(d);
+  if (!state.grant) {
+    var g = bt("创建授权（生效、可撤销、用途匹配）", "grant");
+    g.onclick = function(){
+      state.grant = { id:"GR-331", purpose:a.purpose, validTo:"2027-06-30", revoked:false };
+      append("grant GR-331 created, purpose-matching, revocable, validTo 2027-06-30");
+    };
+    box.appendChild(g);
+  }
+}
+
+/* ---- 传输 ---- */
+function renderTransfer(){
+  var box = el("transfer"); box.innerHTML = "";
+  if (!state.approval) { box.innerHTML = '<p class="note">需要一条审批。</p>'; return; }
+  var opts = [{id:"match", label:"按授权用途传输（匹配）"}]
+    .concat(PURPOSES.filter(function(p){ return p.id !== state.approval.purpose; })
+      .map(function(p){ return {id:"mismatch:" + p.id, label:"用另一用途传输：" + p.label}; }));
+  var sel = document.createElement("select");
+  sel.id = "channel";
+  sel.setAttribute("aria-label", "传输渠道");
+  sel.innerHTML = '<option value="interface">已声明渠道 · interface</option>';
+  var wrap = document.createElement("div");
+  wrap.innerHTML = '<div class="kv"><b>渠道</b> <span class="sig" style="color:var(--muted)">本包只提供一种，见「刻意留白」</span></div>';
+  wrap.appendChild(sel);
+  box.appendChild(wrap);
+
+  opts.forEach(function(o){
+    var b = bt(o.label, o.id.indexOf("mismatch") === 0 ? "transfer-mismatch" : "transfer-ok");
+    b.onclick = function(){
+      var mismatch = o.id.indexOf("mismatch") === 0;
+      var ok = state.grant && !state.grant.revoked && !mismatch;
+      state.transfers.push({ id:"TR-" + (400 + state.transfers.length), ok:ok });
+      if (ok) append("transfer TR-" + (400 + state.transfers.length - 1) + " -> grant GR-331 (live, purpose-matching)");
+      else if (mismatch) append("TRANSFER with mismatched purpose — FR-017 violated");
+      else append("TRANSFER with no live grant — FR-017 violated");
+    };
+    box.appendChild(b);
+  });
+  var p = document.createElement("p");
+  p.className = "note";
+  p.textContent = "没有生效且用途匹配的授权就没有传输（BR-08 / FR-017）。用途不匹配的授权依然是一个「存在的」授权——而它不是这次传输的授权。";
+  box.appendChild(p);
+}
+
+/* ---- 撤销 ---- */
+function renderRevoke(){
+  var box = el("revoke"); box.innerHTML = "";
+  if (!state.grant) { box.innerHTML = '<p class="note">还没有授权可撤销。</p>'; return; }
+  if (!state.revokedAt) {
+    var b = bt("撤销授权", "revoke");
+    b.onclick = function(){
+      state.revokedAt = "T1";
+      append("revocation recorded at T1 — the clock starts, access is NOT yet removed");
+    };
+    box.appendChild(b);
+  } else if (!state.accessRemovedAt) {
+    var d = document.createElement("div");
+    d.className = "viol";
+    d.id = "revokeNote";
+    d.innerHTML = '<span class="sig">sev-1</span> 撤销已记录（T1），但<strong>访问尚未移除</strong>。' +
+      '这个窗口里的每一次读都不可归因——<strong>撤销的价值是访问真正被移除的时延，不是记录这个动作</strong>（BR-07 / FR-016）。';
+    box.appendChild(d);
+    var b2 = bt("在各渠道完成访问移除", "remove-access");
+    b2.onclick = function(){
+      state.accessRemovedAt = "T2";
+      append("access removed at every channel the grant permitted (T2) — lead time T2-T1");
+    };
+    box.appendChild(b2);
+  } else {
+    var d2 = document.createElement("div");
+    d2.className = "ok";
+    d2.id = "revokeNote";
+    d2.textContent = "✓ 撤销完成：访问在 T2 被真正移除，时延已记录。";
+    box.appendChild(d2);
+  }
+}
+
+/* ---- 血缘 ---- */
+function renderLineage(){
+  var box = el("lineage"); box.innerHTML = "";
+  if (!state.transfers.length) {
+    box.innerHTML = '<p class="note">还没有传输，因此没有血缘可追溯。</p>';
+    return;
+  }
+  var tb = document.createElement("table");
+  tb.innerHTML = "<thead><tr><th>传输</th><th>授权</th><th>审批</th><th>用途</th><th>闭环</th></tr></thead><tbody>" +
+    state.transfers.map(function(t, i){
+      var closed = !!(state.grant && state.approval && t.ok);
+      return "<tr><td><code>" + esc(t.id) + "</code></td><td>" +
+        (state.grant ? "<code>" + state.grant.id + "</code>" : "—") + "</td><td>" +
+        (state.approval ? "<code>" + state.approval.id + "</code>" : "—") + "</td><td>" +
+        (state.approval ? esc(state.approval.purpose) : "—") + "</td><td>" +
+        (closed ? '<span class="sig" style="color:var(--ok)">closed</span>'
+                : '<span class="sig" style="color:var(--danger)">broken</span>') + "</td></tr>";
+    }).join("") + "</tbody>";
+  box.appendChild(tb);
+}
+
+/* ---- 闭环图 ---- */
+function renderLoop(){
+  var box = el("loop"); box.innerHTML = "";
+  var nodes = [
+    {k:"授权", on:!!state.grant, bad:state.grant && state.grant.revoked && !state.accessRemovedAt},
+    {k:"审批", on:!!state.approval, bad:false},
+    {k:"共享", on:state.transfers.some(function(t){return t.ok;}), bad:state.transfers.some(function(t){return !t.ok;})},
+    {k:"血缘", on:state.transfers.length > 0 && state.transfers.every(function(t){return t.ok;}), bad:state.transfers.some(function(t){return !t.ok;})}
+  ];
+  nodes.forEach(function(n, i){
+    var d = document.createElement("span");
+    d.className = "node" + (n.bad ? " bad" : (n.on ? " on" : ""));
+    d.textContent = n.k;
+    box.appendChild(d);
+    if (i < nodes.length - 1) {
+      var s = document.createElement("span");
+      s.textContent = "→";
+      s.style.color = "var(--muted)";
+      box.appendChild(s);
+    }
+  });
+  var back = document.createElement("span");
+  back.className = "node";
+  back.textContent = "↩ 回到授权";
+  box.appendChild(back);
+  var note = el("loopNote");
+  var broken = state.transfers.some(function(t){ return !t.ok; });
+  note.innerHTML = broken
+    ? '<span class="sig" style="color:var(--danger)">sev-1</span> 闭环断了。一次没有生效授权的传输，是<strong>无法被审计的循环参与</strong>——数据出去了，而没人说得清是谁基于什么授权的。'
+    : "闭环是<strong>环</strong>：每次共享 → 授权 → 审批，血缘再闭回源条目。";
+}
+
+/* ---- 不变量 ---- */
+function checkInvariants(){
+  var v = {};
+  v["BR-01"] = false;  // 本 demo 的授权恒针对条目
+  v["BR-04"] = false;  // 等级恒派生规则
+  v["NFR-001"] = state.transfers.some(function(t){ return !t.ok; });
+  v["BR-08"] = v["NFR-001"];
+  v["FR-018"] = state.transfers.some(function(t){ return !t.ok; });
+  v["BR-05"] = !!(state.approval && !state.approval.purpose);
+  // BR-07：记录撤销而访问仍在 —— 这个窗口就是缺陷本身
+  v["BR-07"] = !!(state.revokedAt && !state.accessRemovedAt);
+  state.violations = v;
+  return v;
+}
+
+function renderViolations(){
+  var v = checkInvariants();
+  var box = el("violations"); box.innerHTML = "";
+  var keys = Object.keys(v).filter(function(k){ return v[k]; });
+  if (!keys.length) {
+    var ok = document.createElement("div");
+    ok.className = "ok";
+    ok.textContent = "✓ 当前配置未违反任何零容忍不变量";
+    box.appendChild(ok);
+  } else {
+    keys.forEach(function(k){
+      var d = document.createElement("div");
+      d.className = "viol";
+      d.innerHTML = '<span class="sig">sev-1</span> <code>' + k + "</code> " +
+        ((INVARIANTS.filter(function(i){return i.id===k;})[0]||{}).what || "") +
+        " — 已记录。真实系统里这是一个会 <strong>失败构建</strong> 的缺陷。";
+      box.appendChild(d);
+    });
+  }
+}
+
+function renderTable(){
+  var tb = el("invTable"); tb.innerHTML = "";
+  var v = state.violations;
+  INVARIANTS.forEach(function(i){
+    var tr = document.createElement("tr");
+    tr.innerHTML = "<td><code>" + i.id + '</code></td><td>' + i.what + '</td><td>' +
+      (v[i.id] ? '<span class="sig" style="color:var(--danger)">violated</span>'
+               : '<span class="sig" style="color:var(--muted)">held</span>') + "</td>";
+    tb.appendChild(tr);
+  });
+}
+
+function renderLog(){
+  var box = el("log"); box.innerHTML = "";
+  state.events.slice().reverse().forEach(function(e){
+    var d = document.createElement("div"); d.textContent = e; box.appendChild(d);
+  });
+}
+
+function renderActions(){
+  renderCatalog(); renderRequest(); renderTransfer(); renderRevoke(); renderLineage(); renderLoop();
+}
+function render(){
+  renderActions(); renderViolations(); renderTable(); renderLog();
+}
+
+append("loop empty · 授权 → 审批 → 共享 → 血缘");
+render();
+})();
+</script>
+</body>
+</html>
