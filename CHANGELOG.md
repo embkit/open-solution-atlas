@@ -4,6 +4,171 @@ All notable changes to Open Solution Atlas. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); versions are repository-wide
 releases (individual packs carry their own `version` in `manifest.yaml`).
 
+## [0.3.0] — 2026-10-14
+
+Twelve packs contributed rules, requirements and NFRs to a machine-readable
+index for the first time; six packs gained the integrity constraints they had
+been missing; each pack gained four prompts assembled from its own decisions and
+a first hand-written demo; and the site's visual layer was rebuilt as technical
+drawing after review found it matched the commonest tells of a generated page.
+`validate-packs.py` still reports 0 errors and 0 warnings, `check-ids.py`
+reports 0 errors with 1821 distinct ID definitions, and 139 tests pass.
+
+### Added — the packs became machine-readable
+
+- `tools/pack_index.py` — extracts every pack's capabilities, rules,
+  requirements, NFRs, controls, ADRs, integrity constraints and bounded
+  contexts into a typed index, emitted as `_site/data/pack-index.json`. It
+  parses **all** conventions the corpus uses — `### BR-01 — Proposition`,
+  `**BR-01 Name**` under a `## Topic`, and a five-column table; heading-anchored
+  EARS and a single inline `- **FR-001** WHEN …` bullet.
+- **Extraction quality is reported per section** — structured / prose-only /
+  absent — because a parser that returns `[]` for a shape it does not know
+  would report *zero rules* for a pack that has fifteen, and a page built on
+  that would state a falsehood about the corpus. Six packs had no integrity
+  constraint table; that is now a dashed badge rather than an empty table.
+- `url_for` delegates to `pack_index.doc_url`, so the URL mapping lives in
+  exactly one place; a test asserts the two agree on the corpus.
+- 125 capabilities, 234 rules, 394 requirements, 221 NFRs, 84 controls, 86 ADRs.
+
+### Added — the structured spec panel
+
+- Every pack overview page carries a radio-based **document view / structured
+  view** toggle, server-rendered so it is complete with JavaScript disabled.
+- Eight section groups with their real counts, trace chips linking to the row
+  each identifier names, and a store-enforcement badge on constraints the data
+  model claims are enforced in the store.
+- The store flag is **derived, not asserted**: it is parsed out of the sentence
+  in each `05-data/logical-data-model.md` that names which numbered constraints
+  are store-enforced — flattened first, because the sentence is routinely wrapped
+  mid-phrase at the source's line width, and a regex over the raw text never
+  sees the phrase it is looking for.
+
+### Added — prompt bundles, 256 files
+
+- `tools/prompts.py` assembles four prompts per pack from that pack's own
+  records: **implement** (capabilities, rule propositions, decisions taken,
+  store-enforced constraints, measurable targets with formulas), **adr** (one
+  decision, what depends on it, **and what was ruled out**), **test** (one rule,
+  the requirements that enforce it, the targets that measure it), and
+  **context** (the pack's chapters, for a model that needs the source).
+- The `adr` prompt's rejected-options section is the part that matters: 78 of
+  the 86 ADRs across the corpus yield the alternatives they rejected, and a
+  prompt carrying only the winner lets a model re-derive the loser.
+- Every prompt states the repository's honesty conditions — `verification:
+  unverified`, no claimed conformance, `(A)` markers are policy rather than
+  measurement, recorded gaps stay gaps. A prompt that omits them gets an
+  implementation that invents them.
+- Copy buttons are an enhancement: every prompt is a real `.md` file, so with
+  JavaScript disabled the action is a link that opens and a textarea that
+  selects.
+
+### Added — the first interactive demo
+
+- `packs/horizontal/workflow-bpm/10-demo/` — an approval-vocabulary lab,
+  hand-written and self-contained (inline styles, inline script, no external
+  asset and no network request), because a demo that depends on the site's
+  stylesheet cannot be opened on its own.
+- It fails correctly: 会签 without a declared completion policy records
+  `FR-013`, `NFR-007` and constraint 7 as sev-1, and the two completion policies
+  the pack leaves open are presented as decisions the user must make rather than
+  as defaults.
+- **Drift is guarded.** `10-demo/demo.json` declares which pack IDs the demo
+  demonstrates, and `tools/check-ids.py` validates them: a demo still
+  demonstrating `ADR-0004` after that ADR was renumbered fails the build.
+
+### Fixed — six packs with no integrity constraints
+
+- `iam-platform`, `itsm-helpdesk`, `personal-blog`, `mes`, `tms`, `wms` gained
+  numbered constraint tables, 86 constraints in total, each naming the `BR-`/`FR-`
+  identifiers it enforces and each file closing with the sentence that records
+  which are enforced in the store.
+- The constraints are drawn from each pack's own rules rather than from a shared
+  template: `wms` gets "no bucket goes negative" and "the projection equals the
+  fold of its event log" because its ADR-0002 is an append-only event store,
+  while `personal-blog` gets "no anonymous write path reaches public content"
+  because on a static site the failure is a page that stays wrong until the next
+  build.
+- Corpus totals: constraints 118 → 204, of which 114 are claimed
+  store-enforced; extraction quality for constraints is now 17/17 structured.
+
+### Changed — the site reads as engineering drawings
+
+- The palette was a warm cream ground (`#fbfaf7`) with a terracotta accent
+  (`#b45309`) — one of the commonest tells of a generated page, appearing
+  regardless of subject — alongside identical rounded cards with the same soft
+  shadow, ALL-CAPS labels, big-number stat tiles and separator-joined meta
+  strings. Rebuilt as technical drawing: vellum `#edeede`, ink `#1c1f1d`,
+  ink-soft `#5b625c`, draft blue `#2a5580`, revision red `#a32020`.
+- **Red means violated and nothing else.** No third accent: a green "all clear"
+  and an ochre "policy" were both cut.
+- **Monospace is the primary voice** for every machine-read element — identifier,
+  formula, target, count, label — with sans for prose only, never both inside one
+  element. A drawing is annotated in one lettering style.
+- The catalog is a register: one ruled row per pack, three aligned columns, no
+  containers. No `border-radius` and no `box-shadow` anywhere; hierarchy comes
+  from line weight and column alignment.
+- Two rule weights, separated deliberately: `--rule` (1.91:1) separates rows,
+  where adjacent content already carries its own leading; `--rule-strong`
+  (3.16:1) borders anything a person must recognise as a control, clearing WCAG
+  1.4.11's 3:1. Holding both to 3:1 would make the sheet heavy; holding both to
+  1.4:1 would make the controls indistinguishable from the page.
+- The demo's palette was aligned to the same system, and its passing state
+  changed from green to quiet ink: a second semantic colour for the passing case
+  would train a reader to skim past the states that matter.
+
+### Fixed — defects found by tooling rather than by reading
+
+- **A ReDoS.** The clause recovering which numbered constraints a data model
+  claims are store-enforced used nested quantifiers over a digit run, which
+  backtrack exponentially. CodeQL flagged it; it is now a negated character
+  class, and a 3000-nine input completes in under a millisecond where the
+  previous form did not finish. The docstring records why the expression must
+  stay a character class.
+- **The build output was discovered as repository content.** The CI
+  compatibility job builds into `_compat_site` before it tests, and the emitted
+  prompt bundles are Markdown, so `discover_markdown()` — which excluded build
+  output by name — treated the previous build's `prompts/*.md` as content and
+  the site contained a copy of itself. Excluded by leading underscore now; the
+  job's exact sequence is a test, because the failure was invisible to every
+  other test.
+- **`check-links.py`** walked `_site/` for the same reason and reported 161
+  broken links that are not broken on the site.
+- **`--vellum` contained a Cyrillic `е`** inside its hex value, so every
+  `color: var(--vellum)` resolved as an invalid colour and the selected view
+  toggle rendered near-black text on a blue ground.
+- **The catalog's auto-placed grid** put the Chinese title in the middle column,
+  because `card-sum` forced a full-width second line; the card now has three
+  explicit columns.
+- **The demo's action handlers** appended to the event log but never redrew the
+  state panel, so clicking `delegate` produced no visible change.
+
+### Added — tests
+
+- `tests/test_pack_index.py` (22), `tests/test_prompts.py` (14),
+  `tests/test_demo_layer.py` (11), `tests/test_design_tokens.py` (10).
+- `tests/test_design_tokens.py` computes contrast for both colour schemes,
+  asserts the control floor separately from the structural one, and forbids
+  `border-radius`, `box-shadow` and `text-transform: uppercase` by name. It
+  caught two leftovers in its author's own first draft.
+- Suite: 65 → 139 tests.
+
+### Added — skills
+
+- `.opencode/skills/frontend-design` and `.opencode/skills/webapp-testing`,
+  installed from `anthropics/skills` under their original licenses and kept
+  project-local so they are shared with the repository. Playwright and Chromium
+  were installed outside the repository; the toolchain remains Python-only.
+
+### Deliberately not done
+
+- **`verification` above `unverified`** — unchanged, and `practitioner-reviewed`
+  and `field-proven` remain 0. Rung 3 needs a named human.
+- **Conformance claims** — ODA/TMF, BPMN 2.0, GB/T and the EU AI Act remain
+  vocabulary and shape only.
+- **The other 16 demos** — the first is the reference implementation for the
+  pattern; each remaining pack's is a separate unit of work.
+
 ## [0.2.0] — 2026-10-13
 
 Twelve packs raised to L2, eleven completed at L1, and the tooling that found
