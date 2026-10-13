@@ -42,5 +42,10 @@ def check_ids() -> ModuleType:
 
 
 @pytest.fixture(scope="session")
+def pack_index() -> ModuleType:
+    return _load("pack_index")
+
+
+@pytest.fixture(scope="session")
 def build_site() -> ModuleType:
     return _load("build-site")

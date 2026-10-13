@@ -324,3 +324,136 @@ main { max-width: 1180px; margin: 0 auto; padding: clamp(1.2rem, 3vw, 2.4rem) cl
   .topbar, .packnav, .toc, .sitefoot, .controls { display: none; }
   .layout { grid-template-columns: 1fr; }
 }
+
+/* ---------- structured spec view ---------- */
+
+/* The view toggle is a radio pair so it works with JavaScript disabled, which
+   is the same progressive-enhancement rule the rest of the site is built on.
+   Inputs are hidden but focusable, so keyboard users still reach them. */
+.vs-in { position: absolute; opacity: 0; pointer-events: none; }
+.vs-lab {
+  display: inline-flex; align-items: center; gap: .3rem;
+  font-size: .84rem; font-weight: 600; cursor: pointer;
+  background: var(--bg-elev); color: var(--fg-muted);
+  border: 1px solid var(--border); border-radius: 999px;
+  padding: .3rem .85rem; margin-bottom: .9rem;
+}
+.vs-lab:hover { border-color: var(--border-strong); color: var(--fg); }
+.vs-lab:first-of-type { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.vs-lab:last-of-type { border-top-left-radius: 0; border-bottom-left-radius: 0; margin-left: -1px; }
+.vs-in:checked + .vs-lab { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+.vs-in:focus-visible + .vs-lab { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Show one view at a time. Both views are siblings of the radios, so `~`
+   reaches them; the default is the document view, which is also what a
+   no-CSS client falls back to reading. The site footer is deliberately *not*
+   swapped — it carries the "not field-verified" warning and belongs in
+   every view. */
+#vs-spec:checked ~ .layout { display: none; }
+#vs-doc:checked ~ .spec { display: none; }
+
+.spec { max-width: 1100px; margin: 0 auto; padding: 0 1.2rem 3rem; }
+.spec-head { display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-start; justify-content: space-between; margin-bottom: 1.1rem; }
+.spec-head h2 { font-size: 1.35rem; margin: 0 0 .3rem; }
+.spec-note { font-size: .84rem; color: var(--fg-muted); margin: 0; max-width: 62ch; }
+.spec-note code { font-size: .8rem; }
+
+.demobtn {
+  display: inline-flex; flex-direction: column; gap: .1rem; text-decoration: none;
+  background: var(--accent-soft); color: var(--accent);
+  border: 1px solid var(--accent); border-radius: var(--radius);
+  padding: .55rem 1rem; font-size: .84rem; white-space: nowrap;
+}
+.demobtn b { font-size: .95rem; }
+.demobtn:hover { background: var(--accent); color: #fff; }
+
+/* ---- stat tiles: the counts a reader scans first ---- */
+.spec-stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: .55rem; margin-bottom: 1.2rem; }
+.stat {
+  display: flex; flex-direction: column; gap: .1rem; text-decoration: none;
+  background: var(--bg-elev); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: .6rem .75rem;
+}
+.stat:hover { border-color: var(--accent); }
+.stat b { font-size: 1.35rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.stat span { font-size: .72rem; color: var(--fg-muted); line-height: 1.25; }
+
+/* ---- extraction quality: honest, and deliberately not flattering ---- */
+.spec-qlabel { font-size: .75rem; color: var(--fg-muted); margin-bottom: .35rem; }
+.spec-qlabel span { opacity: .8; }
+.spec-quality { display: flex; flex-wrap: wrap; gap: .3rem; margin-bottom: 1rem; }
+.sq {
+  font-size: .68rem; font-weight: 600; padding: .14rem .5rem;
+  border-radius: 999px; border: 1px solid var(--border-strong);
+  color: var(--fg-muted); white-space: nowrap;
+}
+.sq.structured { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+.sq.prose-only { border-style: dashed; }
+.sq.absent { opacity: .55; text-decoration: line-through; }
+
+/* ---- jump nav + section groups ---- */
+.spec-jump { display: flex; flex-wrap: wrap; gap: .3rem; margin-bottom: 1.4rem; position: sticky; top: 0; z-index: 5; background: var(--bg); padding: .5rem 0; }
+.jump {
+  font-size: .76rem; text-decoration: none; color: var(--fg-muted);
+  background: var(--bg-elev); border: 1px solid var(--border);
+  border-radius: 999px; padding: .2rem .6rem;
+}
+.jump:hover { border-color: var(--accent); color: var(--accent); }
+
+.spec-secs { display: flex; flex-direction: column; gap: .5rem; }
+.spec-sec { background: var(--bg-elev); border: 1px solid var(--border); border-radius: var(--radius); }
+.spec-sec > summary {
+  cursor: pointer; padding: .6rem .9rem; font-size: .88rem; font-weight: 650;
+  border-radius: var(--radius); list-style: none;
+}
+.spec-sec > summary::before { content: "▸ "; color: var(--fg-muted); }
+.spec-sec[open] > summary::before { content: "▾ "; }
+.spec-sec > summary b { color: var(--accent); font-variant-numeric: tabular-nums; }
+
+.spectab { width: 100%; border-collapse: collapse; font-size: .84rem; }
+.spectab th {
+  width: 8.5rem; vertical-align: top; text-align: left; padding: .5rem .7rem;
+  font-family: var(--mono); font-size: .78rem; font-weight: 600;
+  border-top: 1px solid var(--border); white-space: nowrap;
+}
+.spectab td { padding: .5rem .7rem; border-top: 1px solid var(--border); vertical-align: top; }
+.spectab tr:target th, .spectab tr:target td { background: var(--accent-soft); }
+
+.spectab b { font-size: .88rem; }
+.spectab p { margin: .2rem 0 0; font-size: .8rem; color: var(--fg-muted); }
+.ears { font-size: .8rem; }
+.ears-k {
+  font-family: var(--mono); font-size: .68rem; font-weight: 700;
+  color: var(--accent); border: 1px solid var(--accent);
+  border-radius: 4px; padding: 0 .28rem; margin-right: .3rem;
+}
+.ears.not { color: #b91c1c; }
+.ears.not .ears-k { color: #b91c1c; border-color: #b91c1c; }
+@media (prefers-color-scheme: dark) {
+  .ears.not { color: #fca5a5; }
+  .ears.not .ears-k { color: #fca5a5; border-color: #fca5a5; }
+}
+.tgt { font-family: var(--mono); font-size: .76rem !important; }
+.fml code { font-size: .74rem; color: var(--fg-muted); }
+.dec { font-style: italic; }
+.inst { font-size: .78rem; color: var(--accent); }
+.owns code { font-size: .74rem; }
+.refs { display: flex; flex-wrap: wrap; gap: .22rem; align-items: center; }
+.dim { color: var(--fg-muted); opacity: .75; }
+
+/* identifier chips are links, not toggles — they point at a row in this page */
+.idchip {
+  font-family: var(--mono); font-size: .7rem; font-weight: 600;
+  padding: .06rem .38rem; border-radius: 5px; text-decoration: none;
+  color: var(--link); background: var(--code-bg); border-color: var(--border);
+}
+a.idchip:hover { border-color: var(--accent); color: var(--accent); }
+
+@media (max-width: 760px) {
+  .spec-jump { position: static; }
+  .spectab th { width: auto; }
+  .spectab, .spectab tbody, .spectab tr, .spectab td { display: block; width: auto; }
+  .spectab tr { border-top: 1px solid var(--border); padding: .5rem 0; }
+  .spectab th { border: 0; padding-bottom: 0; }
+  .spectab td { border: 0; }
+}
