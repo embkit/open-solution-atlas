@@ -135,3 +135,38 @@ erDiagram
   older to cold store; never deleted within regulated retention (variant).
 - Completed documents/shipments retained per policy; PII fields purged/
   anonymized per owner contract while stock/trace facts remain.
+
+## 5. Integrity constraints (normative)
+
+Constraints the model must enforce. They are numbered and stable, and each
+names the `BR-`/`FR-` identifier it enforces. The closing sentence records
+which are enforced **in the store** rather than in application code — a claim
+the pack makes about itself, not a verified property, since application
+discipline is exactly what a later change bypasses.
+
+| # | Constraint | Enforces |
+|---|---|---|
+| 1 | A stock line's quantity buckets sum **exactly** to its on-hand quantity; a bucket set that does not reconcile is illegal | BR-01 |
+| 2 | No quantity bucket goes negative; a deduction beyond available is rejected, never clamped | BR-02 |
+| 3 | Putaway records the `strategy_version` in force; a putaway with no strategy version is illegal | BR-03, ADR-0004 |
+| 4 | A location is compatible with the product, lot status and handling unit before putaway; an incompatible putaway is rejected | BR-04 |
+| 5 | A reservation carries a lifetime and expires automatically; an expired reservation releases its stock rather than waiting for a sweep | BR-05 |
+| 6 | Allocation honours the declared lot direction (FIFO / FEFO / manual-override) and records a manual override with a reason | BR-06 |
+| 7 | An allocation may split across lots and locations, but the allocated parts sum to the requested quantity **exactly** | BR-07 |
+| 8 | A mandatory scan control point is enforced at the task gateway; a task completes only with its scans | BR-08, ADR-0003 |
+| 9 | A count variance beyond tolerance requires an approval before posting; a within-tolerance variance posts and is still recorded | BR-10 |
+| 10 | A delivery outside tolerance is flagged at receipt and cannot be silently accepted | BR-11 |
+| 11 | A shipment passes the completeness gate — every pick packed, every pack labelled — before it may ship | BR-12 |
+| 12 | Every query resolves exactly one `OWNER`; a cross-owner read is impossible rather than filtered after the fact | BR-13 |
+| 13 | There is exactly **one** mutation path: a stock change exists only as an event in `STOCK_EVENT` | BR-14, ADR-0002 |
+| 14 | The stock projection equals the fold of `STOCK_EVENT`; a divergence is a defect, not a tolerated drift | ADR-0002, BR-15 |
+| 15 | WMS never writes financial valuation, cost or GL fields — ERP owns them | ADR-0001 |
+| 16 | The ABC count frequency is enforced per cycle; an un-counted class-A location past its window is flagged | BR-09 |
+
+> Constraints 1, 2, 12, 13, 14 and 15 are **enforced in the store**, not in
+> application code. A non-reconciling bucket set, a negative balance, a
+> cross-owner read, a second mutation path, a projection that has drifted from
+> its event log, or a WMS row holding a cost is a defect regardless of what
+> application discipline promises — and in this domain the first two are
+> stock-outs and phantom inventory, which is what the whole model exists to
+> prevent.

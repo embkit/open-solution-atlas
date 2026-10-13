@@ -65,3 +65,36 @@ content/
 | Reader IP / raw logs | personal data | ≤ 24 h, scrubbed at edge (NFR-008) |
 | Analytics | derived aggregate | 24 months hourly, then monthly rollups |
 | Audit log | operational | ≥ 2 years |
+
+## Integrity constraints (normative)
+
+Constraints the model must enforce. They are numbered and stable, and each
+names the `BR-`/`FR-` identifier it enforces. The closing sentence records
+which are enforced **in the store** rather than in application code — a claim
+the pack makes about itself, not a verified property, since application
+discipline is exactly what a later change bypasses.
+
+| # | Constraint | Enforces |
+|---|---|---|
+| 1 | A post has exactly one `canonical_url` row; a second one is illegal | BR-01, ADR-0001 |
+| 2 | `title`, `slug`, `author`, `created_at`, `license` are NOT NULL at first publish | BR-02 |
+| 3 | `slug` matches lowercase-ASCII kebab-case, is ≤ 80 chars, and is unique across every post **including retired ones** | BR-03 |
+| 4 | `slug` is immutable once the post is published; an edit after publish is rejected | BR-04 |
+| 5 | Tags are stored normalised (trimmed, case-folded per language), and a post carries at most the configured tag count | BR-05 |
+| 6 | Unpublishing writes a `410` rule; renaming or merging writes a `301`. No public URL is ever silently dropped | BR-06 |
+| 7 | A post is publicly visible iff `status = PUBLISHED AND published_at <= now`; no render, search or feed path may bypass this predicate | BR-07 |
+| 8 | A feed item's GUID is the canonical URL and never changes; an edit updates the item, never its GUID | BR-08 |
+| 9 | A webmention is unique on `(source_url, target_url)`; a duplicate updates state rather than inserting | BR-09, ADR-0003 |
+| 10 | An image inside published content carries non-empty `alt`; a decorative image carries the decorative marker | BR-10 |
+| 11 | No anonymous write path reaches public content: a publish requires an authenticated author identity | BR-11 |
+| 12 | A third-party request (font, analytics, embed) is declared and recorded, or the build fails | BR-12 |
+| 13 | An export includes received webmentions and **never** includes reader IP addresses or raw logs | BR-13 |
+| 14 | A draft is excluded from sitemap, feeds, the search index and the public build, by predicate rather than by filter | BR-14, ADR-0004 |
+| 15 | A `REDIRECT` row is append-only and never targets a draft | BR-06 |
+
+> Constraints 1, 3, 7, 9 and 11 are **enforced in the store**, not in
+> application code. A second canonical URL, a colliding slug, a render path
+> that bypasses the visibility predicate, a duplicated webmention, or an
+> anonymous write reaching the public tree is a defect regardless of what
+> application discipline promises — on a static site the failure is a page
+> that stays wrong until the next build, and nobody sees it happen.
