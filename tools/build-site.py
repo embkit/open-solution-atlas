@@ -69,6 +69,16 @@ except ImportError:  # loaded via importlib without tools/ on sys.path
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from prompts import build_bundles, bundle_filename
 
+# The icon set and category palette are hand-drawn to the contract's spec
+# (stroke 2, round caps, 24 viewBox) because this repository takes no runtime
+# dependency; contract §3.1 permits exactly that. The category colours come
+# from contract §1.4 and appear only on an icon's stroke and its tint.
+try:
+    from site_icons import category_for, icon, icon_for
+except ImportError:  # loaded via importlib without tools/ on sys.path
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from site_icons import category_for, icon, icon_for
+
 ROOT = Path(__file__).resolve().parent.parent
 PACKS_DIR = ROOT / "packs"
 DOCS_DIR = ROOT / "docs"
@@ -399,15 +409,15 @@ HEAD = """<!doctype html>
 </head>
 <body class="{body_class}">
 <a class="skip" href="#main">Skip to content</a>
-<header class="topbar">
-  <a class="brand" href="{prefix}index.html"><span class="brand-mark">◈</span> Solution&nbsp;Atlas</a>
+<header class="titlebar">
+  <a class="brand" href="{prefix}index.html"><span class="brand-mark">{brand_icon}</span> Solution&nbsp;Atlas</a>
   <details class="navmenu">
-    <summary aria-label="Toggle navigation"><span class="navmenu-icon" aria-hidden="true">☰</span>Menu</summary>
+    <summary aria-label="Toggle navigation"><span class="navmenu-icon">{menu_icon}</span>Menu</summary>
     <nav class="topnav" aria-label="Primary">
-      <a href="{prefix}index.html">Catalog</a>
-      <a href="{prefix}docs/pack-standard.v1.html">Standard</a>
-      <a href="{prefix}docs/taxonomy.html">Taxonomy</a>
-      <a href="{prefix}docs/roadmap.html">Roadmap</a>
+      <a href="{prefix}index.html">{nav_catalog}</a>
+      <a href="{prefix}docs/pack-standard.v1.html">{nav_standard}</a>
+      <a href="{prefix}docs/taxonomy.html">{nav_taxonomy}</a>
+      <a href="{prefix}docs/roadmap.html">{nav_roadmap}</a>
     </nav>
   </details>
 </header>
@@ -444,6 +454,12 @@ def page_shell(
         title=html.escape(title), description=html.escape(description),
         prefix=prefix, body_class=body_class, icon=icon,
         lang=lang, canonical=canonical,
+        brand_icon=icon_glyph("grid"),
+        menu_icon=icon_glyph("menu"),
+        nav_catalog=icon_glyph("grid") + "Catalog",
+        nav_standard=icon_glyph("book") + "Standard",
+        nav_taxonomy=icon_glyph("network") + "Taxonomy",
+        nav_roadmap=icon_glyph("route") + "Roadmap",
     )
     # og:url and a canonical link are only meaningful once the site's public
     # origin is known; without it, drop the elements entirely rather than emit
@@ -466,13 +482,19 @@ def page_shell(
 def breadcrumb(prefix: str, pack: Pack | None) -> str:
     if not pack:
         return ""
+    chev = icon("chevron")
     return (
         '<nav class="crumbs">'
-        f'<a href="{prefix}index.html">Catalog</a>'
-        f'<span>/</span><span>{html.escape(pack.domain)}</span>'
-        f'<span>/</span><span class="crumb-cur">{html.escape(pack.slug)}</span>'
+        f'<a href="{prefix}index.html">Catalog</a>{chev}'
+        f'<span>{html.escape(pack.domain)}</span>{chev}'
+        f'<span class="crumb-cur">{html.escape(pack.slug)}</span>'
         "</nav>"
     )
+
+
+def icon_glyph(name: str) -> str:
+    """The icon helper, named once so the templates read as markup."""
+    return icon(name)
 
 
 def pill(label: str, kind: str) -> str:
@@ -483,6 +505,33 @@ def pack_pills(pack: Pack) -> str:
     m_label, m_kind = MATURITY_LABEL.get(pack.maturity, (pack.maturity, "m1"))
     v_label, v_kind = VERIFICATION_LABEL.get(pack.verification, (pack.verification, "v0"))
     return pill(m_label, m_kind) + pill(v_label, v_kind)
+
+
+def render_sidebar(pack: Pack, doc: Doc, prefix: str) -> str:
+    """The pack's sidebar: contract §4.2's three parts.
+
+    Head (logo square, product name, subtitle), navigation, and a footer that
+    carries the trust state. The sidebar is `--surface` on a `--page` ground —
+    the contract calls that lightness difference the key to the page's
+    left/right layering, so it is not flattened.
+    """
+    foot = (
+        '<div class="side-foot">'
+        f'<p>{icon("shield")} {html.escape(pack.verification)}</p>'
+        f'<p>{icon("mail")} <a href="{prefix}docs/pack-standard.v1.html">pack standard</a></p>'
+        "</div>"
+    )
+    return (
+        '<aside class="sidebar">'
+        '<div class="side-head">'
+        f'<span class="side-logo">{icon(icon_for(pack.domain, pack.slug))}</span>'
+        '<span><span class="side-name">Solution Atlas</span><br>'
+        f'<span class="side-sub">{html.escape(pack.domain)}</span></span>'
+        "</div>"
+        + nav_tree(pack, doc.url, prefix)
+        + foot
+        + "</aside>"
+    )
 
 
 def nav_tree(pack: Pack, current_url: str, prefix: str) -> str:
@@ -499,13 +548,14 @@ def nav_tree(pack: Pack, current_url: str, prefix: str) -> str:
             groups.setdefault(rel_inside.split("/")[0], []).append(doc)
         else:
             groups.setdefault("", []).append(doc)
+    # Contract §4.2: a three-part sidebar with 36px rows, and the active item a
+    # solid primary pill rather than a tint.
     out = ['<nav class="packnav" aria-label="Pack chapters">']
     for group in sorted(groups):
         label = group or "overview"
-        has_active = any(doc.url == current_url for doc in groups[group])
         out.append(
-            f'<details class="navgroup"{"" if has_active else " open"}>'
-            f'<summary class="navgroup-label">{html.escape(label)}</summary><ul>'
+            '<div class="navgroup">'
+            f'<span class="navgroup-label">{html.escape(label)}</span><ul>'
         )
         for doc in sorted(groups[group], key=lambda d: d.rel):
             rel_inside = Path(doc.rel).relative_to(pack.rel_dir).as_posix()
@@ -514,7 +564,7 @@ def nav_tree(pack: Pack, current_url: str, prefix: str) -> str:
             active = ' class="active" aria-current="page"' if doc.url == current_url else ""
             href = prefix + doc.url
             out.append(f'<li><a{active} href="{href}">{html.escape(name)}</a></li>')
-        out.append("</ul></details>")
+        out.append("</ul></div>")
     out.append("</nav>")
     return "".join(out)
 
@@ -621,7 +671,7 @@ def build(out: Path, base_url: str, site_url: str = "", lang: str = "en") -> int
         copied += 1
 
     # ---- catalog page + search index --------------------------------------
-    write(out / "index.html", render_catalog(packs, base_url, site_url, lang))
+    write(out / "index.html", render_catalog(packs, base_url, site_url, lang, spec_entries))
     write(out / "search-index.json", json.dumps(build_index(packs, other_docs), ensure_ascii=False))
     # The structured index is the machine-readable surface of the catalog: the
     # same records the spec panels render, for a client-side traceability
@@ -1137,16 +1187,24 @@ def render_doc_page(
             f'<span class="meta-plain">v{html.escape(str(pack.manifest.get("version", "")))}</span>'
             "</div></div>"
         )
+    # Both views live inside `.main`, so the sidebar is present in each. The
+    # radio switch next to `.shell` reaches them with `~`; replacing the whole
+    # shell instead would have hidden the navigation exactly when the reader is
+    # deepest in the material.
     body = (
         breadcrumb(prefix, pack)
         + header
         + render_view_switch(spec_entry if is_overview else None)
-        + '<div class="layout">'
-        + nav_tree(pack, doc.url, prefix)
+        + '<div class="shell">'
+        + render_sidebar(pack, doc, prefix)
+        + '<div class="main">'
+        + '<div class="view-doc">'
+        + (render_toc(doc.toc) if not is_overview else "")
         + f'<article class="prose">{annotate_lang(doc.html)}</article>'
-        + render_toc(doc.toc)
         + "</div>"
         + spec
+        + "</div>"
+        + "</div>"
     )
     scripts = ""
     if "class=\"mermaid\"" in doc.html:
@@ -1175,113 +1233,148 @@ def render_plain_page(doc: Doc, prefix: str, site_url: str = "", lang: str = "en
 
 
 def mermaid_script(prefix: str = "") -> str:
-    """Load the vendored mermaid build and start it in the current color scheme.
-
-    The script tag carries an integrity hash so a tampered or truncated vendor
-    file fails loudly instead of silently rendering nothing; the noscript
-    fallback below is what readers see when JS is unavailable.
-    """
+    """The diagram renderer, pinned by SRI like every other vendored asset."""
     return (
         f'<script src="{prefix}assets/vendor/mermaid.min.js" '
-        f'integrity="{VENDOR_EXPECTED["mermaid.min.js"]}" crossorigin="anonymous"></script>\n'
-        "<script>(function(){var d=window.matchMedia"
-        "&&window.matchMedia('(prefers-color-scheme: dark)').matches;"
-        "window.mermaid&&window.mermaid.initialize("
-        "{startOnLoad:true,theme:d?'dark':'default'});})();</script>"
+        f'integrity="{VENDOR_EXPECTED["mermaid.min.js"]}" '
+        'crossorigin="anonymous"></script>'
     )
 
 
-def render_catalog(packs: list[Pack], base_url: str, site_url: str = "", lang: str = "en") -> str:
+def render_catalog(
+    packs: list[Pack], base_url: str, site_url: str = "", lang: str = "en",
+    spec_entries: dict | None = None,
+) -> str:
+    """The register of packs.
+
+    Contract §9 governs the hero, because this page is the product's marketing
+    surface: the indigo wash with its light banding, the two-part headline with
+    the second half in `--primary`, and the sub-line joined with `·`.
+    """
+    spec_entries = spec_entries or {}
     domains = sorted({p.domain for p in packs})
-    maturities = ["L1", "L2", "L3", "L4"]
-    verifications = ["unverified", "source-checked", "practitioner-reviewed", "field-proven"]
+    maturities = sorted({p.maturity for p in packs})
+    verifications = [v for v in ("unverified", "source-checked",
+                                 "practitioner-reviewed", "field-proven")]
 
-    cards = "".join(render_card(p) for p in sorted(packs, key=lambda p: p.slug))
-
-    def count_for(field_name: str, value: str) -> int:
-        return sum(1 for p in packs if str(p.manifest.get(field_name, "")) == value)
-
-    def facet(field_name: str, values: list[str], label_fn) -> str:
-        chips = "".join(
-            f'<button class="chip" data-facet="{field_name}" data-value="{html.escape(v)}">'
-            f'{html.escape(label_fn(v))}<span class="chip-n">{count_for(field_name, v)}</span>'
-            "</button>"
-            for v in values
-        )
-        return (
-            f'<div class="facet" role="group" aria-label="{field_name}">'
-            f'<span class="facet-label">{field_name}</span>{chips}</div>'
-        )
+    def facet(field: str, values, label: str) -> str:
+        chips = []
+        for value in values:
+            n = sum(1 for p in packs if getattr(p, field) == value)
+            chips.append(
+                f'<button class="chip" data-facet="{field}" data-value="{html.escape(value)}">'
+                f'{html.escape(value)}<span class="chip-n">{n}</span></button>'
+            )
+        return (f'<div class="facet"><span class="facet-label">{html.escape(label)}</span>'
+                + "".join(chips) + "</div>")
 
     facets = (
-        facet("domain", domains, lambda v: v)
-        + facet("maturity", maturities, lambda v: v)
-        + facet("verification", verifications, lambda v: v)
+        '<div class="facets">'
+        + facet("domain", domains, "domain")
+        + facet("maturity", maturities, "maturity")
+        + facet("verification", verifications, "verification")
+        + "</div>"
+    )
+    cards = "".join(render_card(p, spec_entries.get(p.slug)) for p in packs)
+    # §7.8: an empty result is a moment for direction — icon, title, what
+    # happened, and a way out. Never a bare "no data".
+    empty = (
+        '<div class="empty" id="empty" hidden>'
+        f'<span class="empty-icon">{icon("empty")}</span>'
+        '<h3>No pack matches those filters</h3>'
+        '<p>Seventeen packs are on the shelf. Clear the filters to see all of them, '
+        'or search for a capability rather than a pack name.</p>'
+        '<div class="empty-actions">'
+        '<button class="clear" id="empty-clear" type="button">Clear filters</button>'
+        '</div></div>'
     )
 
-    body = f"""
-<section class="hero">
-  <h1>Solution Atlas</h1>
-  <p class="hero-sub">Production-grade blueprints for real enterprise systems —
-     MES, WMS, IAM, BI and more — written for human architects and AI coding
-     agents alike.</p>
-  <div class="searchwrap">
-    <input id="q" type="search" autocomplete="off" spellcheck="false"
-           placeholder="Search {len(packs)} solutions — try “warehouse”, “OEE”, “federated login”, “FEFO”…"
-           aria-label="Search solutions" aria-describedby="index-status">
-    <kbd class="hint">/</kbd>
-    <p id="index-status" class="index-status" role="status" hidden></p>
-  </div>
-  <p class="trustnote">Every pack is <code>llm-drafted</code>;
-     <strong>none has been field-verified</strong>. Maturity measures
-     completeness, not correctness — check each pack's <code>SOURCES.md</code>.</p>
-</section>
+    hero = (
+        '<section class="hero">'
+        f'<p class="eyebrow">{icon("grid")}Open Solution Atlas</p>'
+        '<h1>Production-grade blueprints '
+        '<span class="tail">for real enterprise systems</span></h1>'
+        '<p class="hero-sub">MES &middot; WMS &middot; IAM &middot; BI &middot; '
+        'workflow &middot; government services &mdash; every decision traced, every '
+        'identifier resolved, and a prompt assembled from the pack itself.</p>'
+        '</section>'
+    )
 
-<section class="controls">
-  <div class="facets">{facets}</div>
-  <button id="clear" class="clear" hidden>Clear filters</button>
-</section>
-
-<section id="results">
-  <p id="count" class="count" aria-live="polite"></p>
-  <div id="cards" class="cards">{cards}</div>
-  <div id="hits" class="hits" hidden></div>
-</section>
-"""
-    scripts = (
-        f'<script src="assets/vendor/fuse.min.js" '
-        f'integrity="{VENDOR_EXPECTED["fuse.min.js"]}" crossorigin="anonymous"></script>\n'
-        f'<script src="assets/app.js" defer></script>\n'
-        f'<script>window.__BASE__={json.dumps(base_url)};</script>'
+    body = (
+        hero
+        + '<p class="trustnote">Every pack is <code>llm-drafted</code>; none has been '
+          '<strong>field-verified</strong>. Maturity measures completeness, not '
+          'correctness &mdash; check each pack&rsquo;s <code>SOURCES.md</code>.</p>'
+        + '<div class="searchwrap">'
+          '<input id="q" type="search" autocomplete="off" spellcheck="false" '
+          'placeholder="Search 17 packs &mdash; try &ldquo;warehouse&rdquo;, '
+          '&ldquo;会签&rdquo;, &ldquo;federated login&rdquo;, &ldquo;FEFO&rdquo;&hellip;">'
+          '<button id="clear" class="clear" hidden>Clear filters</button>'
+          '</div>'
+        + '<p class="index-status" id="index-status" hidden></p>'
+        + facets
+        + '<div class="controls">'
+          f'<span class="count" id="count"><b>{len(packs)}</b> packs</span>'
+          '<span id="hits"></span></div>'
+        + f'<div class="cards" id="cards">{cards}{empty}</div>'
+        + '<p class="hint">Search is loaded on first use, so browsing never pays for '
+          'the index.</p>'
     )
     return page_shell(
-        title="Solution Atlas — blueprints for real enterprise systems",
-        description="Searchable catalog of solution packs for enterprise systems: "
-                    "manufacturing, logistics, identity, data & AI and more.",
-        prefix="", body=body, body_class="catalog", icon="◈", scripts=scripts,
+        title="Open Solution Atlas — blueprints for real enterprise systems",
+        description="Seventeen machine-readable blueprints for real enterprise "
+                    "systems, each with traced identifiers, integrity constraints "
+                    "and prompts assembled from the pack itself.",
+        prefix="", body=body, body_class="catalog", icon="\u25c8",
+        # SRI on the vendored library: the hash is pinned in VENDOR_EXPECTED
+        # and the build already fails if the file's bytes change, so the
+        # attribute is the browser-side half of the same check.
+        scripts=(
+            '<script src="assets/vendor/fuse.min.js" '
+            f'integrity="{VENDOR_EXPECTED["fuse.min.js"]}" '
+            'crossorigin="anonymous" defer></script>'
+            '<script src="assets/app.js" defer></script>'
+        ),
         lang=lang, canonical=abs_url(site_url, "index.html"),
     )
 
 
-def render_card(pack: Pack) -> str:
-    tags = "".join(f'<span class="tag">{html.escape(t)}</span>' for t in pack.tags[:8])
+def render_card(pack: Pack, entry: dict | None = None) -> str:
+    """One pack as a contract §7.4 category card.
+
+    The reference's most characteristic block is a grid of cards whose first
+    row is an icon on a category tint with a large number right-aligned in
+    tabular figures. That maps onto a pack almost exactly — icon, identifier
+    count, name, path — and the number is real rather than decorative: it is how
+    much machine-readable content the pack carries.
+
+    Category colour (contract §1.4) appears on the icon's stroke and its tinted
+    background only, never on the card fill, the title or a button.
+    """
+    slug = pack.slug
+    stroke, tint = category_for(pack.domain, slug)
+    num = ""
+    if entry:
+        counts = entry["counts"]
+        total = sum(counts[k] for k in (
+            "rules", "requirements", "nfrs", "controls", "adrs", "constraints"))
+        num = f'<span class="card-num">{total}</span>'
+    tags = "".join(f'<span class="tag">{html.escape(t)}</span>' for t in pack.tags[:6])
     summary = str(pack.manifest.get("_summary", ""))
     zh = f'<p class="zh" lang="zh-CN">{html.escape(pack.title_zh)}</p>' if pack.title_zh else ""
-    # Three explicit columns, so the register reads as aligned columns rather
-    # than whatever the grid's auto-placement happens to produce: the name and
-    # its description on the left, the marks in the middle, the tags on the
-    # right. `card-sum` used to force a full-width second line here, which put
-    # the Chinese title in the middle column.
     return (
-        f'<article class="card" data-slug="{html.escape(pack.slug)}"'
+        f'<article class="card" data-slug="{html.escape(slug)}"'
         f' data-domain="{html.escape(pack.domain)}"'
         f' data-maturity="{html.escape(pack.maturity)}"'
         f' data-verification="{html.escape(pack.verification)}">'
-        '<div class="card-main">'
+        '<div class="card-top">'
+        f'<span class="cat-icon" style="background:{tint};color:{stroke}">'
+        f'{icon(icon_for(pack.domain, slug))}</span>'
+        f'{num}'
+        '</div>'
         f'<a class="card-link" href="{pack.index_url}">'
         f'<h3>{html.escape(pack.title)}</h3></a>{zh}'
         f'<p class="card-sum">{html.escape(summary)}</p>'
-        '</div>'
         f'<div class="card-meta">{pack_pills(pack)}'
         f'<span class="meta-plain">{html.escape(pack.domain)}</span></div>'
         f'<div class="tags">{tags}</div>'

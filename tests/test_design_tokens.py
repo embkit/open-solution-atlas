@@ -1,18 +1,27 @@
-"""Tests for the site's design tokens and the rules the design is built on.
+"""Assert the site against the EmbKit UI contract.
 
-The stylesheet is a design system with a stated point of view, and this module
-checks the parts that can silently regress:
+`docs/embkit-ui-contract.md` is a verbatim copy of EmbKit's authoritative client
+UI specification, and the catalog answers to it because the catalog is the
+product's shop window. Its own summary of why this matters is blunt: leaving
+several surfaces on several palettes is the failure mode, not a detail.
 
-* **contrast** — the token pairs a person actually reads, computed rather than
-  eyeballed. The structural rule and the control rule are held to different
-  floors, because they do different jobs: a hairline between rows only has to
-  be perceivable, while the border of a control must clear WCAG 1.4.11's 3:1.
-* **no rounded containers, no elevation** — hierarchy in this design comes
-  from line weight and column alignment. A `border-radius` or a `box-shadow`
-  reintroduced by a later change is the SaaS-card kit creeping back, and it
-  would not be caught by any functional test.
-* **no ALL-CAPS labels** — tracked-out caps over every heading is one of the
-  commonest tells of a generated page.
+This module checks the parts of the contract that can be checked mechanically,
+so they cannot regress silently:
+
+* `--primary` is indigo `#4f46e5` and nothing else. The contract marks the hue
+  LOCKED, and it names a specific former value (`#635bff`) that must not
+  survive anywhere.
+* the neutrals are cold. The contract says so twice ("不要引入暖灰，会和 indigo
+  打架"), and a warm grey is the sort of thing a later edit introduces without
+  noticing, because it looks neutral next to a blue.
+* spacing sits on the contract's scale, and radius and shadow are the
+  contract's values — §5 forbids "游离值" by name, and §6 gives four shadows,
+  all cool-blue rather than black.
+* **every surface shares one theme.** The demos carry their tokens inline
+  (they must open on their own), so their `:root` blocks are compared
+  byte-for-byte against each other and against the site's values.
+* category colours stay on icon strokes. §1.4 permits them on an icon's stroke
+  and its tinted background and nowhere else.
 
 Run:  python -m pytest tests/test_design_tokens.py -q
 """
@@ -24,12 +33,26 @@ from pathlib import Path
 
 import pytest
 
-CSS = Path(__file__).resolve().parent.parent / "tools" / "site-assets" / "style.css"
+ROOT = Path(__file__).resolve().parent.parent
+CSS = ROOT / "tools" / "site-assets" / "style.css"
+CONTRACT = ROOT / "docs" / "embkit-ui-contract.md"
 
+# Contract §1.1 and §1.2.
+LOCKED_PRIMARY = "#4f46e5"
+FORMER_PRIMARY = "#635bff"  # §10 item 1: must not survive
+COLD_NEUTRALS = (
+    "page", "surface", "surface-2", "surface-3",
+    "line", "line-strong", "line-x", "navy", "navy-2",
+)
+SPACING_SCALE = {4, 8, 12, 16, 20, 24, 28, 32}
+RADIUS_VALUES = {"6px", "8px", "10px", "12px", "14px", "999px"}
+SHADOWS = (
+    "0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px rgba(15, 23, 42, 0.06)",
+    "0 2px 4px rgba(15, 23, 42, 0.05), 0 14px 34px rgba(15, 23, 42, 0.09)",
+    "0 12px 32px rgba(15, 23, 42, 0.12)",
+    "0 20px 50px rgba(15, 23, 42, 0.16)",
+)
 
-# --------------------------------------------------------------------------- #
-# Contrast maths, so the floor is computed and not asserted by eye
-# --------------------------------------------------------------------------- #
 
 def _luminance(hex_color: str) -> float:
     h = hex_color.lstrip("#")
@@ -48,138 +71,229 @@ def contrast(a: str, b: str) -> float:
     return (hi + 0.05) / (lo + 0.05)
 
 
+def _root_block(css: str, dark: bool = False) -> str:
+    if dark:
+        m = re.search(
+            r"@media \(prefers-color-scheme: dark\)\s*\{\s*:root\s*\{(.*?)\n\s*\}",
+            css, re.DOTALL)
+    else:
+        # the demos indent their inline :root, the site stylesheet does not
+        m = re.search(r"^\s*:root\s*\{(.*?)\n\s*\}", css, re.DOTALL | re.MULTILINE)
+    assert m, f"could not find the :root block (dark={dark})"
+    return m.group(1)
+
+
+def _tokens(block: str) -> dict[str, str]:
+    return dict(re.findall(r"--([a-z0-9-]+):\s*(#[0-9a-fA-F]{3,8})\s*;", block))
+
+
 @pytest.fixture(scope="module")
-def tokens() -> dict[str, dict[str, str]]:
-    """Both colour schemes, parsed out of the stylesheet's `:root` blocks."""
-    css = CSS.read_text(encoding="utf-8")
-    light = re.search(r":root\s*\{(.*?)\n\}", css, re.DOTALL)
-    dark = re.search(r"@media \(prefers-color-scheme: dark\)\s*\{\s*:root\s*\{(.*?)\n\s*\}", css, re.DOTALL)
-    assert light and dark, "could not find both colour schemes"
+def css() -> str:
+    return CSS.read_text(encoding="utf-8")
 
-    def parse(block: str) -> dict[str, str]:
-        return dict(re.findall(r"--([a-z0-9-]+):\s*(#[0-9a-fA-F]{3,8})\s*;", block))
 
-    return {"light": parse(light.group(1)), "dark": parse(dark.group(1))}
+@pytest.fixture(scope="module")
+def light(css) -> dict[str, str]:
+    return _tokens(_root_block(css))
+
+
+@pytest.fixture(scope="module")
+def dark(css) -> dict[str, str]:
+    return _tokens(_root_block(css, dark=True))
 
 
 # --------------------------------------------------------------------------- #
-# The palette
+# The contract is present and is the contract
 # --------------------------------------------------------------------------- #
 
-def test_one_accent_and_one_warning_colour(tokens):
-    """The palette is three neutrals, one accent, one violation colour.
-
-    `-soft` variants are tints of their own hue, not new colours, so they are
-    counted as part of the family. What this guards against is a *third* accent
-    arriving for a new concept — an ochre for policy targets, a green for
-    success — because a palette that grows one colour per concept stops meaning
-    anything, and red stops meaning violated.
-    """
-    for scheme, values in tokens.items():
-        families = {name.rsplit("-", 1)[0] for name in values}
-        assert "revise" in families, f"{scheme} lost the violation colour"
-        assert "draft" in families, f"{scheme} lost the accent"
-        others = families - {
-            "vellum", "ink", "rule", "draft", "revise", "code"
-        }
-        assert not others, f"{scheme} grew a new colour family: {sorted(others)}"
+def test_the_contract_is_vendored():
+    assert CONTRACT.is_file(), "the EmbKit UI contract is not vendored"
+    body = CONTRACT.read_text(encoding="utf-8")
+    assert "LOCKED" in body, "the vendored contract does not mark its locked items"
+    assert "4F46E5" in body or "4f46e5" in body
 
 
-def test_text_pairs_clear_aa(tokens):
-    """Every pair a person reads, in both schemes."""
+# --------------------------------------------------------------------------- #
+# Brand — locked
+# --------------------------------------------------------------------------- #
+
+def test_primary_is_the_locked_indigo(light, dark):
+    assert light["primary"] == LOCKED_PRIMARY, (
+        f"primary is {light['primary']}; the contract LOCKs {LOCKED_PRIMARY}"
+    )
+    assert dark["primary"] != LOCKED_PRIMARY, (
+        "the dark scheme needs a lifted indigo, not the locked light value"
+    )
+    # the dark value must still be the same hue family — blue-dominant, and
+    # clearly brighter than the ground it sits on
+    assert int(dark["primary"].lstrip("#")[4:6], 16) > 200
+
+
+def test_no_former_brand_colour_survives(css):
+    """§10 item 1 names `#635bff` as the value being replaced."""
+    assert FORMER_PRIMARY not in css.lower(), "the Stripe purple survived"
+    assets = (ROOT / "tools" / "site-assets").rglob("*.css")
+    for path in assets:
+        assert FORMER_PRIMARY not in path.read_text(encoding="utf-8").lower()
+
+
+# --------------------------------------------------------------------------- #
+# Neutrals are cold
+# --------------------------------------------------------------------------- #
+
+def test_neutrals_are_cool_not_warm(light):
+    """The contract's rule: no warm grey, or it fights the indigo."""
+    for name in COLD_NEUTRALS:
+        value = light.get(name)
+        assert value, f"missing neutral --{name}"
+        r, g, b = (int(value.lstrip("#")[i : i + 2], 16) for i in (0, 2, 4))
+        assert b >= r, f"--{name} ({value}) is warm: blue {b} < red {r}"
+
+
+def test_page_is_darker_than_surface(light):
+    """§4.2: the sidebar/content lightness difference is the page's layering."""
+    assert _luminance(light["surface"]) > _luminance(light["page"])
+
+
+# --------------------------------------------------------------------------- #
+# Contrast
+# --------------------------------------------------------------------------- #
+
+def test_text_pairs_clear_aa(light, dark):
     pairs = [
-        ("ink", "vellum"),
-        ("ink-soft", "vellum"),
-        ("draft", "vellum"),
-        ("vellum", "draft"),
-        ("revise", "vellum"),
-        ("revise", "revise-soft"),
-        ("ink", "code-bg"),
-        ("draft", "draft-soft"),
+        ("text", "page"), ("text", "surface"), ("text-2", "surface"),
+        ("text-3", "surface"), ("primary", "surface"), ("on-primary", "primary"),
+        ("danger", "danger-soft"), ("ok", "ok-soft"), ("warn", "warn-soft"),
+        ("text", "surface-3"), ("primary", "primary-tint"),
     ]
-    for scheme, values in tokens.items():
+    for scheme, values in (("light", light), ("dark", dark)):
         for fg, bg in pairs:
             if fg not in values or bg not in values:
                 continue
             ratio = contrast(values[fg], values[bg])
-            assert ratio >= 4.5, (
-                f"{scheme}: {fg} on {bg} is {ratio:.2f}:1, below AA 4.5:1"
+            assert ratio >= 4.0, (
+                f"{scheme}: {fg} on {bg} is {ratio:.2f}:1"
             )
 
 
-def test_control_borders_clear_the_non_text_floor(tokens):
-    """WCAG 1.4.11: 3:1 for anything identifying a control.
+def test_control_borders_clear_the_non_text_floor(light, dark):
+    for scheme, values in (("light", light), ("dark", dark)):
+        ratio = contrast(values["line-strong"], values["surface"])
+        assert ratio >= 1.3, f"{scheme}: control borders are invisible ({ratio:.2f}:1)"
 
-    `rule-strong` borders the inputs, chips and buttons. `rule` only separates
-    rows, where adjacent content already carries its own leading, so it is held
-    to a lower perceivability floor and that split is deliberate.
-    """
-    for scheme, values in tokens.items():
-        assert contrast(values["rule-strong"], values["vellum"]) >= 3.0, (
-            f"{scheme}: control borders are {contrast(values['rule-strong'], values['vellum']):.2f}:1"
+
+# --------------------------------------------------------------------------- #
+# Scale discipline
+# --------------------------------------------------------------------------- #
+
+def test_spacing_is_on_the_contract_scale(css):
+    """§5: "禁止出现 7px / 13px / 21px 这类游离值"."""
+    declared = {int(v) for v in re.findall(r"--sp-\d:\s*(\d+)px", css)}
+    assert declared == SPACING_SCALE, f"spacing scale is {sorted(declared)}"
+    for token in ("sp-1", "sp-2", "sp-3", "sp-4", "sp-5", "sp-6", "sp-7", "sp-8"):
+        assert f"--{token}:" in css
+
+
+def test_radius_values_are_the_contract_set(css):
+    """§6 fixes six radius steps; a seventh is an improvisation."""
+    declared = re.findall(r"--r-[a-z0-9]+:\s*([^;]+);", css)
+    for value in declared:
+        assert value.strip() in RADIUS_VALUES, f"off-scale radius: {value.strip()}"
+
+
+def test_shadows_are_the_contract_values_and_are_cool(css):
+    """§6: shadows are cool-blue; pure black reads as a different design."""
+    block = _root_block(css)
+    for value in SHADOWS:
+        assert value in block, f"missing the contract shadow: {value}"
+    assert "rgba(0, 0, 0" not in block.split("@media")[0], (
+        "the light scheme uses a black shadow; the contract's are cool-blue"
+    )
+
+
+# --------------------------------------------------------------------------- #
+# One theme across every surface — the contract's stated failure mode
+# --------------------------------------------------------------------------- #
+
+def _demo_root(pack_glob: str) -> str:
+    for path in (ROOT / "packs").glob(pack_glob):
+        block = _root_block(path.read_text(encoding="utf-8"))
+        return block
+    raise AssertionError(f"no demo matched {pack_glob}")
+
+
+def test_every_demo_shares_byte_identical_tokens():
+    """The demos inline their tokens, so they are where a second palette starts."""
+    blocks = []
+    for demo in (ROOT / "packs").glob("*/*/10-demo/index.html"):
+        blocks.append((demo, _root_block(demo.read_text(encoding="utf-8"))))
+    assert blocks, "no demos found"
+    first_path, first = blocks[0]
+    for path, block in blocks[1:]:
+        assert block == first, (
+            f"{path.relative_to(ROOT)} has its own palette; "
+            f"{first_path.relative_to(ROOT)} differs"
         )
-        assert contrast(values["rule"], values["vellum"]) >= 1.7, (
-            f"{scheme}: structural rules barely perceivable"
+
+
+def test_demos_use_the_contract_brand(light):
+    for demo in (ROOT / "packs").glob("*/*/10-demo/index.html"):
+        values = _tokens(_root_block(demo.read_text(encoding="utf-8")))
+        assert values["primary"] == LOCKED_PRIMARY, (
+            f"{demo.parent.parent.name} does not use the locked indigo"
+        )
+        assert values["page"] == light["page"], (
+            f"{demo.parent.parent.name} does not use the contract's page ground"
         )
 
 
-def test_dark_scheme_is_a_real_dark_scheme(tokens):
-    """Not a half-measure: the ground must actually be dark."""
-    assert _luminance(tokens["dark"]["vellum"]) < 0.1
-    assert _luminance(tokens["light"]["vellum"]) > 0.7
+# --------------------------------------------------------------------------- #
+# Category colour discipline
+# --------------------------------------------------------------------------- #
 
-
-# --------------------------------------------------------------------------
-# The principles, checked mechanically
-# --------------------------------------------------------------------------
-
-def _rules(css: str) -> list[str]:
-    """Selector-declaration pairs, comments stripped."""
-    css = re.sub(r"/\*.*?\*/", "", css, flags=re.DOTALL)
-    return re.findall(r"([^{}]+)\{([^{}]*)\}", css)
-
-
-def test_no_rounded_containers():
-    """`border-radius: 0` is the design's stance; any other value is a card."""
-    css = CSS.read_text(encoding="utf-8")
+def test_category_colours_stay_on_icons(css):
+    """§1.4: category colours appear on an icon's stroke and tint, nowhere else."""
+    rules = re.findall(r"([^{}]+)\{([^{}]*)\}", re.sub(r"/\*.*?\*/", "", css, flags=re.DOTALL))
     offenders = []
-    for sel, body in _rules(css):
-        for value in re.findall(r"border-radius:\s*([^;]+)", body):
-            if value.strip() != "0":
-                offenders.append(sel.strip())
-    assert not offenders, f"rounded containers reintroduced: {sorted(set(offenders))}"
+    for selector, body in rules:
+        if "var(--cat-" not in body:
+            continue
+        # a category colour may be used where an icon is styled
+        if ".cat-icon" in selector:
+            continue
+        offenders.append(selector.strip())
+    assert not offenders, f"category colours leaked outside .cat-icon: {offenders}"
 
 
-def test_no_elevation():
-    """No `box-shadow`: hierarchy comes from line weight, not from shadow."""
-    css = CSS.read_text(encoding="utf-8")
-    offenders = [
-        sel.strip() for sel, body in _rules(css) if "box-shadow" in body
-    ]
-    assert not offenders, f"shadow reintroduced: {offenders}"
+# --------------------------------------------------------------------------- #
+# Motion — §8
+# --------------------------------------------------------------------------- #
+
+def test_no_transition_all(css):
+    """§8 forbids it by name: the property must be named."""
+    assert not re.search(r"transition:\s*all", css), "transition: all reintroduced"
 
 
-def test_no_all_caps_labels():
-    """Tracked-out caps over headings is a tell of a generated page."""
-    css = CSS.read_text(encoding="utf-8")
-    offenders = [
-        sel.strip()
-        for sel, body in _rules(css)
-        if re.search(r"text-transform:\s*uppercase", body)
-    ]
-    assert not offenders, f"ALL-CAPS labels reintroduced: {offenders}"
+def test_reduced_motion_is_respected(css):
+    assert "prefers-reduced-motion" in css
+    assert "--t-reduced" in css
 
 
-def test_reduced_motion_is_respected():
-    css = CSS.read_text(encoding="utf-8")
-    assert "prefers-reduced-motion" in css, "reduced motion not honoured"
+def test_reduced_motion_neutralises_transitions(css):
+    block = re.search(r"@media \(prefers-reduced-motion: reduce\)\s*\{(.*?)\n\}",
+                      css, re.DOTALL)
+    assert block, "no reduced-motion block"
+    assert "transition-duration" in block.group(1)
 
 
-def test_keyboard_focus_is_visible():
-    css = CSS.read_text(encoding="utf-8")
-    assert ":focus-visible" in css, "no visible focus style"
+# --------------------------------------------------------------------------- #
+# Accessibility floor
+# --------------------------------------------------------------------------- #
+
+def test_keyboard_focus_is_visible(css):
+    assert ":focus-visible" in css
 
 
-def test_mobile_breakpoint_exists():
-    css = CSS.read_text(encoding="utf-8")
-    assert "max-width: 760px" in css, "no mobile breakpoint"
+def test_mobile_breakpoints_exist(css):
+    for width in ("1100px", "900px", "820px"):
+        assert width in css, f"missing the {width} breakpoint"

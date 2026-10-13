@@ -1,3 +1,87 @@
+## [Unreleased]
+
+### Changed — the catalog adopts the product's theme
+
+The site had its own visual identity, which is the failure the UI contract names
+outright: several surfaces on several palettes. Rebuilt on the contract's
+tokens, vendored at `docs/embkit-ui-contract.md`.
+
+- **Brand is indigo `#4F46E5` and nothing else.** The contract marks the hue
+  LOCKED; the former `#635bff` is gone and a test asserts it does not return.
+- **Neutrals are cold.** The contract says it twice — "不要引入暖灰，会和 indigo
+  打架" — so there is no warm grey anywhere, and a test asserts blue ≥ red on
+  every neutral.
+- **Radius and elevation are used, and they are the contract's.** Six radius
+  steps and the four cool-blue shadows. The previous pass had removed both, on
+  the advice of a skill this repository's own standard forbids.
+- **Spacing sits on the 4/8/12/16/20/24/28/32 scale**; §5 forbids stray values
+  by name, and a test rejects off-scale spacing and radius tokens.
+- **The register became the contract's §7.4 category card**: a four-column grid
+  whose first row is an icon on a `--primary`-family tint beside a large
+  tabular number. The number is real rather than decorative — it is how much
+  machine-readable content the pack carries. Category colours appear on the
+  icon's stroke and its tint and nowhere else, which a test enforces.
+- **The pack page became §4.2's three-part sidebar** (220px, `--surface` on a
+  `--page` ground — the lightness difference the contract calls the key to the
+  page's layering) plus §4.3's main column. Both views live inside `main`, so
+  the navigation survives the view switch; replacing the whole shell, as the
+  first attempt did, hid the nav exactly when the reader was deepest in the
+  material.
+- **The catalog hero is §9's marketing frame** — the indigo wash with its light
+  banding, a two-part headline with the second half in `--primary`, and a
+  sub-line joined with `·` as §9 specifies.
+- An empty result is §7.8's empty state — icon, title, what happened, and a way
+  out — rather than a bare "no data".
+- The demos carry the same tokens, byte-identical, because they inline them in
+  order to open on their own; a test compares their `:root` blocks so a second
+  palette cannot start there.
+
+### Added — house skills, and one removed
+
+- `.opencode/skill/{redesign,design-review,a11y-audit}` — the skills EmbKit's
+  contract names for this work, copied project-local so they travel with the
+  repository.
+- **Removed `.opencode/skills/frontend-design`.** The contract's last line is
+  explicit: *"但**不要**装 Anthropic 的 `frontend-design`——该 skill 明文禁止
+  「紫渐变」，会试图改掉我们 LOCKED 的 indigo 品牌色"*. It had been installed
+  and its guidance drove the previous redesign, which is why that pass chose a
+  warm ground, removed every radius and shadow, and invented an accent colour.
+- `tools/site_icons.py` — a hand-drawn icon set and the §1.4 category palette.
+  The contract requires Lucide at stroke 2 / round caps / 24 viewBox and, for a
+  repository that takes no runtime dependency, explicitly permits a hand-drawn
+  set meeting that spec.
+
+### Added — the second demo, and its test scaffolding
+
+- `packs/government-public/one-stop-service/10-demo/` — the anti-double-
+  submission lab. Where the first demo lets you walk a vocabulary, this one
+  lets you violate a rule, because Article 7 is violated by the natural
+  direction of the system rather than by a defect. Demanding an obtainable
+  field lights `FR-011` and `NFR-001`; a failed lookup with no permitted
+  alternative lights `FR-013`; an empty exemption reason lights `NFR-003`.
+- The demo controls carry `data-action` / `data-field`, so a test names the
+  control it means instead of relying on label text and render order.
+- Shared test scaffolding for the demos (`demo_stub.js`, `demo_check.js`), and
+  it fixed two defects that had been reporting success: the harness registered
+  a button only when it was appended to a known container, so a demo building
+  its controls inside generated wrappers registered none — "every button is
+  clickable" was a true statement about an empty set; and `prompt` was placed
+  on `document` when the demo calls the bare global.
+
+### Fixed
+
+- **The vendored scripts lost their SRI integrity hash** during the catalog
+  rewrite. The build already fails if a vendored file's bytes change, so the
+  attribute is the browser-side half of the same check; a test caught its
+  absence.
+- The empty state was drawn even when the catalog had results, because
+  `display: flex` outranks the `hidden` attribute.
+- Chapter slugs wrapped to three lines inside the contract's fixed 36px nav
+  row; they truncate to one line now.
+
+`verification` unchanged: this changes how the content is presented, not what
+any pack claims. 147 tests, ruff clean, 0 broken links.
+
 # Changelog
 
 All notable changes to Open Solution Atlas. Format loosely follows
