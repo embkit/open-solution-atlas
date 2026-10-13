@@ -10,6 +10,7 @@ check-ids validates it.
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -44,6 +45,46 @@ def _manifest(pack: Path, data: dict) -> Path:
     path = pack / "10-demo" / "demo.json"
     path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
     return path
+
+
+def _demo_pages() -> list[Path]:
+    root = Path(__file__).resolve().parent.parent
+    return sorted(root.glob("packs/*/*/10-demo/index.html"))
+
+
+# --------------------------------------------------------------------------- #
+# Every element a demo reaches for is one the page actually has
+# --------------------------------------------------------------------------- #
+#
+# This is the check the browser made and the JS harness did not. The demo's
+# script asked for `#log`, the page never declared it, and `getElementById`
+# returned null — so the demo threw on load and rendered three empty panels.
+# The harness passed it because its stub minted a node for any id asked for, and
+# `getElementById` returning a usable element is exactly the DOM behaviour a
+# stub should not invent.
+#
+# These demos ship as the interactive part of a pack, so a demo that dies on
+# load is worse than no demo. A static check catches it without a browser.
+
+_IDS_ASKED = re.compile(r"""
+    \b(?:document\[\s*["']getElementById["']\s*\]\s*\(|getElementById\s*\(|el\s*\()\s*["']([A-Za-z0-9_-]+)["']
+""", re.VERBOSE)
+_IDS_DECLARED = re.compile(r"""\bid\s*=\s*["']([A-Za-z0-9_-]+)["']""")
+
+
+def test_every_id_a_demo_asks_for_is_declared():
+    pages = _demo_pages()
+    assert pages, "no demo pages found"
+    for page in pages:
+        text = page.read_text(encoding="utf-8")
+        asked = set(_IDS_ASKED.findall(text))
+        declared = set(_IDS_DECLARED.findall(text))
+        built = asked - declared
+        assert not built, (
+            f"{page.parent.parent.name}: the script reaches for "
+            f"{sorted(built)}, which the page never declares. In a browser "
+            f"getElementById returns null and the demo dies on load."
+        )
 
 
 VALID = {

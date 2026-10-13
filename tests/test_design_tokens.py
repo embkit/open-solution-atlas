@@ -79,9 +79,15 @@ def _rules(css: str) -> list[tuple[str, str]]:
 
 def _root_block(css: str, dark: bool = False) -> str:
     if dark:
-        m = re.search(
-            r"@media \(prefers-color-scheme: dark\)\s*\{\s*:root\s*\{(.*?)\n\s*\}",
-            css, re.DOTALL)
+        # Dark answers to an explicit attribute as well as the OS preference,
+        # because that is the selector the kit's axe/verify scripts set. Prefer
+        # the explicit one: it is the one that must stay complete.
+        m = re.search(r':root\[data-theme="dark"\]\s*\{(.*?)\n\s*\}', css, re.DOTALL)
+        if not m:
+            m = re.search(
+                r"@media \(prefers-color-scheme: dark\)\s*\{\s*"
+                r':root(?::not\(\[data-theme="light"\]\))?\s*\{(.*?)\n\s*\}',
+                css, re.DOTALL)
     else:
         # the demos indent their inline :root, the site stylesheet does not
         m = re.search(r"^\s*:root\s*\{(.*?)\n\s*\}", css, re.DOTALL | re.MULTILINE)
@@ -90,7 +96,23 @@ def _root_block(css: str, dark: bool = False) -> str:
 
 
 def _tokens(block: str) -> dict[str, str]:
-    return dict(re.findall(r"--([a-z0-9-]+):\s*(#[0-9a-fA-F]{3,8})\s*;", block))
+    """Colour tokens by name, one `var()` hop resolved.
+
+    `--text-2: var(--navy-2)` in the light block is a real colour with a real
+    contrast, so a plain hex scrape would silently omit the token that carries
+    the body copy — and a contrast assertion for it would `KeyError` rather than
+    check anything.
+    """
+    raw = dict(re.findall(r"--([a-z0-9-]+):\s*([^;]+);", block))
+    out: dict[str, str] = {}
+    for name, value in raw.items():
+        value = value.strip()
+        ref = re.fullmatch(r"var\(--([a-z0-9-]+)\)", value)
+        if ref and ref.group(1) in raw:
+            value = raw[ref.group(1)].strip()
+        if re.fullmatch(r"#[0-9a-fA-F]{3,8}", value):
+            out[name] = value
+    return out
 
 
 @pytest.fixture(scope="module")
@@ -413,3 +435,58 @@ def test_demo_selects_have_accessible_names():
             assert "aria-label" in tag or "aria-labelledby" in tag, (
                 f"{demo.parent.parent.name}: an unnamed <select> ({tag[:60]})"
             )
+
+def test_dark_mode_is_reachable_by_both_selectors(css):
+    """The kit's tooling sets `data-theme="dark"`; the reader's OS sets nothing.
+
+    `scripts/axe_audit.mjs --dark` toggles the attribute, and so do the
+    `verify_*` scripts. While dark was driven only by the media query, the dark
+    audit graded the *light* palette and reported OK — and a real failure (inline
+    code at 1.49:1) shipped. Both selectors must carry the same declarations.
+    """
+    explicit = re.search(r':root\[data-theme="dark"\]\s*\{(.*?)\n\s*\}', css, re.DOTALL)
+    assert explicit, "no :root[data-theme=\"dark\"] block"
+    media = re.search(
+        r"@media \(prefers-color-scheme: dark\)\s*\{\s*"
+        r':root:not\(\[data-theme="light"\]\)\s*\{(.*?)\n\s*\}',
+        css, re.DOTALL)
+    assert media, "no prefers-color-scheme block gated on the light opt-out"
+    a, b = _tokens(explicit.group(1)), _tokens(media.group(1))
+    assert a == b, (
+        "the explicit dark block and the media-query one disagree: "
+        f"{ {k: (a.get(k), b.get(k)) for k in set(a) | set(b) if a.get(k) != b.get(k)} }"
+    )
+
+
+def test_colour_tokens_used_for_text_are_redefined_in_dark(light, dark, css):
+    """A palette token used as `color` and absent from dark keeps its light value.
+
+    This is the shape of the bug that shipped: `code { color: var(--navy-2) }`
+    with `--navy-2: #425466` defined only in the light `:root`, so dark rendered
+    #425466 on #1a3a5e — 1.49:1, invisible, and no human or tool had looked.
+
+    Only `color` is checked. The category icon tokens (`--cat-*-fg`) are a
+    matched light/dark *pair that neither side redefines*, so a tint and its
+    foreground move together and the contrast is preserved; flagging them would
+    be a false positive.
+    """
+    used = set()
+    for _selector, body in _rules(css):
+        for decl in body.split(";"):
+            prop, _, value = decl.partition(":")
+            if prop.strip() != "color":
+                continue
+            used |= set(re.findall(r"var\(--([a-z0-9-]+)\)", value))
+    offenders = sorted(n for n in used if n in light and n not in dark)
+    assert not offenders, (
+        "used as `color`, defined in the light :root, missing from dark: "
+        f"{offenders} — they keep their light value on a dark ground"
+    )
+
+
+def test_secondary_text_clears_aa_on_the_surfaces_it_sits_on(light, dark):
+    """`--text-2` carries body copy *and* inline code on `--surface-3`."""
+    for scheme, values in (("light", light), ("dark", dark)):
+        for ground in ("page", "surface", "surface-2", "surface-3"):
+            ratio = contrast(values["text-2"], values[ground])
+            assert ratio >= 4.5, f"{scheme}: --text-2 on --{ground} is {ratio:.2f}:1"
