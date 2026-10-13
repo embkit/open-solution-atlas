@@ -47,5 +47,10 @@ def pack_index() -> ModuleType:
 
 
 @pytest.fixture(scope="session")
+def prompts() -> ModuleType:
+    return _load("prompts")
+
+
+@pytest.fixture(scope="session")
 def build_site() -> ModuleType:
     return _load("build-site")
