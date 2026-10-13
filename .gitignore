@@ -25,7 +25,14 @@ desktop.ini
 /build/
 /tmp/
 .cache/
-/_site/
+
+# Any top-level underscore-prefixed directory is a build or scratch output:
+# _site is the site build, _compat_site is what the compatibility job
+# builds into, _shots* are Playwright screenshots taken while reviewing a
+# design. Listing them individually would forget the next one, so the whole
+# convention is ignored by prefix — the same rule discover_markdown() and
+# check-links.py use to stay out of build output.
+/_*/
 
 # --- Local env / secrets ---
 .env
