@@ -194,13 +194,18 @@ def test_unparsable_section_reports_prose_only_not_silent_zero(pack_index):
     assert pack_index._status(3, text) == "structured"
 
 
-def test_corpus_gaps_are_visible_in_the_index(index):
-    """The packs without a constraint table must be reported, not papered over."""
+def test_every_pack_now_declares_integrity_constraints(index):
+    """The six packs that lacked a constraint table were filled in.
+
+    This assertion is the opposite of the one it replaced, and that is the
+    point: the gap was reported as a visible backlog rather than papered over,
+    the content was written, and the corpus now closes the gap everywhere.
+    A pack reverting to no constraints fails here.
+    """
     gaps = [p["slug"] for p in index["packs"] if p["counts"]["constraints"] == 0]
-    assert gaps, "expected the L3 packs to lack a constraint table"
-    assert all(
-        p["sections"]["constraints"]["count"] == 0 for p in index["packs"] if p["slug"] in gaps
-    )
+    assert not gaps, f"packs still without integrity constraints: {gaps}"
+    for p in index["packs"]:
+        assert p["sections"]["constraints"]["status"] == "structured"
 
 
 def test_extraction_summary_adds_up_to_the_pack_count(index):

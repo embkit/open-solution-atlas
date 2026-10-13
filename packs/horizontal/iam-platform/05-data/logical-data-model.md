@@ -163,3 +163,38 @@ erDiagram
   revocation-latency window (BR-01/BR-02).
 - Identity PII minimized and purged per realm policy; account/lifecycle
   facts retained as audit evidence.
+
+## 5. Integrity constraints (normative)
+
+Constraints the model must enforce. They are numbered and stable, and each
+names the `BR-`/`FR-` identifiers it enforces.
+
+The closing sentence records which of them are enforced **in the store** rather
+than in application code. That is a claim the pack makes about itself, not a
+verified property — application discipline is exactly what a later change
+bypasses, which is why the distinction is drawn rather than left implied.
+
+| # | Constraint | Enforces |
+|---|---|---|
+| 1 | `AUDIT_EVENT` and `DECISION` are append-only: no UPDATE or DELETE grant exists, and a correction is a new attributed event | BR-09, ADR-0001, ADR-0003 |
+| 2 | A refresh token is one-time-use; presenting an already-retired one revokes the **entire** `REFRESH_FAMILY` | BR-01 |
+| 3 | `TOKEN.lifetime` may not exceed the ceiling configured for the resource; an unbounded access token is illegal | BR-01 |
+| 4 | Session termination is authoritative at the IdP: an RP that misses the logout notification must still fail on the next token validation | BR-02 |
+| 5 | Every `ROLE_GRANT` is checked against the SoD conflict set at write time; a conflicting pair without a recorded compensating control is rejected | BR-03, BR-08 |
+| 6 | An unreviewed grant is revoked at the overdue boundary; it is never silently extended by the passage of the review period | BR-04 |
+| 7 | `ELEVATION.expires_at` is NOT NULL and auto-revoke fires at expiry; an open-ended elevation is illegal | BR-05 |
+| 8 | Credential lockout is scoped to (subject, credential) — a global counter locks out every subject in the realm at once | BR-06, BR-07 |
+| 9 | Every row reachable by a query resolves a `REALM`; a cross-realm read is impossible rather than filtered after the fact | BR-07, ADR-0004 |
+| 10 | Processing a personal-data purpose requires a `CONSENT` state covering it; an absent state means not permitted | BR-12 |
+| 11 | Provisioning is idempotent on its target key, and for the same subject a deprovisioning beats a provisioning regardless of arrival order | BR-13 |
+| 12 | A `DECISION` records the policy version that produced it; a decision whose policy version does not resolve is illegal | BR-14, ADR-0003 |
+| 13 | A federated subject has no local password row — a password on a federated account is a second credential to breach and reconcile | BR-15 |
+| 14 | An action requiring AAL *n* rejects a session authenticated below it; the failure is a step-up challenge, never a downgrade | BR-11 |
+| 15 | Credential parameters (algorithm, cost, rotation) match the current policy version; a row predating a policy change fails validation until re-hashed | BR-10 |
+
+> Constraints 1, 5, 7, 9, 10, 11 and 13 are **enforced in the store**, not in
+> application code. An editable audit trail, an SoD conflict, an open-ended
+> elevation, a cross-realm read, an unconsented purpose, a racing provision, or
+> a local password on a federated account is a defect regardless of what
+> application discipline promises — a credential is a boundary, and a
+> constraint applied after the query has answered is not one.

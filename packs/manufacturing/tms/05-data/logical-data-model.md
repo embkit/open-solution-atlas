@@ -91,3 +91,34 @@ erDiagram
 |---|---|---|
 | epcis_outbox | event_id | EPCIS 2.0 document ref, publish status, partner scope |
 | edi_message_log | message_id | channel, direction, payload ref, audit trail (FR-022) |
+
+## Integrity constraints (normative)
+
+Constraints the model must enforce. They are numbered and stable, and each
+names the `BR-`/`FR-` identifier it enforces. The closing sentence records
+which are enforced **in the store** rather than in application code — a claim
+the pack makes about itself, not a verified property, since application
+discipline is exactly what a later change bypasses.
+
+| # | Constraint | Enforces |
+|---|---|---|
+| 1 | Plan and actual are separate states; `MILESTONE_EVENT` is append-only and a plan row is never mutated by an actual | BR-02, ADR-0005 |
+| 2 | `TRANSPORT_ORDER_LINE.quantity` derives from the authorized demand and never exceeds it | BR-01, ADR-0001 |
+| 3 | A `LEG` may only reach DISPATCHED after a `TENDER` acceptance exists; an auto-accept is recorded as auto-accept, not as a human one | BR-03 |
+| 4 | Tender acceptance freezes `RATE_SNAPSHOT`; an invoice is never priced from a contract version newer than the snapshot | BR-04, ADR-0004 |
+| 5 | A three-way match (order / tender / execution facts / invoice) records its verdict; a variance beyond tolerance cannot be approved without a recorded approver | BR-05 |
+| 6 | A `LEG` reaches DELIVERED only with a captured POD fact (signature, photo or e-POD reference) | BR-06 |
+| 7 | A dangerous-goods consignment line is validated against the reference dataset; an unknown UN number is rejected, not warned | BR-07, ADR-0003 |
+| 8 | A `LOAD_PLAN` respects DG segregation and stowage constraints; a conflicting plan is not saveable | BR-08 |
+| 9 | `LOAD_PLAN.weight` ≤ vehicle gross-weight rating and `.volume` ≤ vehicle capacity, at the vehicle version in force | BR-09 |
+| 10 | A stage-verification result precedes departure; a discrepancy blocks departure until recorded | BR-10 |
+| 11 | Every execution event carries a source and an ingestion timestamp and is append-only | BR-11 |
+| 12 | The Incoterms 2020 rule on the order determines who contracts and pays carriage, and is recorded on the order line | BR-12 |
+
+> Constraints 1, 3, 4, 6, 7 and 11 are **enforced in the store**, not in
+> application code. An actual milestone written over a plan, a dispatched leg
+> with no accepted tender, an invoice priced from a superseded contract, a
+> DELIVERED leg with no POD, an unvalidated UN number, or a re-stamped event is
+> a defect regardless of what application discipline promises — and in freight
+> the defect surfaces as a dispute months later, when the evidence that would
+> settle it has been overwritten.

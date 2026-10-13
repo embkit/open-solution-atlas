@@ -79,3 +79,34 @@ erDiagram
 | downtime_event | event_id | reason code, start/end, uncoded default (BR-08) |
 | oee_aggregate (projection) | (work_center, shift/day) | per BR-09 formulas |
 | traceability_dossier | dossier_id | query ref, integrity manifest (FR-021) |
+
+## Integrity constraints (normative)
+
+Constraints the model must enforce. They are numbered and stable, and each
+names the `BR-`/`FR-` identifier it enforces. The closing sentence records
+which are enforced **in the store** rather than in application code — a claim
+the pack makes about itself, not a verified property, since application
+discipline is exactly what a later change bypasses.
+
+| # | Constraint | Enforces |
+|---|---|---|
+| 1 | `EXECUTION_EVENT` is append-only; a correction is a **compensating** event referencing the original | BR-07, ADR-0002 |
+| 2 | An operation cannot start unless its routing predecessor is complete and its material is available | BR-02 |
+| 3 | A WIP unit (serialized unit or lot split) belongs to exactly one active work order at a time | BR-03 |
+| 4 | Shop-floor `MATERIAL_LOT` balance never goes negative; consumption beyond on-hand is rejected | BR-04 |
+| 5 | A blocking inspection gate is enforced by the workflow engine; no event records completion past a failed gate | BR-05 |
+| 6 | A finished unit's genealogy dossier resolves to lots of **all** key components; an incomplete dossier is not completable | BR-06 |
+| 7 | `DOWNTIME_EVENT.reason_code` is NOT NULL before shift close; uncoded downtime is auto-coded **and flagged** | BR-08 |
+| 8 | OEE is computed only from validated state events, using the pack's stated formulas; a hand-entered OEE value is illegal | BR-09 |
+| 9 | Events carry a source timestamp; a clock skew beyond the configured bound is rejected or flagged, never silently re-stamped | BR-10 |
+| 10 | A work order references the routing and BOM **version** in force at release; master-data changes are effective-dated and never mutate a released order | BR-13 |
+| 11 | Equipment writes are limited to non-control peripherals (label printers, scanners, HMI read paths) | BR-12, ADR-0003 |
+| 12 | Regulated variants only: a record step requiring e-signature cannot be backdated or re-signed | BR-11 |
+| 13 | A work-order quantity change reconciles against the ERP production order; MES never grants itself more quantity | BR-01, ADR-0001 |
+
+> Constraints 1, 3, 4, 6, 8 and 10 are **enforced in the store**, not in
+> application code. An editable execution history, a WIP unit in two orders, a
+> negative material balance, an incomplete genealogy dossier, a hand-entered
+> OEE figure, or a released order silently re-pointed at new master data is a
+> defect regardless of what application discipline promises — and in this
+> domain the defect is a recall that cannot be executed.
