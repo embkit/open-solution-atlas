@@ -52,6 +52,17 @@ except ImportError:  # pragma: no cover
     print("ERROR: PyYAML is required (pip install -r requirements.txt)", file=sys.stderr)
     sys.exit(2)
 
+# tools/pack_index.py is the content model — the one place that knows how a
+# pack's Markdown turns into typed records. The rendering layer imports it
+# rather than keeping a second URL mapping that could drift from the first.
+try:
+    from pack_index import build_index as build_pack_index
+    from pack_index import doc_url as _doc_url
+except ImportError:  # loaded via importlib without tools/ on sys.path
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from pack_index import build_index as build_pack_index
+    from pack_index import doc_url as _doc_url
+
 ROOT = Path(__file__).resolve().parent.parent
 PACKS_DIR = ROOT / "packs"
 DOCS_DIR = ROOT / "docs"
@@ -311,13 +322,16 @@ def discover_markdown() -> list[Path]:
 
 
 def url_for(src: Path) -> str:
-    """Map a source Markdown path to its site-relative output URL."""
+    """Map a source Markdown path to its site-relative output URL.
+
+    Delegates to ``pack_index.doc_url`` so the mapping lives in exactly one
+    place; the pack-root and repo-root special cases stay here because they
+    are properties of the site's output layout, not of the content model.
+    """
     rel = src.relative_to(ROOT).as_posix()
-    if rel.endswith("/README.md"):
-        return rel[: -len("README.md")] + "index.html"
     if rel == "README.md":
         return "overview.html"
-    return rel[:-3] + ".html"
+    return _doc_url(rel)
 
 
 def load_packs(summaries: dict[str, str]) -> list[Pack]:
@@ -521,6 +535,11 @@ def build(out: Path, base_url: str, site_url: str = "", lang: str = "en") -> int
         print("ERROR: no packs found", file=sys.stderr)
         return 1
 
+    # The structured index is extracted once and shared by the renderer and
+    # the emitted JSON, so a page and the data file can never disagree.
+    pack_index = build_pack_index()
+    spec_entries = {p["slug"]: p for p in pack_index["packs"]}
+
     if out.exists():
         shutil.rmtree(out)
     out.mkdir(parents=True)
@@ -564,7 +583,10 @@ def build(out: Path, base_url: str, site_url: str = "", lang: str = "en") -> int
         for doc in pack.docs:
             depth = doc.url.count("/")
             prefix = "../" * depth
-            body = render_doc_page(pack, doc, prefix, site_url, lang)
+            body = render_doc_page(
+                pack, doc, prefix, site_url, lang,
+                spec_entry=spec_entries.get(pack.slug),
+            )
             write(out / doc.url, body)
 
     # ---- write non-pack pages --------------------------------------------
@@ -587,6 +609,10 @@ def build(out: Path, base_url: str, site_url: str = "", lang: str = "en") -> int
     # ---- catalog page + search index --------------------------------------
     write(out / "index.html", render_catalog(packs, base_url, site_url, lang))
     write(out / "search-index.json", json.dumps(build_index(packs, other_docs), ensure_ascii=False))
+    # The structured index is the machine-readable surface of the catalog: the
+    # same records the spec panels render, for a client-side traceability
+    # explorer or a code generator.
+    write(out / "data/pack-index.json", json.dumps(pack_index, ensure_ascii=False))
 
     # ---- assets ------------------------------------------------------------
     assets_out = out / "assets"
@@ -635,6 +661,12 @@ def build(out: Path, base_url: str, site_url: str = "", lang: str = "en") -> int
         f"built {pages} pages, {len(packs)} packs, "
         f"{copied} linked asset(s), {generated} generated index(es) -> {where}/"
     )
+    x = pack_index["totals"]
+    print(
+        f"structured index: {x['rules']} rules, {x['requirements']} requirements, "
+        f"{x['nfrs']} NFRs, {x['controls']} controls, {x['adrs']} ADRs, "
+        f"{x['constraints']} constraints ({x['store_constraints']} store-enforced)"
+    )
 
     broken = verify_internal_links(out)
     if broken:
@@ -653,9 +685,309 @@ def write(path: Path, content: str) -> None:
     path.write_text(content, encoding="utf-8")
 
 
-def render_doc_page(pack: Pack, doc: Doc, prefix: str, site_url: str = "", lang: str = "en") -> str:
+# --------------------------------------------------------------------------- #
+# Structured ("spec") view
+# --------------------------------------------------------------------------- #
+
+# Sections in the order a reader wants them: the decision, then what it
+# constrains, then what it is measured by, then where it is enforced.
+SPEC_SECTIONS = (
+    ("adrs", "Architecture decisions", "adr"),
+    ("rules", "Business rules", "rule"),
+    ("requirements", "Functional requirements", "req"),
+    ("nfrs", "Non-functional targets", "nfr"),
+    ("controls", "Compliance controls", "ctl"),
+    ("constraints", "Data-model constraints", "con"),
+    ("capabilities", "Capabilities", "cap"),
+    ("contexts", "Bounded contexts", "ctx"),
+)
+
+
+def _esc(text) -> str:
+    return html.escape(str(text))
+
+
+def _id_chip(id_: str, kind: str, href: str | None = None) -> str:
+    """An identifier that links to its own row, or stands alone if uncited."""
+    if href:
+        return f'<a class="chip idchip" href="{href}" data-id="{_esc(id_)}">{_esc(id_)}</a>'
+    return f'<span class="chip idchip" data-id="{_esc(id_)}">{_esc(id_)}</span>'
+
+
+def _spec_status_badges(entry: dict) -> str:
+    """Per-section extraction quality — the honest part of the panel.
+
+    A pack whose rules live in prose gets a visible `prose-only` badge rather
+    than an empty table, so the gap is a fact a reader can act on instead of
+    an impression the site quietly creates.
+    """
+    label = {"structured": "可结构化", "prose-only": "仅散文", "absent": "缺失"}
+    cells = []
+    for key, _title, _cls in SPEC_SECTIONS:
+        if key not in entry["sections"]:
+            continue
+        st = entry["sections"][key]["status"]
+        n = entry["sections"][key]["count"]
+        cells.append(
+            f'<span class="sq {st}" title="{_esc(key)}">{label[st]}'
+            + (f' <b>{n}</b>' if n else "")
+            + "</span>"
+        )
+    return '<div class="spec-quality">' + "".join(cells) + "</div>"
+
+
+def _reverse_refs(entry: dict) -> dict[str, list[str]]:
+    """Who cites each identifier in this pack — the traceability index.
+
+    Built from the traces the pack *already records*, so it adds no new claim:
+    it is the same graph ``check-ids.py`` validates, presented as edges rather
+    than as a lint result.
+    """
+    refs: dict[str, list[str]] = {}
+
+    def add(src: str, targets) -> None:
+        for tgt in targets:
+            refs.setdefault(tgt, [])
+            if src not in refs[tgt]:
+                refs[tgt].append(src)
+
+    for rule in entry["rules"]:
+        add(rule["id"], rule["enforced_by"])
+    for req in entry["requirements"]:
+        add(req["id"], req["traces"])
+    for nfr in entry["nfrs"]:
+        add(nfr["id"], nfr.get("traces", []))
+    for ctl in entry["controls"]:
+        add(ctl["id"], ctl["requirements"] + ctl["rules"] + ctl["capabilities"])
+    return refs
+
+
+def _spec_row_chips(entry: dict, ids: list[str], kind: str) -> str:
+    """Trace identifiers rendered as links to their own sections."""
+    if not ids:
+        return '<span class="dim">—</span>'
+    return "".join(_id_chip(i, kind, f"#spec-{i}") for i in ids)
+
+
+def render_spec_view(entry: dict, prefix: str) -> str:
+    """The whole structured view for one pack.
+
+    Server-rendered so the panel is complete with JavaScript disabled — the
+    same progressive-enhancement rule the rest of the site is built on. The
+    JSON index in ``data/pack-index.json`` is for the interactive layer, not a
+    prerequisite for reading this.
+    """
+    counts = entry["counts"]
+    total_ids = sum(counts[k] for k in ("rules", "requirements", "nfrs", "controls", "adrs", "constraints"))
+    refs = _reverse_refs(entry)
+
+    stats = [
+        ("rules", "Business rules", counts["rules"]),
+        ("requirements", "Requirements", counts["requirements"]),
+        ("nfrs", "NFR targets", counts["nfrs"]),
+        ("controls", "Controls", counts["controls"]),
+        ("adrs", "ADRs", counts["adrs"]),
+        ("constraints", "Integrity constraints", counts["constraints"]),
+        ("store_constraints", "of which store-enforced", counts["store_constraints"]),
+        ("policy_nfrs", "policy-assumed targets", counts["policy_nfrs"]),
+    ]
+    tiles = "".join(
+        f'<a class="stat" href="#sec-{k}"><b>{v}</b><span>{_esc(lbl)}</span></a>'
+        for k, lbl, v in stats if v
+    )
+
+    jump = "".join(
+        f'<a class="jump" href="#sec-{key}">{_esc(title)} · {counts.get(key, len(entry.get(key, [])))}</a>'
+        for key, title, _ in SPEC_SECTIONS if counts.get(key, len(entry.get(key, [])))
+    )
+
+    sections: list[str] = []
+
+    # ---- ADRs ------------------------------------------------------------
+    if entry["adrs"]:
+        rows = "".join(
+            f'<tr id="spec-{_esc(a["id"])}"><th><code>{_esc(a["id"])}</code></th>'
+            f'<td><b>{_esc(a["name"])}</b>'
+            + (f'<p class="dec">{_esc(a["decision"])}</p>' if a["decision"] else "")
+            + f'<p class="refs">被引用：{_spec_row_chips(entry, refs.get(a["id"], []), "ref")}</p></td></tr>'
+            for a in entry["adrs"]
+        )
+        sections.append(
+            f'<details class="spec-sec" id="sec-adr" open><summary>'
+            f'Architecture decisions · {len(entry["adrs"])}</summary>'
+            f'<table class="spectab"><tbody>{rows}</tbody></table></details>'
+        )
+
+    # ---- Business rules ---------------------------------------------------
+    if entry["rules"]:
+        rows = "".join(
+            f'<tr id="spec-{_esc(r["id"])}"><th><code>{_esc(r["id"])}</code></th>'
+            f'<td><b>{_esc(r["name"])}</b>'
+            + (f'<p class="prop">{_esc(r["proposition"])}</p>' if r["proposition"] else "")
+            + f'<p class="refs">强制：{_spec_row_chips(entry, r["enforced_by"] + r["trace_adrs"], "ref")}</p></td></tr>'
+            for r in entry["rules"]
+        )
+        sections.append(
+            f'<details class="spec-sec" id="sec-rule" open><summary>'
+            f'Business rules · {len(entry["rules"])}</summary>'
+            f'<table class="spectab"><tbody>{rows}</tbody></table></details>'
+        )
+
+    # ---- Functional requirements -----------------------------------------
+    if entry["requirements"]:
+        rows = "".join(
+            f'<tr id="spec-{_esc(q["id"])}"><th><code>{_esc(q["id"])}</code></th>'
+            f'<td><b>{_esc(q["name"])}</b>'
+            + (f'<p class="ears"><span class="ears-k">WHEN</span> {_esc(q["when"])}</p>' if q["when"] else "")
+            + (f'<p class="ears"><span class="ears-k">SHALL</span> {_esc(q["shall"])}</p>' if q["shall"] else "")
+            + (f'<p class="ears not"><span class="ears-k">SHALL NOT</span> {_esc(q["shall_not"])}</p>' if q["shall_not"] else "")
+            + f'<p class="refs">追溯：{_spec_row_chips(entry, q["traces"], "ref")}</p></td></tr>'
+            for q in entry["requirements"]
+        )
+        sections.append(
+            f'<details class="spec-sec" id="sec-req" open><summary>'
+            f'Functional requirements · {len(entry["requirements"])}</summary>'
+            f'<table class="spectab"><tbody>{rows}</tbody></table></details>'
+        )
+
+    # ---- NFRs -------------------------------------------------------------
+    if entry["nfrs"]:
+        rows = "".join(
+            f'<tr id="spec-{_esc(n["id"])}"><th><code>{_esc(n["id"])}</code></th>'
+            f'<td><b>{_esc(n["name"])}</b>'
+            + (f'<p class="tgt">{_esc(n["target"])}</p>' if n["target"] else "")
+            + (f'<p class="fml"><code>{_esc(n["formula"])}</code></p>' if n["formula"] else "")
+            + ('<p><span class="sq prose-only">policy (A)</span></p>' if n["is_policy"] else "")
+            + "</td></tr>"
+            for n in entry["nfrs"]
+        )
+        sections.append(
+            f'<details class="spec-sec" id="sec-nfr"><summary>'
+            f'Non-functional targets · {len(entry["nfrs"])}</summary>'
+            f'<table class="spectab"><tbody>{rows}</tbody></table></details>'
+        )
+
+    # ---- Controls ---------------------------------------------------------
+    if entry["controls"]:
+        rows = "".join(
+            f'<tr id="spec-{_esc(c["id"])}"><th><code>{_esc(c["id"])}</code></th>'
+            f'<td><b>{_esc(c["name"])}</b>'
+            + (f'<p class="inst">{_esc(c["instrument_names"])}</p>' if c["instrument_names"] else "")
+            + f'<p class="refs">追溯：{_spec_row_chips(entry, c["requirements"] + c["rules"] + c["capabilities"], "ref")}</p></td></tr>'
+            for c in entry["controls"]
+        )
+        sections.append(
+            f'<details class="spec-sec" id="sec-ctl"><summary>'
+            f'Compliance controls · {len(entry["controls"])}</summary>'
+            f'<table class="spectab"><tbody>{rows}</tbody></table></details>'
+        )
+
+    # ---- Data-model constraints ------------------------------------------
+    if entry["constraints"]:
+        rows = "".join(
+            f'<tr id="spec-con-{c["n"]}"><th><code>{c["n"]}</code></th>'
+            f'<td>{_esc(c["text"])}'
+            + (' <span class="sq structured" title="the data model claims this is enforced in the store">store</span>'
+               if c["store"] else "")
+            + f'<p class="refs">强制：{_spec_row_chips(entry, c["enforces"], "ref")}</p></td></tr>'
+            for c in entry["constraints"]
+        )
+        sections.append(
+            f'<details class="spec-sec" id="sec-con"><summary>'
+            f'Integrity constraints · {len(entry["constraints"])} '
+            f'(<b>{counts["store_constraints"]}</b> store-enforced)</summary>'
+            f'<table class="spectab"><tbody>{rows}</tbody></table></details>'
+        )
+
+    # ---- Capabilities -----------------------------------------------------
+    if entry["capabilities"]:
+        rows = "".join(
+            f'<tr id="spec-{_esc(cp["id"])}"><th><code>{_esc(cp["id"])}</code></th>'
+            f'<td><b>{_esc(cp["name"])}</b>'
+            + (f'<p class="dim">{_esc(cp["one_liner"])}</p>' if cp["one_liner"] else "")
+            + "</td></tr>"
+            for cp in entry["capabilities"]
+        )
+        sections.append(
+            f'<details class="spec-sec" id="sec-cap"><summary>'
+            f'Capabilities · {len(entry["capabilities"])}</summary>'
+            f'<table class="spectab"><tbody>{rows}</tbody></table></details>'
+        )
+
+    # ---- Bounded contexts -------------------------------------------------
+    if entry["contexts"]:
+        rows = "".join(
+            f'<tr id="spec-ctx-{_esc(ct["name"])}"><th>{_esc(ct["name"])}</th>'
+            f'<td>{_esc(ct["responsibility"])}'
+            + '<p class="owns">' + ", ".join(f'<code>{_esc(o)}</code>' for o in ct["owns"]) + "</p>"
+            + "</td></tr>"
+            for ct in entry["contexts"]
+        )
+        sections.append(
+            f'<details class="spec-sec" id="sec-ctx"><summary>'
+            f'Bounded contexts · {len(entry["contexts"])}</summary>'
+            f'<table class="spectab"><tbody>{rows}</tbody></table></details>'
+        )
+
+    demo = ""
+    if entry.get("demo"):
+        demo = (
+            '<a class="demobtn" href="' + _esc(prefix + entry["demo"]["url"]) + '">'
+            '<b>打开交互 demo</b><span>' + _esc(entry["demo"].get("title") or entry["slug"]) + "</span></a>"
+        )
+
+    return f"""
+<section class="spec" id="spec">
+  <div class="spec-head">
+    <div>
+      <h2>规格面板 · {total_ids} 条已识别标识</h2>
+      <p class="spec-note">由 <code>tools/pack_index.py</code> 从本包 Markdown
+        <b>抽取</b>而成，不是手写页面：下列数字随包内容变化，与散文同源同版本。</p>
+    </div>
+    {demo}
+  </div>
+  <div class="spec-stats">{tiles}</div>
+  <div class="spec-qlabel">机器可读性 <span>(标记为「仅散文」的章节含标识但无法结构化，是内容待办而非解析上限)</span></div>
+  {_spec_status_badges(entry)}
+  <nav class="spec-jump">{jump}</nav>
+  <div class="spec-secs">{''.join(sections)}</div>
+</section>
+"""
+
+
+def render_view_switch(entry: dict | None) -> str:
+    """Radio-based view toggle: no JavaScript, keyboard-operable.
+
+    The inputs must be *siblings* of the two views for the CSS `~` selector to
+    reach them, so they live outside the labelled container.
+    """
+    if entry is None:
+        return ""
+    counts = entry["counts"]
+    n = counts["rules"] + counts["requirements"] + counts["nfrs"] + counts["controls"] + counts["adrs"] + counts["constraints"]
+    return (
+        '<input class="vs-in" type="radio" name="vs" id="vs-doc" checked>'
+        '<label class="vs-lab" for="vs-doc">文档视图</label>'
+        '<input class="vs-in" type="radio" name="vs" id="vs-spec">'
+        '<label class="vs-lab" for="vs-spec">结构视图'
+        + (f" · {n} IDs" if n else "") + "</label>"
+    )
+
+
+def render_doc_page(
+    pack: Pack,
+    doc: Doc,
+    prefix: str,
+    site_url: str = "",
+    lang: str = "en",
+    spec_entry: dict | None = None,
+) -> str:
     rel_inside = Path(doc.rel).relative_to(pack.rel_dir).as_posix()
     is_overview = rel_inside == "README.md"
+    # The structured view is offered only where a reader lands: the pack's own
+    # overview page. A per-document toggle on all 600 pages would put the
+    # switch where there is nothing to switch to yet.
+    spec = render_spec_view(spec_entry, prefix) if (is_overview and spec_entry) else ""
     header = ""
     if is_overview:
         header = (
@@ -671,11 +1003,13 @@ def render_doc_page(pack: Pack, doc: Doc, prefix: str, site_url: str = "", lang:
     body = (
         breadcrumb(prefix, pack)
         + header
+        + render_view_switch(spec_entry if is_overview else None)
         + '<div class="layout">'
         + nav_tree(pack, doc.url, prefix)
         + f'<article class="prose">{annotate_lang(doc.html)}</article>'
         + render_toc(doc.toc)
         + "</div>"
+        + spec
     )
     scripts = ""
     if "class=\"mermaid\"" in doc.html:

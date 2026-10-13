@@ -335,3 +335,93 @@ def test_vendored_assets_are_pinned(build_site):
     assert {"fuse.min.js", "mermaid.min.js"} <= set(vendored)
     for value in vendored.values():
         assert value.startswith("sha384-"), "supply-chain pin must be a SHA-384 SRI"
+
+
+# --------------------------------------------------------------------------- #
+# Structured spec view: the pack overview renders its own ID graph
+# --------------------------------------------------------------------------- #
+
+def _pack_overview(out: Path, slug: str) -> str:
+    return (out / "packs" / "horizontal" / slug / "index.html").read_text(encoding="utf-8")
+
+
+def test_pack_overview_renders_the_spec_panel(built_site):
+    html_text = _pack_overview(built_site, "workflow-bpm")
+    assert '<section class="spec"' in html_text
+    # counts a reader can scan, each linking to its section
+    assert html_text.count('class="stat"') >= 6
+    assert 'id="sec-adr"' in html_text and 'id="sec-req"' in html_text and 'id="sec-con"' in html_text
+
+
+def test_spec_panel_is_server_rendered_not_js_built(built_site):
+    """Progressive enhancement: the panel must exist before any script runs."""
+    html_text = _pack_overview(built_site, "workflow-bpm")
+    # Identifiers are present in the HTML itself, not fetched at runtime.
+    for ident in ("ADR-0004", "BR-05", "FR-013", "NFR-007"):
+        assert f"spec-{ident}" in html_text, f"{ident} missing from rendered HTML"
+
+
+def test_view_switch_is_usable_without_javascript(built_site):
+    html_text = _pack_overview(built_site, "workflow-bpm")
+    assert 'id="vs-doc"' in html_text and 'id="vs-spec"' in html_text
+    # The radios are siblings of the two views so CSS alone can toggle them.
+    doc = html_text.find('id="vs-spec"')
+    assert html_text.find('<div class="layout">', doc) > doc
+    assert html_text.find('<section class="spec"', doc) > doc
+
+
+def test_structured_index_is_emitted_for_every_pack(built_site):
+    data = json.loads((built_site / "data" / "pack-index.json").read_text(encoding="utf-8"))
+    slugs = {p["slug"] for p in data["packs"]}
+    assert len(slugs) >= 17
+    assert data["totals"]["rules"] > 100
+    assert data["totals"]["requirements"] > 100
+
+
+def test_spec_panel_and_json_never_disagree(built_site):
+    """The page and the data file are two views of one extraction.
+
+    If these diverge, one of them is lying about the corpus — and the site's
+    whole value is that it does not.
+    """
+    data = json.loads((built_site / "data" / "pack-index.json").read_text(encoding="utf-8"))
+    entry = next(p for p in data["packs"] if p["slug"] == "workflow-bpm")
+    html_text = _pack_overview(built_site, "workflow-bpm")
+
+    # every identifier the extractor found is on the page as its own row
+    missing = [
+        item["id"]
+        for key in ("rules", "requirements", "nfrs", "controls", "adrs")
+        for item in entry[key]
+        if f'id="spec-{item["id"]}"' not in html_text
+    ]
+    assert not missing, f"identifiers extracted but not rendered: {missing[:8]}"
+    for n, _c in enumerate(entry["constraints"], start=1):
+        assert f'id="spec-con-{n}"' in html_text
+
+
+def test_extraction_quality_badges_are_shown(built_site):
+    """A pack with an unparsable section must show it, not hide it."""
+    html_text = _pack_overview(built_site, "workflow-bpm")
+    assert 'class="sq structured"' in html_text
+
+
+def test_store_enforced_constraints_are_flagged(built_site):
+    data = json.loads((built_site / "data" / "pack-index.json").read_text(encoding="utf-8"))
+    entry = next(p for p in data["packs"] if p["slug"] == "workflow-bpm")
+    assert entry["counts"]["store_constraints"] > 0
+    html_text = _pack_overview(built_site, "workflow-bpm")
+    assert "store-enforced" in html_text
+
+
+def test_non_overview_pages_do_not_get_a_spec_toggle(built_site):
+    """The switch appears where there is something to switch to."""
+    html_text = (built_site / "packs" / "horizontal" / "workflow-bpm" / "AGENTS.html").read_text(
+        encoding="utf-8"
+    )
+    assert 'id="vs-spec"' not in html_text
+
+
+def test_prose_view_is_still_the_default(built_site):
+    html_text = _pack_overview(built_site, "workflow-bpm")
+    assert 'id="vs-doc" checked' in html_text

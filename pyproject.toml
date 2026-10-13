@@ -26,6 +26,14 @@ ignore = [
     # are kept as-is rather than reformatted for length.
     "E501",
 
+    # Fullwidth punctuation is correct typography inside a Chinese sentence,
+    # and the generated catalog is bilingual by design — its UI labels are
+    # emitted in Chinese by build-site.py. The ambiguity the rule guards
+    # against (`（` where `(` was meant) is a real hazard, but not one this
+    # repository has: the fullwidth characters here are the ones the corpus
+    # itself uses, not typos.
+    "RUF001",
+
     # Shebang-vs-executable-bit. These scripts ship `#!/usr/bin/env python3`
     # and are invoked as `python tools/<tool>.py` everywhere (CI, CONTRIBUTING,
     # README). Git does not track the executable bit on Windows, so the rule
