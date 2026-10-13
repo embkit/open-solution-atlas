@@ -504,13 +504,32 @@ def parse_adr(path: Path, pack_rel: str) -> dict | None:
     dec = re.search(
         r"^##\s+Decision\s*\n+(.+?)(?:\n\n|^#)", text, re.MULTILINE | re.DOTALL
     )
-    decision = _clean(re.sub(r"^Option\s+\d+[,:]?\s*", "", dec.group(1).strip())) if dec else ""
+    decision = _clean(dec.group(1).strip()) if dec else ""
     return {
         "id": head.group(1),
         "name": _clean(head.group(2)),
-        "decision": decision[:300],
+        # Kept verbatim rather than stripped of its `Option N,` prefix: the
+        # prefix is what says *which* of the listed options was chosen, and
+        # without it the sentence opens on a stray "enforced by …".
+        "decision": decision[:320],
+        # The rejected options are the half an implementer most needs, because
+        # the point of an ADR is what was ruled out and why.
+        "rejected": _rejected_options(text),
+        # kept so a prompt bundle can cite the source file by path
+        "slug": path.stem,
         "url": doc_url(f"{pack_rel}/04-architecture/adr/{path.stem}.md"),
     }
+
+
+def _rejected_options(text: str) -> list[str]:
+    """The option headings from an ADR's `## Options considered` section."""
+    section = re.search(r"##\s+Options considered\n(.*?)(?:\n##\s|\Z)", text, re.DOTALL)
+    if not section:
+        return []
+    return [
+        _clean(m.group(1))
+        for m in re.finditer(r"^\s*\d+[.)]\s*\*\*(.+?)\*\*", section.group(1), re.MULTILINE)
+    ]
 
 
 def parse_demo(pack_dir: Path) -> dict | None:

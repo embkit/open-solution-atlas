@@ -425,3 +425,115 @@ def test_non_overview_pages_do_not_get_a_spec_toggle(built_site):
 def test_prose_view_is_still_the_default(built_site):
     html_text = _pack_overview(built_site, "workflow-bpm")
     assert 'id="vs-doc" checked' in html_text
+
+
+# --------------------------------------------------------------------------- #
+# Prompt bundles: assembled from the pack, never hand-written
+# --------------------------------------------------------------------------- #
+
+def _prompt_dir(out: Path, slug: str) -> Path:
+    return out / "packs" / "horizontal" / slug / "prompts"
+
+
+def test_prompt_files_are_emitted_per_pack(built_site):
+    """A pack with nothing to say gets none; one with content gets the set."""
+    prompts = sorted(built_site.rglob("prompts/*.md"))
+    assert len(prompts) > 200, f"only {len(prompts)} prompt files emitted"
+    names = {p.name for p in prompts}
+    assert {"context.md", "implement.md"} <= names
+    # no double-prefixed names survive: ADR-0004 -> adr-0004.md
+    assert not [n for n in names if n.startswith("adr-adr-")]
+
+
+def test_emitted_prompt_carries_the_packs_own_content(built_site):
+    text = (_prompt_dir(built_site, "workflow-bpm") / "implement.md").read_text(encoding="utf-8")
+    for token in ("BR-05", "ADR-0004", "store-enforced", "verification: unverified"):
+        assert token in text, f"prompt omits {token}"
+
+
+def test_adr_prompt_lists_what_was_ruled_out(built_site):
+    """The winner alone lets a model re-derive the loser."""
+    text = (_prompt_dir(built_site, "workflow-bpm") / "adr-0004.md").read_text(encoding="utf-8")
+    assert "Ruled out" in text
+    assert "Leave the terms to the implementation" in text
+    assert "Choose a vendor's definitions" in text
+
+
+def test_pack_page_offers_a_copy_button_and_real_files(built_site):
+    html_text = (built_site / "packs" / "horizontal" / "workflow-bpm" / "index.html").read_text(
+        encoding="utf-8"
+    )
+    assert 'data-copy="prm-implement"' in html_text
+    assert 'id="prm-implement"' in html_text
+    for href in ("prompts/implement.md", "prompts/context.md", "prompts/adr-0004.md"):
+        assert href in html_text, f"{href} is emitted but not linked"
+        assert (built_site / "packs" / "horizontal" / "workflow-bpm" / href).is_file()
+
+
+def test_prompt_links_resolve_to_emitted_files(built_site):
+    """A link to a file that was not written is the failure this guards."""
+    import re
+
+    for pack_dir in sorted((built_site / "packs").glob("*/*/prompts")):
+        index = pack_dir.parent / "index.html"
+        if not index.is_file():
+            continue
+        html_text = index.read_text(encoding="utf-8")
+        for link in re.findall(r'href="([^"]*prompts/[^"]+)"', html_text):
+            rel = link.split("#", 1)[0].split("?", 1)[0]
+            if rel.startswith(("http", "//")):
+                continue
+            assert (index.parent / rel).is_file(), f"{index.relative_to(built_site)} -> {rel}"
+
+
+def test_copy_script_is_an_enhancement_not_a_prerequisite(built_site):
+    """Without JS the prompts are still real, openable files."""
+    html_text = (built_site / "packs" / "horizontal" / "workflow-bpm" / "index.html").read_text(
+        encoding="utf-8"
+    )
+    assert "assets/prompt-copy.js" in html_text
+    assert (built_site / "assets" / "prompt-copy.js").is_file()
+    other = (built_site / "packs" / "horizontal" / "workflow-bpm" / "AGENTS.html").read_text(
+        encoding="utf-8"
+    )
+    assert "prompt-copy.js" not in other
+
+
+def test_prompt_section_declares_its_provenance(built_site):
+    """A prompt a reader cannot trace to a generator is a hardcoded template."""
+    html_text = (built_site / "packs" / "horizontal" / "workflow-bpm" / "index.html").read_text(
+        encoding="utf-8"
+    )
+    assert "tools/prompts.py" in html_text
+
+
+def test_build_output_is_never_discovered_as_content(build_site, tmp_path):
+    """The CI compatibility job builds before it tests, into `_compat_site`.
+
+    The emitted prompt bundles are Markdown, so a content scanner that only
+    knew the name `_site` treated the previous build's `prompts/*.md` as
+    repository content — and the site then contained its own prompts as
+    documents. The exclusion is by leading underscore, so any --out target is
+    safe.
+    """
+    first = tmp_path / "_compat_site"
+    assert build_site.build(first, "/", "", "en") == 0
+    prompt_files = sorted(first.rglob("prompts/*.md"))
+    assert prompt_files, "expected prompt .md files in the build output"
+
+    # A second build, with the first build's output still present, must not
+    # treat that output as content.
+    second = tmp_path / "_site"
+    assert build_site.build(second, "/", "", "en") == 0
+    # A prompt .md rendered as a document page is the bug: it means the
+    # previous build's output was discovered as repository content.
+    rendered_prompts = sorted(
+        p.relative_to(second).as_posix()
+        for p in second.rglob("prompts/*.html")
+        if p.stem != "index"
+    )
+    assert not rendered_prompts, (
+        f"the build discovered its own output as content: {rendered_prompts[:5]}"
+    )
+    # The directory listing is legitimate and expected.
+    assert (second / "packs/horizontal/workflow-bpm/prompts/index.html").is_file()

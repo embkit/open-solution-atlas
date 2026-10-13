@@ -457,3 +457,47 @@ a.idchip:hover { border-color: var(--accent); color: var(--accent); }
   .spectab th { border: 0; padding-bottom: 0; }
   .spectab td { border: 0; }
 }
+
+/* ---------- prompt bundles ---------- */
+.prompts { margin-top: 2.5rem; padding-top: 1.4rem; border-top: 1px solid var(--border); }
+.prompts h3 { font-size: 1.05rem; margin: 0 0 .4rem; }
+.prompts-note { font-size: .82rem; color: var(--fg-muted); max-width: 78ch; margin: 0 0 1rem; line-height: 1.5; }
+.prompts-note code { font-size: .78rem; }
+
+.prm { background: var(--bg-elev); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: .5rem; }
+.prm > summary { cursor: pointer; padding: .6rem .9rem; list-style: none; display: flex; flex-wrap: wrap; gap: .5rem; align-items: baseline; }
+.prm > summary b { font-size: .9rem; }
+.prm-blurb { font-size: .76rem; color: var(--fg-muted); }
+
+.prm-actions { display: flex; gap: .5rem; align-items: center; padding: .3rem .9rem; }
+.copybtn {
+  font: inherit; font-size: .8rem; font-weight: 600; cursor: pointer;
+  background: var(--accent-soft); color: var(--accent);
+  border: 1px solid var(--accent); border-radius: 999px;
+  padding: .26rem .8rem;
+}
+.copybtn:hover { background: var(--accent); color: #fff; }
+.copybtn.small { font-size: .72rem; padding: .14rem .55rem; }
+.copy-btn.copy-ok, .copybtn.copy-ok { background: #166534; border-color: #166534; color: #fff; }
+.copybtn.copy-fail { background: #7f1d1d; border-color: #7f1d1d; color: #fff; }
+.copybtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.prm-dl { font-size: .76rem; color: var(--fg-muted); }
+
+/* the inline prompt: real content, so it is readable and selectable */
+.prm-text {
+  display: block; width: calc(100% - 1.8rem); margin: 0 .9rem .8rem;
+  font-family: var(--mono); font-size: .74rem; line-height: 1.55;
+  color: var(--fg); background: var(--code-bg);
+  border: 1px solid var(--border); border-radius: 8px;
+  padding: .7rem .8rem; resize: vertical; min-height: 14rem;
+}
+
+.prm-list { list-style: none; margin: 0; padding: .2rem .9rem .7rem; }
+.prm-list li {
+  display: flex; flex-wrap: wrap; gap: .45rem; align-items: baseline;
+  padding: .4rem 0; border-top: 1px solid var(--border);
+}
+.prm-list li:first-child { border-top: 0; }
+.prm-list code { font-size: .74rem; }
+.prm-list b { font-size: .82rem; font-weight: 600; }
+.prm-acts { margin-left: auto; display: flex; gap: .45rem; align-items: center; }
