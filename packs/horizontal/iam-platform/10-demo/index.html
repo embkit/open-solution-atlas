@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#f6f9fc">
+<meta name="theme-color" content="#f6f9fc"><!-- ds-allow-hardcode: the page ground; a meta value cannot resolve a CSS variable -->
 <title>授权决策实验室 — Policy-decision lab</title>
 <style>
   /* The demo carries the app's tokens inline because it must open on its own:
@@ -37,7 +37,15 @@
     --bg:var(--page); --elev:var(--surface); --fg:var(--text);
     --border:var(--line); --border-strong:var(--line-strong);
   }
-  *{box-sizing:border-box}
+  *{box-sizing:border-box}\n  /* ---- component kit ----
+     The values from here to the end marker are the kit's own metrics: the
+     font sizes and box sizes its rules are written in. The *theme* is not
+     here — colour, radius, shadow and type family all resolve through the
+     token block above, which is byte-identical across every demo and pinned
+     by tests/test_design_tokens.py. The kit is duplicated rather than shared
+     because a demo has to be one file that opens from a file:// URL.
+     ds-allow-hardcode:start */
+
   /* An identifier is one token: `FR-018` was breaking after the hyphen in the
      narrow ID column, which stops it reading as an identifier. Scoped to table
      cells so the long paths in the source note can still wrap. */
@@ -87,6 +95,7 @@
   a{color:var(--link)}
   .src{font:400 11.5px/1.7 var(--mono);color:var(--muted);margin-top:1.4rem;
     border-top:1px solid var(--rule-strong);padding-top:.8rem;max-width:100ch}
+  /* ds-allow-hardcode:end */
 </style>
 </head>
 <body>

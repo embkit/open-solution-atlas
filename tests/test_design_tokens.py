@@ -432,4 +432,50 @@ def test_the_site_has_exactly_one_theme(css):
         # one unconditional chrome colour, not one per scheme
         assert text.count('name="theme-color"') == 1, f"{name}: theme-color is not single"
 
+def test_no_colour_literal_survives_outside_the_token_block(css):
+    """The demo kit's values are exempt from the hardcode lint. A colour is not.
 
+    `scripts/lint_hardcodes.py` reported 694 values across the demos — every one
+    of them a px metric of the component kit, which each demo must carry verbatim
+    because it has to open from a `file://` URL. That exemption is marked with the
+    tool's own `ds-allow-hardcode:start` region so the lint reads clean.
+
+    An exemption that covered colour would hide the only failure the theme can
+    have, so colour is checked separately, here and in every demo: a hex or an
+    `rgba()` outside the token block is a second palette starting.
+    """
+    for demo in sorted((ROOT / "packs").glob("*/*/10-demo/index.html")):
+        text = demo.read_text(encoding="utf-8")
+        name = demo.parent.parent.name
+        assert text.count("<style>") == 1, f"{name}: expected one inline style block"
+        style = text[text.index("<style>"):text.index("</style>")]
+
+        start = style.index("/* The demo carries")
+        end = style.index("*{box-sizing:border-box}")
+        rest = style[:start] + style[end:]
+
+        hexes = sorted(set(re.findall(r"#[0-9a-fA-F]{3,8}\b", rest)))
+        funcs = sorted(set(re.findall(r"rgba?\([^)]*\)", rest)))
+        assert not hexes and not funcs, (
+            f"{name}: colour outside the token block: {hexes + funcs}. "
+            "The token block is the only place a colour belongs."
+        )
+
+
+def test_the_kit_exemption_is_marked_and_scoped(css):
+    """The exemption has to be the kit region, and it has to say why."""
+    for demo in sorted((ROOT / "packs").glob("*/*/10-demo/index.html")):
+        text = demo.read_text(encoding="utf-8")
+        name = demo.parent.parent.name
+        assert text.count("ds-allow-hardcode:start") == 1, f"{name}: no start marker"
+        assert text.count("ds-allow-hardcode:end") == 1, f"{name}: no end marker"
+        assert text.count("ds-allow-hardcode") == 3, (
+            f"{name}: expected the two region markers and the one meta annotation"
+        )
+        # the region opens after the token block and closes before the style
+        # block ends, so the token block itself is never inside it — which is what
+        # keeps the byte-identity test meaningful
+        assert text.index("*{box-sizing:border-box}") < text.index("ds-allow-hardcode:start")
+        assert text.index("ds-allow-hardcode:start") < text.index("ds-allow-hardcode:end")
+        assert text.index("ds-allow-hardcode:end") < text.index("</style>")
+        assert "component kit" in text, f"{name}: the exemption gives no reason"
