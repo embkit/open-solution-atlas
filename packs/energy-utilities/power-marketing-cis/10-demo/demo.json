@@ -1,0 +1,17 @@
+{
+  "title": "估抄与断电护栏实验室 — Estimate & guardrail lab",
+  "kind": "invariant-lab",
+  "summary": "估值必须由规则定义并被标注，客服一次解决且不改网络状态，计费事件不可变，断电必须留下护栏评估记录。",
+  "entry": "index.html",
+  "demonstrates": [
+    "BR-04",
+    "BR-05",
+    "BR-06",
+    "BR-07",
+    "BR-09",
+    "BR-15",
+    "ADR-0002",
+    "ADR-0003",
+    "ADR-0004"
+  ]
+}

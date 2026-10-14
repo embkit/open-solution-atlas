@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#f6f9fc">
+<title>幂等重放实验室 — Idempotent-replay lab</title>
+<style>
+  /* The demo carries the app's tokens inline because it must open on its own:
+     a demo that depends on the site's stylesheet cannot be opened from the
+     repository or from a file:// path. These are EmbKit's values and no others
+     — the brand indigo is LOCKED in the contract, and the neutrals are cold by
+     rule. Repeating values is how a second palette appears, so this block is
+     byte-identical across every demo and a test keeps it that way. */
+  /* The demo is light-only, and the site and the demo share one theme. */
+  :root{ color-scheme:light;
+    --page:#f6f9fc; --surface:#ffffff; --surface-2:#fafbfd; --surface-3:#eef2f7;
+    --line:#e8edf3; --line-strong:#d3dae3;
+    --navy:#0a2540; --text:#0a2540; --text-2:#425466; --text-3:#5f6b79;
+    --primary:#4f46e5; --primary-hover:#4338ca; --primary-active:#3730a3;
+    --primary-tint:#eef2ff; --primary-ring:rgba(79,70,229,.28); --on-primary:#ffffff;
+    --ok:#0e7c5a; --ok-soft:#dff5ec;
+    --warn:#8a5409; --warn-soft:#fdf1dc;
+    --danger:#c2373c; --danger-soft:#fdeaeb;
+    --r-sm:6px; --r-md:8px; --r-lg:10px; --r-xl:12px; --r-2xl:14px; --r-full:999px;
+    --shadow-card:0 1px 2px rgba(15,23,42,.04), 0 8px 24px rgba(15,23,42,.06);
+    --shadow-pop:0 12px 32px rgba(15,23,42,.12);
+    --sans:"Inter","MiSans","HarmonyOS Sans SC","PingFang SC","Microsoft YaHei",-apple-system,"Segoe UI",sans-serif;
+    --mono:ui-monospace,"SF Mono","Cascadia Mono",Menlo,Consolas,monospace;
+    /* aliases the demo bodies already use */
+    --vellum:var(--page); --vellum-2:var(--surface-3); --ink:var(--text);
+    --muted:var(--text-3); --rule:var(--line); --rule-strong:var(--line-strong);
+    --draft:var(--primary); --draft-soft:var(--primary-tint);
+    --accent:var(--primary); --accent-soft:var(--primary-tint); --link:var(--primary);
+    --revise:var(--danger); --revise-soft:var(--danger-soft);
+    --bad:var(--danger); --bad-soft:var(--danger-soft);
+    --bg:var(--page); --elev:var(--surface); --fg:var(--text);
+    --border:var(--line); --border-strong:var(--line-strong);
+  }
+  *{box-sizing:border-box}
+  /* An identifier is one token: `FR-018` was breaking after the hyphen in the
+     narrow ID column, which stops it reading as an identifier. Scoped to table
+     cells so the long paths in the source note can still wrap. */
+  td code, th code { white-space: nowrap; }
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:13px;line-height:1.6}
+  .wrap{max-width:1200px;margin:0 auto;padding:1.4rem 1.1rem 4rem}
+  header{border-bottom:1px solid var(--rule-strong);padding-bottom:.9rem;margin-bottom:1.2rem}
+  h1{font-family:var(--sans);font-size:20px;font-weight:600;line-height:1.35;letter-spacing:-.015em;margin:0 0 6px}
+  .sub{color:var(--muted);font-size:.86rem;margin:0;max-width:80ch;line-height:1.6}
+  .grid{display:grid;grid-template-columns:300px minmax(0,1fr) 290px;gap:var(--sp-3,12px);align-items:start}
+  @media (max-width:960px){.grid{grid-template-columns:1fr}}
+  .panel{padding:20px;background:var(--surface);border:1px solid var(--line);
+    border-radius:var(--r-xl);box-shadow:var(--shadow-card);margin-bottom:12px}
+  .panel h2{font:600 12px/1.5 var(--mono);letter-spacing:.06em;color:var(--muted);
+    margin:0 0 .6rem;border-bottom:1px solid var(--rule);padding-bottom:.35rem}
+  .panel h3{font-size:.95rem;margin:1rem 0 .35rem;font-weight:600}
+  button{font:500 12px/1 var(--mono);cursor:pointer;background:var(--bg);color:var(--fg);
+    border:1px solid var(--line);border-radius:var(--r-md);padding:6px 12px;margin:2px 4px 2px 0}
+  button:hover{border-color:var(--draft);color:var(--draft)}
+  button[aria-pressed="true"]{background:var(--draft);border-color:var(--draft);color:var(--vellum);font-weight:600}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  select{font:400 12px/1 var(--mono);background:var(--bg);color:var(--fg);
+    border:1px solid var(--line);border-radius:var(--r-md);padding:6px 10px;width:100%}
+  code{font-family:var(--mono);font-size:.76rem}
+  .kv{display:flex;gap:.5rem;font:400 12.5px/1.7 var(--mono);margin:.18rem 0}
+  .kv b{color:var(--muted);font-weight:600;min-width:5.2rem}
+  .log{max-height:230px;overflow:auto;font-family:var(--mono);font-size:11px;line-height:1.7;
+    background:var(--surface-3);border:1px solid var(--line);border-radius:var(--r-md);padding:10px 12px}
+  .log div{padding:.1rem 0;border-bottom:1px solid var(--rule)}
+  .log div:last-child{border:0}
+  /* Red means violated. The passing state is a quiet note, not a green banner:
+     a second semantic colour for "all clear" trains a reader to skim past the
+     states that matter. */
+  .viol{background:var(--danger-soft);border:1px solid var(--danger);
+    border-radius:var(--r-md);padding:10px 12px;font-size:12px;line-height:1.6;margin:8px 0;color:var(--danger)}
+  .ok{background:var(--surface-3);border:1px solid var(--line);
+    border-radius:var(--r-md);padding:10px 12px;font-size:12px;line-height:1.6;margin:8px 0;color:var(--text-3)}
+  .sig{display:inline-block;font:700 10.5px/1.4 var(--mono);letter-spacing:.03em;
+    padding:.1rem .32rem;border:1px solid currentColor;vertical-align:.08em}
+  table{width:100%;border-collapse:collapse;font:400 12px/1.6 var(--mono)}
+  th,td{text-align:left;padding:.32rem .4rem;border-bottom:1px solid var(--rule);vertical-align:top}
+  th{color:var(--muted);font-size:11px;letter-spacing:.05em;font-weight:600}
+  .note{font-size:12px;color:var(--muted);margin:.5rem 0 0;line-height:1.6}
+  .def{font-size:12.5px;line-height:1.6;margin:.35rem 0}
+  details{margin:.5rem 0}
+  summary{cursor:pointer;font:500 12px/1.5 var(--mono);color:var(--muted)}
+  a{color:var(--link)}
+  .src{font:400 11.5px/1.7 var(--mono);color:var(--muted);margin-top:1.4rem;
+    border-top:1px solid var(--rule-strong);padding-top:.8rem;max-width:100ch}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>幂等重放实验室 <span style="font-weight:400;color:var(--muted)">Idempotent-replay lab</span></h1>
+  <p class="sub">
+    本页演示 <code>packs/data-ai/lakehouse-platform</code> 的核心决策（ADR-0001/0002/0006）：
+    <strong>重跑一次不应该改变答案，而每一层是一份契约而不是一个文件夹</strong>。
+    原始层不可变、只追加（BR-02），每次装载幂等（BR-05），集市只能引用
+    conformed 而不能引用 raw（BR-01），血缘是<b>字段级</b>并携带规则版本（BR-10），
+    重处理<strong>限定在分区范围</strong>（BR-11），删除是一条<strong>运维流水线</strong>（BR-12）。
+    需要这个 demo 的理由：<strong>「重跑一下就好了」在数据平台上是对的次数最多的一句话，
+    也是错的时候最贵的一句。</strong>
+  </p>
+</header>
+<div class="grid">
+
+<section class="panel">
+  <h2>分区与装载 · partitions &amp; loads</h2>
+  <div id="parts"></div>
+  <h3>分区</h3>
+  <div id="layers"></div>
+</section>
+
+<section class="panel">
+  <h2>你可以做什么 · what you may do</h2>
+  <div id="acts"></div>
+  <h3>血缘与删除</h3>
+  <div id="lin"></div>
+</section>
+
+<section class="panel">
+  <h2>零容忍不变量</h2>
+  <div id="violations"></div>
+  <p class="note">
+    本包 14 个不可交易不变量中的 6 个，取自其存储强制约束。第 9 条最难被认真对待：
+    <strong>每一个删除请求在每个已声明目的地都有一条删除结果，而「降级」永远不会被写成成功</strong>——
+    一个把降级记成成功的流水线，交付的是一份自己相信自己完成了的合规证明。
+  </p>
+  <table>
+    <thead><tr><th>ID</th><th>要求</th><th>状态</th></tr></thead>
+    <tbody id="invTable"></tbody>
+  </table>
+</section>
+
+</div>
+
+<section class="panel">
+  <h2>装载轨迹 · append-only</h2>
+  <div class="log" id="log"></div>
+  <p class="note">
+    原始分区只被追加。集市是<strong>派生的、可丢弃的、可重建的</strong>——
+    它不是资产，它是<strong>一个可以随时重新算出来的答案</strong>。
+  </p>
+</section>
+<p class="src">内容来源：<code>01-business/business-rules.md</code>（BR-01/02/05/10/11/12）、<code>04-architecture/adr/0001-*.md</code>、<code>0002-*.md</code>、<code>0006-*.md</code>、<code>05-data/logical-data-model.md</code>（约束 2/4/6/8/9/10/11）。本页为手写演示：它编码本包的语义，不声称符合任何 profile，也不指定任何具体引擎。<code>verification: unverified</code>。</p>
+</div>
+<script>
+(function(){
+"use strict";
+/* ---- shared plumbing (assembled; the semantics below are this pack's) ---- */
+var INVARIANTS = [{"id": "BR-01", "what": "层是一份契约：集市只能引用 conformed，不能引用 raw"}, {"id": "BR-02", "what": "原始分区不可变、只追加；重跑不改写历史"}, {"id": "BR-05", "what": "每次装载幂等：重跑不改变答案，也不制造重复行"}, {"id": "BR-10", "what": "血缘是字段级并携带规则版本——它回答问题，而不是供人查看"}, {"id": "BR-11", "what": "重处理限定在分区范围，影响面可计算"}, {"id": "BR-12", "what": "删除是一条运维流水线：每个已声明目的地都有结果，降级永不写成成功"}];
+function el(id){ return document.getElementById(id); }
+function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function bt(label, action, field){
+  var b = document.createElement("button");
+  b.type = "button"; b.textContent = label;
+  b.setAttribute("data-action", action);
+  if (field) b.setAttribute("data-field", field);
+  return b;
+}
+var EVENT_LOG = [];
+function paint(){
+  render();
+  var inv = checkInvariants();
+  var box = el("violations"); box.innerHTML = "";
+  var broken = INVARIANTS.filter(function(i){ return inv[i.id]; });
+  if (!broken.length) {
+    var ok = document.createElement("div");
+    ok.className = "ok";
+    ok.textContent = "\u2713 当前配置未违反任何零容忍不变量";
+    box.appendChild(ok);
+  } else {
+    broken.forEach(function(i){
+      var d = document.createElement("div");
+      d.className = "viol";
+      d.innerHTML = '<span class="sig">sev-1</span> <code>' + i.id + "</code> "
+        + esc(i.what) + " \u2014 已记录。真实系统里这是一个会 <strong>失败构建</strong> 的缺陷。";
+      box.appendChild(d);
+    });
+  }
+  var tb = el("invTable"); tb.innerHTML = "";
+  INVARIANTS.forEach(function(i){
+    var tr = document.createElement("tr");
+    tr.innerHTML = "<td><code>" + i.id + "</code></td><td>" + esc(i.what) + "</td><td>"
+      + (inv[i.id] ? '<span class="sig" style="color:var(--danger)">violated</span>'
+                   : '<span class="sig" style="color:var(--muted)">held</span>') + "</td>";
+    tb.appendChild(tr);
+  });
+  var lg = el("log"); lg.innerHTML = "";
+  EVENT_LOG.slice().reverse().forEach(function(t){
+    var d = document.createElement("div"); d.textContent = t; lg.appendChild(d);
+  });
+}
+function logEvent(text){
+  EVENT_LOG.push(text);
+  if (EVENT_LOG.length > 80) EVENT_LOG.shift();
+  paint();
+}
+function render(){}
+function checkInvariants(){ return {}; }
+
+var state = {
+  partition: "P-2026-10-12",
+  loads: 0,
+  rows: 0,
+  raw_edited: false,
+  mart_source: null,        /* 'raw' | 'conformed' */
+  reprocess: null,          /* 'all' | 'range' */
+  lineage_rule_version: true,
+  deletion: null            /* {destinations, outcomes, degraded_as_success} */
+};
+
+function kv(label, value, warn){
+  var d = document.createElement("div");
+  d.className = "kv";
+  d.innerHTML = "<b>" + esc(label) + "</b><span"
+    + (warn ? ' style="color:var(--danger);font-weight:600"' : "") + ">"
+    + esc(String(value)) + "</span>";
+  return d;
+}
+
+function render(){
+  var p = el("parts"); p.innerHTML = "";
+  p.appendChild(kv("\u5206\u533a", state.partition));
+  p.appendChild(kv("\u88c5\u8f7d\u6b21\u6570", state.loads));
+  p.appendChild(kv("\u884c\u6570", state.rows, state.rows > 1200));
+  p.appendChild(kv("\u5e42\u7b49", state.rows === 1200 || state.loads === 0 ? "\u662f" : "\u5426", state.rows > 1200));
+
+  var l = el("layers"); l.innerHTML = "";
+  l.appendChild(kv("raw " + state.partition, state.raw_edited ? "\u5df2\u88ab\u5c31\u5730\u4fee\u6539" : "\u4e0d\u53ef\u53d8", state.raw_edited));
+  l.appendChild(kv("conformed " + state.partition, state.loads ? "\u5df2\u751f\u6210" : "\u672a\u751f\u6210"));
+  l.appendChild(kv("mart \u5f15\u7528", state.mart_source || "\u65e0", state.mart_source === "raw"));
+
+  var g = el("lin"); g.innerHTML = "";
+  g.appendChild(kv("\u91cd\u5904\u7406\u8303\u56f4", state.reprocess === "all" ? "\u6574\u8868" : (state.reprocess === "range" ? "\u4ec5 " + state.partition : "\u2014"),
+    state.reprocess === "all"));
+  g.appendChild(kv("\u8840\u7f18\u7c92\u5ea6", state.lineage_rule_version ? "\u5b57\u6bb5\u7ea7 + \u89c4\u5219\u7248\u672c" : "\u8868\u7ea7\uff0c\u65e0\u7248\u672c",
+    !state.lineage_rule_version));
+  if (state.deletion) {
+    g.appendChild(kv("\u5220\u9664\u76ee\u7684\u5730", state.deletion.destinations.join("\u3001")));
+    g.appendChild(kv("\u5220\u9664\u7ed3\u679c", state.deletion.outcomes + " / " + state.deletion.destinations.length,
+      state.deletion.outcomes < state.deletion.destinations.length));
+    g.appendChild(kv("\u964d\u7ea7\u5199\u6210\u6210\u529f", state.deletion.degraded_as_success ? "\u662f" : "\u5426",
+      state.deletion.degraded_as_success));
+  }
+
+  renderActs();
+}
+
+function renderActs(){
+  var box = el("acts"); box.innerHTML = "";
+  function add(label, action, handler){
+    var b = bt(label, action);
+    b.onclick = handler;
+    box.appendChild(b);
+  }
+
+  add("\u6309\u5206\u533a\u8f7d\u5165\uff08\u5e42\u7b49\uff09", "load", function(){
+    state.loads += 1;
+    state.rows = 1200;
+    logEvent("LOAD " + state.partition + " \u2192 conformed\uff08\u7b2c " + state.loads
+      + " \u6b21\uff0c\u884c\u6570\u4ecd\u4e3a 1200\uff09");
+  });
+
+  add("\u8ffd\u52a0\u5f0f\u8f7d\u5165\uff08\u4e0d\u53bb\u91cd\uff09", "load-append", function(){
+    state.loads += 1;
+    state.rows += 1200;
+    logEvent("LOAD " + state.partition + " \u8ffd\u52a0 \u2192 \u884c\u6570 " + state.rows
+      + "\uff08BR-05 \u8fdd\u53cd\uff1a\u91cd\u8dd1\u6539\u53d8\u4e86\u7b54\u6848\uff09");
+  });
+
+  add("\u53bb\u91cd\u91cd\u5efa\u5206\u533a", "dedupe", function(){
+    state.rows = 1200;
+    logEvent("\u5206\u533a\u91cd\u5efa\uff1a\u6309 (partition, key) \u53bb\u91cd \u2192 1200 \u884c");
+  });
+
+  add("\u5c31\u5730\u4fee\u6539 raw \u5206\u533a", "edit-raw", function(){
+    state.raw_edited = true;
+    logEvent("UPDATE raw_partition SET ... \u2014 raw \u65e0 UPDATE \u6743\u9650\uff08BR-02 / \u7ea6\u675f 2\uff09");
+  });
+
+  add("\u5e02\u96c6\u5f15\u7528 raw", "mart-from-raw", function(){
+    state.mart_source = "raw";
+    logEvent("MART \u5f15\u7528 RAW_PARTITION \u2014 \u5c42\u662f\u5951\u7ea6\uff0c\u4e0d\u662f\u6587\u4ef6\u5939\uff08BR-01 / \u7ea6\u675f 4\uff09");
+  });
+
+  add("\u5e02\u96c6\u5f15\u7528 conformed", "mart-from-conformed", function(){
+    state.mart_source = "conformed";
+    logEvent("MART \u5f15\u7528 CONFORMED_PARTITION \u2014 \u6d88\u8d39\u5951\u7ea6\u800c\u4e0d\u662f\u539f\u59cb\u5806\u79ef");
+  });
+
+  add("\u91cd\u5904\u7406\u6574\u8868", "reprocess-all", function(){
+    state.reprocess = "all";
+    logEvent("REPROCESS \u6574\u8868 \u2014 \u4e0d\u662f\u4e00\u4e2a\u5206\u533a\u8303\u56f4\uff08BR-11 / \u7ea6\u675f 11\uff09");
+  });
+
+  add("\u91cd\u5904\u7406\u5206\u533a\u8303\u56f4", "reprocess-range", function(){
+    state.reprocess = "range";
+    logEvent("REPROCESS \u4ec5 " + state.partition + " \u2014 \u5f71\u54cd\u9762\u53ef\u8ba1\u7b97");
+  });
+
+  add("\u8840\u7f18\u53ea\u5230\u8868\u7ea7\u4e14\u65e0\u89c4\u5219\u7248\u672c", "lineage-table-level", function(){
+    state.lineage_rule_version = false;
+    logEvent("LINEAGE_EDGE \u65e0 rule_version\uff0c\u4e14\u53ea\u5230\u8868\u7ea7\uff08BR-10 / \u7ea6\u675f 8\uff09");
+  });
+
+  add("\u5b57\u6bb5\u7ea7\u8840\u7f18\uff08\u5e26\u89c4\u5219\u7248\u672c\uff09", "lineage-field-level", function(){
+    state.lineage_rule_version = true;
+    logEvent("LINEAGE_EDGE mart.total \u2190 conformed.amount rule_version=v7 \u2014 \u53ef\u56de\u7b54\u800c\u4e0d\u662f\u53ef\u67e5\u770b");
+  });
+
+  add("\u5220\u9664\u8bf7\u6c42\uff08\u964d\u7ea7\u5199\u6210\u6210\u529f\uff09", "delete-degraded", function(){
+    state.deletion = {destinations: ["iceberg", "\u7d22\u5f15", "\u7f13\u5b58"],
+      outcomes: 1, degraded_as_success: true};
+    logEvent("DELETION_REQUEST \u2014 \u7d22\u5f15\u964d\u7ea7\u4ecd\u5199\u6210\u6210\u529f\uff08BR-12 / \u7ea6\u675f 9\uff09");
+  });
+
+  add("\u5220\u9664\u8bf7\u6c42\uff08\u9010\u76ee\u7684\u5730\u7ed3\u679c\uff09", "delete-with-outcomes", function(){
+    state.deletion = {destinations: ["iceberg", "\u7d22\u5f15", "\u7f13\u5b58"],
+      outcomes: 3, degraded_as_success: false};
+    logEvent("DELETE_OUTCOME \u9010\u76ee\u7684\u5730\u5df2\u8bb0\u5f55\uff1a3 / 3\uff0c\u964d\u7ea7\u88ab\u5982\u5b9e\u6807\u8bb0");
+  });
+}
+
+function checkInvariants(){
+  var inv = {};
+  inv["BR-01"] = state.mart_source === "raw";
+  inv["BR-02"] = state.raw_edited;
+  inv["BR-05"] = state.rows > 1200;
+  inv["BR-10"] = !state.lineage_rule_version;
+  inv["BR-11"] = state.reprocess === "all";
+  inv["BR-12"] = !!state.deletion
+    && (state.deletion.outcomes < state.deletion.destinations.length || state.deletion.degraded_as_success);
+  return inv;
+}
+
+logEvent("P-2026-10-12 \u5c31\u7eea\uff1araw \u53ea\u8ffd\u52a0\uff1bconformed \u4e0e mart \u5c1a\u672a\u751f\u6210");
+paint();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#f6f9fc">
+<title>估抄与断电护栏实验室 — Estimate & guardrail lab</title>
+<style>
+  /* The demo carries the app's tokens inline because it must open on its own:
+     a demo that depends on the site's stylesheet cannot be opened from the
+     repository or from a file:// path. These are EmbKit's values and no others
+     — the brand indigo is LOCKED in the contract, and the neutrals are cold by
+     rule. Repeating values is how a second palette appears, so this block is
+     byte-identical across every demo and a test keeps it that way. */
+  /* The demo is light-only, and the site and the demo share one theme. */
+  :root{ color-scheme:light;
+    --page:#f6f9fc; --surface:#ffffff; --surface-2:#fafbfd; --surface-3:#eef2f7;
+    --line:#e8edf3; --line-strong:#d3dae3;
+    --navy:#0a2540; --text:#0a2540; --text-2:#425466; --text-3:#5f6b79;
+    --primary:#4f46e5; --primary-hover:#4338ca; --primary-active:#3730a3;
+    --primary-tint:#eef2ff; --primary-ring:rgba(79,70,229,.28); --on-primary:#ffffff;
+    --ok:#0e7c5a; --ok-soft:#dff5ec;
+    --warn:#8a5409; --warn-soft:#fdf1dc;
+    --danger:#c2373c; --danger-soft:#fdeaeb;
+    --r-sm:6px; --r-md:8px; --r-lg:10px; --r-xl:12px; --r-2xl:14px; --r-full:999px;
+    --shadow-card:0 1px 2px rgba(15,23,42,.04), 0 8px 24px rgba(15,23,42,.06);
+    --shadow-pop:0 12px 32px rgba(15,23,42,.12);
+    --sans:"Inter","MiSans","HarmonyOS Sans SC","PingFang SC","Microsoft YaHei",-apple-system,"Segoe UI",sans-serif;
+    --mono:ui-monospace,"SF Mono","Cascadia Mono",Menlo,Consolas,monospace;
+    /* aliases the demo bodies already use */
+    --vellum:var(--page); --vellum-2:var(--surface-3); --ink:var(--text);
+    --muted:var(--text-3); --rule:var(--line); --rule-strong:var(--line-strong);
+    --draft:var(--primary); --draft-soft:var(--primary-tint);
+    --accent:var(--primary); --accent-soft:var(--primary-tint); --link:var(--primary);
+    --revise:var(--danger); --revise-soft:var(--danger-soft);
+    --bad:var(--danger); --bad-soft:var(--danger-soft);
+    --bg:var(--page); --elev:var(--surface); --fg:var(--text);
+    --border:var(--line); --border-strong:var(--line-strong);
+  }
+  *{box-sizing:border-box}
+  /* An identifier is one token: `FR-018` was breaking after the hyphen in the
+     narrow ID column, which stops it reading as an identifier. Scoped to table
+     cells so the long paths in the source note can still wrap. */
+  td code, th code { white-space: nowrap; }
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:13px;line-height:1.6}
+  .wrap{max-width:1200px;margin:0 auto;padding:1.4rem 1.1rem 4rem}
+  header{border-bottom:1px solid var(--rule-strong);padding-bottom:.9rem;margin-bottom:1.2rem}
+  h1{font-family:var(--sans);font-size:20px;font-weight:600;line-height:1.35;letter-spacing:-.015em;margin:0 0 6px}
+  .sub{color:var(--muted);font-size:.86rem;margin:0;max-width:80ch;line-height:1.6}
+  .grid{display:grid;grid-template-columns:300px minmax(0,1fr) 290px;gap:var(--sp-3,12px);align-items:start}
+  @media (max-width:960px){.grid{grid-template-columns:1fr}}
+  .panel{padding:20px;background:var(--surface);border:1px solid var(--line);
+    border-radius:var(--r-xl);box-shadow:var(--shadow-card);margin-bottom:12px}
+  .panel h2{font:600 12px/1.5 var(--mono);letter-spacing:.06em;color:var(--muted);
+    margin:0 0 .6rem;border-bottom:1px solid var(--rule);padding-bottom:.35rem}
+  .panel h3{font-size:.95rem;margin:1rem 0 .35rem;font-weight:600}
+  button{font:500 12px/1 var(--mono);cursor:pointer;background:var(--bg);color:var(--fg);
+    border:1px solid var(--line);border-radius:var(--r-md);padding:6px 12px;margin:2px 4px 2px 0}
+  button:hover{border-color:var(--draft);color:var(--draft)}
+  button[aria-pressed="true"]{background:var(--draft);border-color:var(--draft);color:var(--vellum);font-weight:600}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  select{font:400 12px/1 var(--mono);background:var(--bg);color:var(--fg);
+    border:1px solid var(--line);border-radius:var(--r-md);padding:6px 10px;width:100%}
+  code{font-family:var(--mono);font-size:.76rem}
+  .kv{display:flex;gap:.5rem;font:400 12.5px/1.7 var(--mono);margin:.18rem 0}
+  .kv b{color:var(--muted);font-weight:600;min-width:5.2rem}
+  .log{max-height:230px;overflow:auto;font-family:var(--mono);font-size:11px;line-height:1.7;
+    background:var(--surface-3);border:1px solid var(--line);border-radius:var(--r-md);padding:10px 12px}
+  .log div{padding:.1rem 0;border-bottom:1px solid var(--rule)}
+  .log div:last-child{border:0}
+  /* Red means violated. The passing state is a quiet note, not a green banner:
+     a second semantic colour for "all clear" trains a reader to skim past the
+     states that matter. */
+  .viol{background:var(--danger-soft);border:1px solid var(--danger);
+    border-radius:var(--r-md);padding:10px 12px;font-size:12px;line-height:1.6;margin:8px 0;color:var(--danger)}
+  .ok{background:var(--surface-3);border:1px solid var(--line);
+    border-radius:var(--r-md);padding:10px 12px;font-size:12px;line-height:1.6;margin:8px 0;color:var(--text-3)}
+  .sig{display:inline-block;font:700 10.5px/1.4 var(--mono);letter-spacing:.03em;
+    padding:.1rem .32rem;border:1px solid currentColor;vertical-align:.08em}
+  table{width:100%;border-collapse:collapse;font:400 12px/1.6 var(--mono)}
+  th,td{text-align:left;padding:.32rem .4rem;border-bottom:1px solid var(--rule);vertical-align:top}
+  th{color:var(--muted);font-size:11px;letter-spacing:.05em;font-weight:600}
+  .note{font-size:12px;color:var(--muted);margin:.5rem 0 0;line-height:1.6}
+  .def{font-size:12.5px;line-height:1.6;margin:.35rem 0}
+  details{margin:.5rem 0}
+  summary{cursor:pointer;font:500 12px/1.5 var(--mono);color:var(--muted)}
+  a{color:var(--link)}
+  .src{font:400 11.5px/1.7 var(--mono);color:var(--muted);margin-top:1.4rem;
+    border-top:1px solid var(--rule-strong);padding-top:.8rem;max-width:100ch}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>估抄与断电护栏实验室 <span style="font-weight:400;color:var(--muted)">Estimate &amp; guardrail lab</span></h1>
+  <p class="sub">
+    本页演示 <code>packs/energy-utilities/power-marketing-cis</code> 的核心决策
+    （ADR-0002/0003/0004）：<strong>估值必须是有规则、被标注的，而断电是一个要过护栏的判定</strong>。
+    抄表异常是<b>待处理</b>的异常（BR-04），估抄由规则定义且被标注（BR-05），
+    客服<strong>一次解决而不转接</strong>（BR-06）且<strong>不能改变网络状态</strong>（BR-07），
+    计费事件不可变（BR-09），断电护栏由流程评估（BR-15）。
+    需要这个 demo 的理由：<strong>「估一个数先出账」和「先把电停了」，
+    都会在月底变成一封没人能回答的投诉。</strong>
+  </p>
+</header>
+<div class="grid">
+
+<section class="panel">
+  <h2>服务点与抄表 · service point &amp; reading</h2>
+  <div id="sp"></div>
+  <h3>抄表</h3>
+  <div id="reading"></div>
+</section>
+
+<section class="panel">
+  <h2>你可以做什么 · what you may do</h2>
+  <div id="acts"></div>
+  <h3>客服与断电</h3>
+  <div id="care"></div>
+</section>
+
+<section class="panel">
+  <h2>零容忍不变量</h2>
+  <div id="violations"></div>
+  <p class="note">
+    本包 15 个不可交易不变量中的 6 个，取自其存储强制约束。第 9 条与第 10 条读起来像
+    实现细节，其实是<strong>边界本身</strong>：<b>断电不能在没有持久化护栏评估记录的情况下被记录</b>；
+    <b>网络状态只能经声明的接口事件穿越边界</b>。
+  </p>
+  <table>
+    <thead><tr><th>ID</th><th>要求</th><th>状态</th></tr></thead>
+    <tbody id="invTable"></tbody>
+  </table>
+</section>
+
+</div>
+
+<section class="panel">
+  <h2>事件轨迹 · append-only</h2>
+  <div class="log" id="log"></div>
+  <p class="note">
+    更正是一条新事件；原件保留。这与「把估抄的数改对」是两件事——
+    <strong>后者恰恰是投诉产生的方式</strong>。
+  </p>
+</section>
+<p class="src">内容来源：<code>01-business/business-rules.md</code>（BR-04/05/06/07/09/15）、<code>04-architecture/adr/0002-*.md</code>、<code>0003-*.md</code>、<code>0004-*.md</code>、<code>05-data/logical-data-model.md</code>（约束 2/4/8/9/10）。本页为手写演示：它编码本包的语义，不声称符合任何 profile。95598 与配网接口在本包中<b>是指称</b>；本页不复制其条文。<code>verification: unverified</code>。</p>
+</div>
+<script>
+(function(){
+"use strict";
+/* ---- shared plumbing (assembled; the semantics below are this pack's) ---- */
+var INVARIANTS = [{"id": "BR-04", "what": "抄表异常是待处理的异常，不是可以被忽略或直接覆盖的读数"}, {"id": "BR-05", "what": "估抄由规则定义并被标注：estimate_flag 与 rule_ref 缺一不可"}, {"id": "BR-06", "what": "客服就地解决真实情况，不靠转接——转接把规则变成装饰"}, {"id": "BR-07", "what": "客服不能改变网络状态；那是配网的动作，不是账务的动作"}, {"id": "BR-09", "what": "计费事件不可变；更正是一条新事件"}, {"id": "BR-15", "what": "断电护栏由流程评估；没有持久化评估记录就不能记录断电"}];
+function el(id){ return document.getElementById(id); }
+function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function bt(label, action, field){
+  var b = document.createElement("button");
+  b.type = "button"; b.textContent = label;
+  b.setAttribute("data-action", action);
+  if (field) b.setAttribute("data-field", field);
+  return b;
+}
+var EVENT_LOG = [];
+function paint(){
+  render();
+  var inv = checkInvariants();
+  var box = el("violations"); box.innerHTML = "";
+  var broken = INVARIANTS.filter(function(i){ return inv[i.id]; });
+  if (!broken.length) {
+    var ok = document.createElement("div");
+    ok.className = "ok";
+    ok.textContent = "\u2713 当前配置未违反任何零容忍不变量";
+    box.appendChild(ok);
+  } else {
+    broken.forEach(function(i){
+      var d = document.createElement("div");
+      d.className = "viol";
+      d.innerHTML = '<span class="sig">sev-1</span> <code>' + i.id + "</code> "
+        + esc(i.what) + " \u2014 已记录。真实系统里这是一个会 <strong>失败构建</strong> 的缺陷。";
+      box.appendChild(d);
+    });
+  }
+  var tb = el("invTable"); tb.innerHTML = "";
+  INVARIANTS.forEach(function(i){
+    var tr = document.createElement("tr");
+    tr.innerHTML = "<td><code>" + i.id + "</code></td><td>" + esc(i.what) + "</td><td>"
+      + (inv[i.id] ? '<span class="sig" style="color:var(--danger)">violated</span>'
+                   : '<span class="sig" style="color:var(--muted)">held</span>') + "</td>";
+    tb.appendChild(tr);
+  });
+  var lg = el("log"); lg.innerHTML = "";
+  EVENT_LOG.slice().reverse().forEach(function(t){
+    var d = document.createElement("div"); d.textContent = t; lg.appendChild(d);
+  });
+}
+function logEvent(text){
+  EVENT_LOG.push(text);
+  if (EVENT_LOG.length > 80) EVENT_LOG.shift();
+  paint();
+}
+function render(){}
+function checkInvariants(){ return {}; }
+
+var state = {
+  sp: {id: "SP-4471-03", account: "AC-9902", tariff: "\u5c45\u6c11\u4e00\u6863"},
+  reading: {value: 18420, method: "remote", exception: null},
+  estimate: {flag: false, rule_ref: null, value: null},
+  charges: [],
+  seq: 0,
+  edited_in_place: false,
+  care_transferred: false,
+  care_changed_network: false,
+  guardrail: null
+};
+
+function kv(label, value, warn){
+  var d = document.createElement("div");
+  d.className = "kv";
+  d.innerHTML = "<b>" + esc(label) + "</b><span"
+    + (warn ? ' style="color:var(--danger);font-weight:600"' : "") + ">"
+    + esc(String(value)) + "</span>";
+  return d;
+}
+
+function render(){
+  var s = el("sp"); s.innerHTML = "";
+  s.appendChild(kv("\u670d\u52a1\u70b9", state.sp.id));
+  s.appendChild(kv("\u8d26\u6237", state.sp.account));
+  s.appendChild(kv("\u5957\u9910", state.sp.tariff));
+
+  var r = el("reading"); r.innerHTML = "";
+  r.appendChild(kv("\u8bfb\u6570", state.reading.value));
+  r.appendChild(kv("\u91c7\u96c6\u65b9\u5f0f", state.reading.method));
+  r.appendChild(kv("\u5f02\u5e38", state.reading.exception || "\u65e0", !!state.reading.exception));
+  r.appendChild(kv("\u4f30\u503c", state.estimate.value === null ? "\u65e0"
+    : (state.estimate.value + (state.estimate.flag ? "\uff08\u4f30\u6284\uff09" : "\uff08\u672a\u6807\u6ce8\uff09")),
+    state.estimate.value !== null && !state.estimate.flag));
+  r.appendChild(kv("\u4f30\u503c\u89c4\u5219", state.estimate.rule_ref || "\u65e0", state.estimate.value !== null && !state.estimate.rule_ref));
+
+  var c = el("care"); c.innerHTML = "";
+  c.appendChild(kv("\u5f53\u524d\u5de5\u5355", state.care_transferred ? "\u5df2\u8f6c\u63a5\u81f3\u4e8c\u7ebf" : "\u4e00\u6b21\u89e3\u51b3\u4e2d",
+    state.care_transferred));
+  c.appendChild(kv("\u7f51\u7edc\u72b6\u6001", state.care_changed_network ? "\u5df2\u88ab\u6539\u53d8" : "\u672a\u52a8",
+    state.care_changed_network));
+  c.appendChild(kv("\u65ad\u7535\u62df\u8bae", state.guardrail === null ? "\u65e0"
+    : (state.guardrail.persisted ? "\u5df2\u8bc4\u4f30\uff1a" + state.guardrail.result : "\u672a\u8bc4\u4f30"),
+    state.guardrail !== null && !state.guardrail.persisted));
+
+  renderActs();
+}
+
+function renderActs(){
+  var box = el("acts"); box.innerHTML = "";
+  function add(label, action, handler){
+    var b = bt(label, action);
+    b.onclick = handler;
+    box.appendChild(b);
+  }
+
+  add("\u767b\u8bb0\u62c4\u8868\u5f02\u5e38", "reading-exception", function(){
+    state.reading.exception = "\u8fdc\u4f20\u503c\u9ad8\u4e8e\u4e0a\u671f 40%\uff0c\u5f85\u6838";
+    logEvent("READING_EXCEPTION \u5df2\u767b\u8bb0 \u2014 \u5f02\u5e38\u5f85\u5904\u7406\uff08BR-04\uff09");
+  });
+
+  add("\u5904\u7406\u5f02\u5e38\uff08\u6838\u5b9e\uff09", "resolve-exception", function(){
+    state.reading.exception = null;
+    logEvent("READING_EXCEPTION \u5df2\u6838\u5b9e\u5e76\u5173\u95ed \u2014 \u5f02\u5e38\u4e0d\u662f\u88ab\u5ffd\u7565\uff0c\u662f\u88ab\u5904\u7406");
+  });
+
+  add("\u624b\u5de5\u4f30\u4e00\u4e2a\u6570\u51fa\u8d26", "estimate-manual", function(){
+    state.estimate = {flag: false, rule_ref: null, value: 320};
+    logEvent("ESTIMATE \u503c 320 \u2014 \u672a\u6807\u6ce8\u4f30\u6284\u3001\u65e0\u89c4\u5219\u5f15\u7528\uff08BR-05 / \u7ea6\u675f 8\uff09");
+  });
+
+  add("\u6309\u89c4\u5219\u4f30\u6284\uff08\u5e76\u6807\u6ce8\uff09", "estimate-by-rule", function(){
+    state.estimate = {flag: true, rule_ref: "EST-RULE-7\uff08\u8fd1\u4e09\u671f\u5747\u503c\uff09", value: 318};
+    logEvent("ESTIMATE 318 \u2014 estimate_flag=TRUE, rule_ref=EST-RULE-7\uff08\u5df2\u6807\u6ce8\uff09");
+  });
+
+  add("\u5c31\u5730\u4fee\u6539\u8ba1\u8d39\u4e8b\u4ef6", "edit-charge", function(){
+    state.seq += 1;
+    state.charges.push({id: "CE-" + (2200 + state.seq), amount: "\uffe5218.40"});
+    state.edited_in_place = true;
+    logEvent("UPDATE charge_event SET amount = ... \u2014 \u65e0 UPDATE \u6743\u9650\uff08BR-09 / \u7ea6\u675f 2\uff09");
+  });
+
+  add("\u53d1\u51fa\u66f4\u6b63\u4e8b\u4ef6", "emit-correction", function(){
+    state.seq += 1;
+    state.charges.push({id: "CE-" + (2200 + state.seq), amount: "-\uffe518.40 \u66f4\u6b63"});
+    state.edited_in_place = false;
+    logEvent("CHARGE_EVENT \u66f4\u6b63\u5df2\u53d1\u51fa\uff0c\u539f\u4ef6\u4fdd\u7559");
+  });
+
+  add("\u5ba2\u670d\u8f6c\u63a5\u81f3\u4e8c\u7ebf", "care-transfer", function(){
+    state.care_transferred = true;
+    logEvent("CASE TRANSFER \u2014 \u672c\u53ef\u7528\u4e8b\u5b9e\u5c31\u5730\u89e3\u51b3\uff08BR-06\uff09");
+  });
+
+  add("\u5ba2\u670d\u4e00\u6b21\u89e3\u51b3", "care-resolve", function(){
+    state.care_transferred = false;
+    logEvent("CASE RESOLVED \u2014 \u8d26\u6237\u3001\u8868\u8ba1\u3001\u8bfb\u6570\u5386\u53f2\u4e0e\u5f71\u54cd\u505c\u7535\u5c31\u5730\u5448\u73b0");
+  });
+
+  add("\u5ba2\u670d\u6539\u53d8\u7f51\u7edc\u72b6\u6001", "care-change-network", function(){
+    state.care_changed_network = true;
+    logEvent("CARE \u2192 \u5206\u652f\u7ebf\u8def\u65ad\u5f00 \u2014 \u5ba2\u670d\u4e0d\u6539\u7f51\u7edc\u72b6\u6001\uff08BR-07\uff09");
+  });
+
+  add("\u65ad\u7535\uff08\u65e0\u62df\u8bae\u8bc4\u4f30\u8bb0\u5f55\uff09", "disconnect-no-guardrail", function(){
+    state.guardrail = {persisted: false, result: "\u672a\u8bc4\u4f30"};
+    logEvent("DISCONNECT \u5df2\u8bb0\u5f55 \u800c\u65e0 GUARDRAIL_EVALUATION_REF\uff08BR-15 / \u7ea6\u675f 9\uff09");
+  });
+
+  add("\u65ad\u7535\uff08\u8fc7\u62df\u8bae\u8bc4\u4f30\uff09", "disconnect-with-guardrail", function(){
+    state.guardrail = {persisted: true, result: "\u8fdb\u884c\u4e2d\uff08\u672a\u8d85\u901a\u77e5\u671f\uff09"};
+    logEvent("GUARDRAIL_EVALUATION \u5df2\u6301\u4e45\u5316\uff1a\u8d44\u683c\u7c7b\u522b + \u901a\u77e5\u671f + \u9650\u5236\u671f \u5747\u901a\u8fc7");
+  });
+}
+
+function checkInvariants(){
+  var inv = {};
+  inv["BR-04"] = !!state.reading.exception;
+  inv["BR-05"] = state.estimate.value !== null && (!state.estimate.flag || !state.estimate.rule_ref);
+  inv["BR-06"] = state.care_transferred;
+  inv["BR-07"] = state.care_changed_network;
+  inv["BR-09"] = state.edited_in_place;
+  inv["BR-15"] = !!state.guardrail && !state.guardrail.persisted;
+  return inv;
+}
+
+logEvent("SP-4471-03 \u5c31\u7eea\uff1a\u65e0\u5f02\u5e38\uff0c\u65e0\u4f30\u503c\uff0c\u65e0\u8ba1\u8d39\u4e8b\u4ef6");
+paint();
+})();
+</script>
+</body>
+</html>

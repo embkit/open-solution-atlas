@@ -1,0 +1,17 @@
+{
+  "title": "幂等重放实验室 — Idempotent-replay lab",
+  "kind": "invariant-lab",
+  "summary": "重跑不改变答案，层是契约而不是文件夹，血缘是字段级并带规则版本，重处理限定分区，删除是一条流水线。",
+  "entry": "index.html",
+  "demonstrates": [
+    "BR-01",
+    "BR-02",
+    "BR-05",
+    "BR-10",
+    "BR-11",
+    "BR-12",
+    "ADR-0001",
+    "ADR-0002",
+    "ADR-0006"
+  ]
+}

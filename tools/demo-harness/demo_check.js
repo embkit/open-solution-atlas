@@ -431,5 +431,153 @@ if (slug.indexOf("/tms/") >= 0) {
     d.text("violations").indexOf("BR-07") < 0);
 }
 
+if (slug.indexOf("telecom-bss") >= 0) {
+  // "The rule changed last month, just recompute it" is the expensive sentence
+  // in this domain. Money follows the rule version it was computed under.
+  check("starts with no violation", d.text("violations").indexOf("sev-1") < 0);
+
+  // charge events are immutable
+  d.act("emit-charge");
+  check("emitting a charge event holds every invariant",
+    d.text("violations").indexOf("sev-1") < 0);
+  d.act("edit-charge");
+  check("editing an emitted charge event trips BR-09",
+    d.text("violations").indexOf("BR-09") >= 0);
+  d.act("emit-correction");
+  check("a correction event clears BR-09",
+    d.text("violations").indexOf("BR-09") < 0);
+
+  // a cycle that straddles an effective date
+  d.act("straddle-cycle");
+  check("computing a straddling cycle under one version trips BR-08",
+    d.text("violations").indexOf("BR-08") >= 0);
+  d.act("split-cycle");
+  check("splitting it by effective period clears BR-08",
+    d.text("violations").indexOf("BR-08") < 0);
+
+  // the invoice reproduces from its events
+  d.act("regenerate-current");
+  check("regenerating from current rules trips BR-11",
+    d.text("violations").indexOf("BR-11") >= 0);
+  d.act("regenerate-from-events");
+  check("regenerating from the events clears BR-11",
+    d.text("violations").indexOf("BR-11") < 0);
+
+  // reconciliation both ways
+  d.act("reconcile-one-way");
+  check("reconciling one way trips BR-12",
+    d.text("violations").indexOf("BR-12") >= 0);
+  d.act("reconcile-both");
+  check("reconciling both ways clears BR-12",
+    d.text("violations").indexOf("BR-12") < 0);
+
+  // the chain has to answer from both ends
+  d.act("break-trace");
+  check("a forward-only RO link trips BR-04",
+    d.text("violations").indexOf("BR-04") >= 0);
+}
+
+if (slug.indexOf("power-marketing-cis") >= 0) {
+  // "Estimate a number and bill it" and "cut the power now" both become a
+  // complaint nobody can answer by the end of the month.
+  check("starts with no violation", d.text("violations").indexOf("sev-1") < 0);
+
+  // a reading exception is a state to resolve
+  d.act("reading-exception");
+  check("an unresolved reading exception trips BR-04",
+    d.text("violations").indexOf("BR-04") >= 0);
+  d.act("resolve-exception");
+  check("resolving it clears BR-04", d.text("violations").indexOf("BR-04") < 0);
+
+  // an estimate has to be rule-bound and labelled
+  d.act("estimate-manual");
+  check("an unlabelled estimate with no rule trips BR-05",
+    d.text("violations").indexOf("BR-05") >= 0);
+  d.act("estimate-by-rule");
+  check("a labelled estimate with a rule clears BR-05",
+    d.text("violations").indexOf("BR-05") < 0);
+
+  // charge events are immutable
+  d.act("edit-charge");
+  check("editing a charge event trips BR-09",
+    d.text("violations").indexOf("BR-09") >= 0);
+  d.act("emit-correction");
+  check("a correction event clears BR-09",
+    d.text("violations").indexOf("BR-09") < 0);
+
+  // care resolves without transferring, and does not touch network state
+  d.act("care-transfer");
+  check("transferring when the facts are at hand trips BR-06",
+    d.text("violations").indexOf("BR-06") >= 0);
+  d.act("care-resolve");
+  check("resolving in place clears BR-06",
+    d.text("violations").indexOf("BR-06") < 0);
+  d.act("care-change-network");
+  check("care changing network state trips BR-07",
+    d.text("violations").indexOf("BR-07") >= 0);
+
+  // the disconnection guardrail
+  d.act("disconnect-no-guardrail");
+  check("recording a disconnection with no guardrail evaluation trips BR-15",
+    d.text("violations").indexOf("BR-15") >= 0);
+  d.act("disconnect-with-guardrail");
+  check("a persisted guardrail evaluation clears BR-15",
+    d.text("violations").indexOf("BR-15") < 0);
+}
+
+if (slug.indexOf("lakehouse-platform") >= 0) {
+  // "Just re-run it" is the most often right sentence on a data platform and
+  // the most expensive one when it is wrong.
+  check("starts with no violation", d.text("violations").indexOf("sev-1") < 0);
+
+  // a load is idempotent; an append is not
+  d.act("load");
+  check("a partition load holds every invariant",
+    d.text("violations").indexOf("sev-1") < 0);
+  d.act("load-append");
+  check("an append-style reload trips BR-05",
+    d.text("violations").indexOf("BR-05") >= 0);
+  check("the row count doubling is shown rather than hidden",
+    d.text("parts").indexOf("2400") >= 0);
+  d.act("dedupe");
+  check("rebuilding the partition clears BR-05",
+    d.text("violations").indexOf("BR-05") < 0);
+
+  // raw is immutable and a layer is a contract
+  d.act("edit-raw");
+  check("editing a raw partition trips BR-02",
+    d.text("violations").indexOf("BR-02") >= 0);
+  d.act("mart-from-raw");
+  check("a mart referencing raw trips BR-01",
+    d.text("violations").indexOf("BR-01") >= 0);
+  d.act("mart-from-conformed");
+  check("referencing conformed clears BR-01",
+    d.text("violations").indexOf("BR-01") < 0);
+
+  // reprocessing is bounded
+  d.act("reprocess-all");
+  check("reprocessing the whole table trips BR-11",
+    d.text("violations").indexOf("BR-11") >= 0);
+  d.act("reprocess-range");
+  check("bounding it to a partition range clears BR-11",
+    d.text("violations").indexOf("BR-11") < 0);
+
+  // field-level lineage with a rule version
+  d.act("lineage-table-level");
+  check("table-level lineage with no rule version trips BR-10",
+    d.text("violations").indexOf("BR-10") >= 0);
+  d.act("lineage-field-level");
+  check("field-level lineage with a rule version clears BR-10",
+    d.text("violations").indexOf("BR-10") < 0);
+
+  // deletion is a pipeline, and a degraded destination is not a success
+  d.act("delete-degraded");
+  check("writing a degraded destination as success trips BR-12",
+    d.text("violations").indexOf("BR-12") >= 0);
+  d.act("delete-with-outcomes");
+  check("an outcome per destination clears BR-12",
+    d.text("violations").indexOf("BR-12") < 0);
+}
+
 console.log(failures ? "\nFAILURES: " + failures : "\nsemantic checks passed");
 process.exit(failures ? 1 : 0);
