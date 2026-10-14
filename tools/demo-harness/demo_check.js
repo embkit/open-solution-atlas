@@ -228,5 +228,57 @@ if (slug.indexOf("his-emr") >= 0) {
     d.text("violations").indexOf("BR-12") >= 0);
 }
 
+if (slug.indexOf("enterprise-bi") >= 0) {
+  // An artifact pins a model version, and certification is computed. The
+  // temptation the demo exists to refuse is declaring a dashboard certified.
+  check("starts with no violation", d.text("violations").indexOf("sev-1") < 0);
+
+  // publishing a new definition version must not move the artifact
+  d.act("publish-v4");
+  check("publishing a new version leaves every invariant held",
+    d.text("violations").indexOf("sev-1") < 0);
+  check("the artifact still renders the version it is pinned to",
+    d.text("artifact").indexOf("v3") >= 0);
+
+  // versions are append-only
+  d.act("edit-v3-inplace");
+  check("rewriting a published version trips ADR-0003",
+    d.text("violations").indexOf("ADR-0003") >= 0);
+
+  // silently following latest
+  d.act("repoint-latest");
+  check("following latest without review trips BR-06",
+    d.text("violations").indexOf("BR-06") >= 0);
+
+  // there is no certified_by field to write
+  d.act("declare-certified");
+  check("declaring certification trips BR-07",
+    d.text("violations").indexOf("BR-07") >= 0);
+  check("…and BR-05, because a certified artifact without provenance is not one",
+    d.text("violations").indexOf("BR-05") >= 0);
+  check("the panel says there is no field to write",
+    d.text("certNote").indexOf("可以写入的字段") >= 0);
+
+  // a review with a reason is what makes it certified
+  d.act("request-review");
+  check("a review decision with a reason clears BR-07",
+    d.text("violations").indexOf("BR-07") < 0);
+  check("…and the state is computed, not declared",
+    d.text("artifact").indexOf("计算") >= 0);
+
+  // a rejection with no reason supports nothing
+  d.act("reject-no-reason");
+  check("a rejection with no reason trips BR-07 again",
+    d.text("violations").indexOf("BR-07") >= 0);
+
+  // embeds resolve through the semantic layer
+  d.act("embed-direct");
+  check("an embed reading the table directly trips BR-08",
+    d.text("violations").indexOf("BR-08") >= 0);
+  d.act("embed-via-model");
+  check("…and an embed through the model does not clear it, because the first one stands",
+    d.text("violations").indexOf("BR-08") >= 0);
+}
+
 console.log(failures ? "\nFAILURES: " + failures : "\nsemantic checks passed");
 process.exit(failures ? 1 : 0);

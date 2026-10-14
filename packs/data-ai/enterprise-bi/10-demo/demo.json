@@ -1,0 +1,13 @@
+{
+  "title": "模型版本实验室 — Model-version lab",
+  "kind": "version-lab",
+  "summary": "制品钉住一个模型版本，认证是算出来的而不是声明出来的，嵌入只能经语义层解析。",
+  "entry": "index.html",
+  "demonstrates": [
+    "BR-05",
+    "BR-06",
+    "BR-07",
+    "BR-08",
+    "ADR-0003"
+  ]
+}
