@@ -1,0 +1,17 @@
+{
+  "title": "库存桶实验室 — Inventory bucket lab",
+  "kind": "invariant-lab",
+  "summary": "库存是事件流的一个 fold，不是一个可以被改写的数字。桶不允许为负，错误的事实用补偿事件回正，错误的投影从事件流重建——两者都不 UPDATE 事实。",
+  "entry": "index.html",
+  "demonstrates": [
+    "BR-01",
+    "BR-02",
+    "BR-05",
+    "BR-14",
+    "BR-15",
+    "ADR-0002",
+    "FR-027",
+    "NFR-008",
+    "NFR-009"
+  ]
+}

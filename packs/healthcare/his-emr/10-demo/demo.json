@@ -1,0 +1,13 @@
+{
+  "title": "签名证据实验室 — Signed-evidence lab",
+  "kind": "evidence-lab",
+  "summary": "一份已签名的临床文书是证据：更正只能追加，撤回保留原件，临床记录不会为了迁就计费系统而被编辑。",
+  "entry": "index.html",
+  "demonstrates": [
+    "BR-07",
+    "BR-08",
+    "BR-11",
+    "BR-12",
+    "ADR-0002"
+  ]
+}

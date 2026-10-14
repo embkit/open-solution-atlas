@@ -134,5 +134,151 @@ if (slug.indexOf("data-exchange") >= 0) {
     d.text("violations").indexOf("BR-07") < 0);
 }
 
+if (slug.indexOf("/wms/") >= 0) {
+  // Stock is a fold of the event stream, not a number you can edit. Two
+  // different repairs, and conflating them is the point of the demo: a wrong
+  // *fact* is reversed by a compensating event; a wrong *projection* is rebuilt
+  // from the stream. Neither is an UPDATE.
+  check("starts with no violation", d.text("violations").indexOf("sev-1") < 0);
+
+  // the legitimate path holds every invariant
+  d.act("receive");
+  d.act("reserve-ok");
+  d.act("deduct");
+  check("receiving, reserving and picking within availability holds everything",
+    d.text("violations").indexOf("sev-1") < 0);
+
+  // a reservation with no lifetime
+  d.act("reserve-noexp");
+  check("a reservation with no expiry trips BR-05",
+    d.text("violations").indexOf("BR-05") >= 0);
+  d.act("release");
+  check("expiry release clears BR-05", d.text("violations").indexOf("BR-05") < 0);
+
+  // a change that bypasses the event stream
+  d.act("edit-direct");
+  check("editing the quantity off-stream trips BR-14",
+    d.text("violations").indexOf("BR-14") >= 0);
+  check("…and ADR-0002", d.text("violations").indexOf("ADR-0002") >= 0);
+  check("the projection is shown to diverge from the fold",
+    d.text("foldNote").indexOf("偏离") >= 0);
+  d.act("rebuild");
+  check("rebuilding the projection from the stream clears it",
+    d.text("violations").indexOf("BR-14") < 0);
+
+  // a deduction beyond available
+  d.act("deduct-over");
+  check("a deduction beyond available trips BR-02",
+    d.text("violations").indexOf("BR-02") >= 0);
+  check("…and BR-01, because the buckets no longer reconcile",
+    d.text("violations").indexOf("BR-01") >= 0);
+  check("the bucket is shown negative, not clamped to zero",
+    d.text("buckets").indexOf("-") >= 0);
+
+  // the fact is wrong, so only a compensating event reverses it
+  d.els.reason.value = "mis-pick";
+  d.act("compensate");
+  check("a compensating event with a reason clears BR-02",
+    d.text("violations").indexOf("BR-02") < 0);
+  check("…and the buckets reconcile again",
+    d.text("violations").indexOf("BR-01") < 0);
+}
+
+if (slug.indexOf("his-emr") >= 0) {
+  // A signed clinical document is evidence. Corrections are additive, a
+  // retraction keeps the original, and no billing artefact may edit it. The
+  // substitute for the edit is an addendum — so the demo has to show both the
+  // forbidden path and the permitted one.
+  check("starts with no violation", d.text("violations").indexOf("sev-1") < 0);
+
+  // the permitted repair: an addendum that references the original
+  d.act("addendum");
+  check("an addendum leaves every invariant held",
+    d.text("violations").indexOf("sev-1") < 0);
+  check("…and the current text is the original plus the addendum",
+    d.text("currentNote").indexOf("追加更正") >= 0);
+
+  // the forbidden repair: edit the signed document in place
+  d.act("edit-inplace");
+  check("editing a signed document in place trips BR-07",
+    d.text("violations").indexOf("BR-07") >= 0);
+  check("…and ADR-0002, because the signature is the evidence",
+    d.text("violations").indexOf("ADR-0002") >= 0);
+  check("the divergence is shown rather than described",
+    d.text("currentNote").indexOf("不一致") >= 0);
+
+  // a retraction keeps the original
+  d.act("retract-delete");
+  check("deleting the original on retraction trips BR-08",
+    d.text("violations").indexOf("BR-08") >= 0);
+  check("the original is shown as gone, which is the defect",
+    d.text("original").indexOf("已被删除") >= 0);
+
+  // coded facts carry the version they were recorded under
+  d.act("remap-inplace");
+  check("rewriting a mapping in place trips BR-11",
+    d.text("violations").indexOf("BR-11") >= 0);
+  d.act("new-mapping-version");
+  check("a new mapping version clears BR-11",
+    d.text("violations").indexOf("BR-11") < 0);
+
+  // the billing pressure
+  d.act("bill-adjust");
+  check("billing editing the clinical record trips BR-12",
+    d.text("violations").indexOf("BR-12") >= 0);
+}
+
+if (slug.indexOf("enterprise-bi") >= 0) {
+  // An artifact pins a model version, and certification is computed. The
+  // temptation the demo exists to refuse is declaring a dashboard certified.
+  check("starts with no violation", d.text("violations").indexOf("sev-1") < 0);
+
+  // publishing a new definition version must not move the artifact
+  d.act("publish-v4");
+  check("publishing a new version leaves every invariant held",
+    d.text("violations").indexOf("sev-1") < 0);
+  check("the artifact still renders the version it is pinned to",
+    d.text("artifact").indexOf("v3") >= 0);
+
+  // versions are append-only
+  d.act("edit-v3-inplace");
+  check("rewriting a published version trips ADR-0003",
+    d.text("violations").indexOf("ADR-0003") >= 0);
+
+  // silently following latest
+  d.act("repoint-latest");
+  check("following latest without review trips BR-06",
+    d.text("violations").indexOf("BR-06") >= 0);
+
+  // there is no certified_by field to write
+  d.act("declare-certified");
+  check("declaring certification trips BR-07",
+    d.text("violations").indexOf("BR-07") >= 0);
+  check("…and BR-05, because a certified artifact without provenance is not one",
+    d.text("violations").indexOf("BR-05") >= 0);
+  check("the panel says there is no field to write",
+    d.text("certNote").indexOf("可以写入的字段") >= 0);
+
+  // a review with a reason is what makes it certified
+  d.act("request-review");
+  check("a review decision with a reason clears BR-07",
+    d.text("violations").indexOf("BR-07") < 0);
+  check("…and the state is computed, not declared",
+    d.text("artifact").indexOf("计算") >= 0);
+
+  // a rejection with no reason supports nothing
+  d.act("reject-no-reason");
+  check("a rejection with no reason trips BR-07 again",
+    d.text("violations").indexOf("BR-07") >= 0);
+
+  // embeds resolve through the semantic layer
+  d.act("embed-direct");
+  check("an embed reading the table directly trips BR-08",
+    d.text("violations").indexOf("BR-08") >= 0);
+  d.act("embed-via-model");
+  check("…and an embed through the model does not clear it, because the first one stands",
+    d.text("violations").indexOf("BR-08") >= 0);
+}
+
 console.log(failures ? "\nFAILURES: " + failures : "\nsemantic checks passed");
 process.exit(failures ? 1 : 0);
