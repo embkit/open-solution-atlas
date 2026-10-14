@@ -1,0 +1,18 @@
+{
+  "title": "定价快照与幂等实验室 — Snapshot &amp; idempotency lab",
+  "kind": "invariant-lab",
+  "summary": "价格在成交时冻结、永不重算，钱的操作由平台发键，冲正不是逆运算，卡号不落在任何一列，履约状态按行，退货处置在授权时决定。",
+  "entry": "index.html",
+  "demonstrates": [
+    "BR-02",
+    "BR-06",
+    "BR-07",
+    "BR-09",
+    "BR-10",
+    "BR-11",
+    "BR-12",
+    "ADR-0001",
+    "ADR-0003",
+    "ADR-0004"
+  ]
+}

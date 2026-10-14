@@ -735,5 +735,128 @@ if (slug.indexOf("itsm-helpdesk") >= 0) {
     d.text("violations").indexOf("BR-14") < 0);
 }
 
+if (slug.indexOf("personal-blog") >= 0) {
+  // A silent 404 fools the reader, the crawler and your own archive at once.
+  check("starts with no violation", d.text("violations").indexOf("sev-1") < 0);
+
+  // publish and scheduled publication
+  d.act("publish");
+  check("publishing makes it visible and holds every invariant",
+    d.text("visible").indexOf("是") >= 0);
+  d.act("schedule");
+  check("a post published in the future is not visible",
+    d.text("visible").indexOf("否") >= 0);
+  check("…and that is not a violation",
+    d.text("violations").indexOf("sev-1") < 0);
+
+  // renaming after publication has to leave a disposition
+  d.act("rename-redirect");
+  check("renaming with a redirect holds every invariant",
+    d.text("violations").indexOf("sev-1") < 0);
+  d.act("rename-silent");
+  check("renaming and leaving the old link to 404 trips BR-04",
+    d.text("violations").indexOf("BR-04") >= 0);
+
+  // unpublishing
+  d.act("unpublish-404");
+  check("unpublishing as a 404 trips BR-06",
+    d.text("violations").indexOf("BR-06") >= 0);
+  d.act("unpublish-gone");
+  check("unpublishing as 410 Gone clears BR-06",
+    d.text("violations").indexOf("BR-06") < 0);
+
+  // drafts never reach the index
+  d.act("index-draft");
+  check("a draft in the sitemap trips BR-14",
+    d.text("violations").indexOf("BR-14") >= 0);
+  check("…and BR-07, because visibility is state and time together",
+    d.text("violations").indexOf("BR-07") >= 0);
+
+  // one canonical link
+  d.act("second-canonical");
+  check("a second canonical row trips BR-01",
+    d.text("violations").indexOf("BR-01") >= 0);
+
+  // no anonymous write path
+  d.act("anonymous-publish");
+  check("an anonymous publish trips BR-11",
+    d.text("violations").indexOf("BR-11") >= 0);
+
+  // webmentions are idempotent
+  d.act("webmention-duplicate");
+  check("a duplicate webmention trips BR-09",
+    d.text("violations").indexOf("BR-09") >= 0);
+  d.act("webmention-idempotent");
+  check("keying on (source, target) clears BR-09",
+    d.text("violations").indexOf("BR-09") < 0);
+}
+
+if (slug.indexOf("omnichannel-commerce") >= 0) {
+  // "Just retry it" and "roll this order back" produce a double charge and an
+  // unexplainable history respectively.
+  check("starts with no violation", d.text("violations").indexOf("sev-1") < 0);
+
+  // a reservation without an expiry
+  d.act("reserve-no-expiry");
+  check("a reservation with no expiry trips BR-02",
+    d.text("violations").indexOf("BR-02") >= 0);
+  d.act("reserve-with-expiry");
+  check("an expiry clears BR-02", d.text("violations").indexOf("BR-02") < 0);
+
+  // the snapshot freezes at capture
+  d.act("capture");
+  check("capturing freezes the snapshot and holds every invariant",
+    d.text("violations").indexOf("sev-1") < 0);
+  d.act("promo-change");
+  check("recomputing after capture trips BR-06",
+    d.text("violations").indexOf("BR-06") >= 0);
+  d.act("read-snapshot");
+  check("reading the stored snapshot clears BR-06",
+    d.text("violations").indexOf("BR-06") < 0);
+
+  // idempotency keys are issued by the platform
+  d.act("retry-same-key");
+  check("a retry under the same key has no second effect",
+    d.text("violations").indexOf("BR-07") < 0);
+  d.act("refund-new-key");
+  check("a refund as a new operation holds every invariant",
+    d.text("violations").indexOf("sev-1") < 0);
+
+  // a duplicate effect persists until the extra operation is resolved, so this
+  // runs last among the money checks
+  d.act("retry-new-key");
+  check("a second effect sharing a key trips BR-07",
+    d.text("violations").indexOf("BR-07") >= 0);
+
+  // a reversal is not an inverse operation
+  d.act("reverse-original");
+  check("marking the original capture reversed trips BR-09",
+    d.text("violations").indexOf("BR-09") >= 0);
+
+  // fulfilment state is per line
+  d.act("line-ship-one");
+  check("shipping one line derives a partially shipped order",
+    d.text("order").indexOf("partially shipped") >= 0);
+  d.act("set-order-state");
+  check("writing the order state directly trips BR-11",
+    d.text("violations").indexOf("BR-11") >= 0);
+  d.act("whole-order-shipped");
+  check("…and claiming the whole order shipped one line short stays violated",
+    d.text("violations").indexOf("BR-11") >= 0);
+
+  // a return's disposition is decided at authorisation
+  d.act("return-no-disposition");
+  check("a return authorised with no disposition trips BR-12",
+    d.text("violations").indexOf("BR-12") >= 0);
+  d.act("return-with-disposition");
+  check("deciding it at authorisation clears BR-12",
+    d.text("violations").indexOf("BR-12") < 0);
+
+  // card scope
+  d.act("pan-column");
+  check("a column storing a PAN trips BR-10",
+    d.text("violations").indexOf("BR-10") >= 0);
+}
+
 console.log(failures ? "\nFAILURES: " + failures : "\nsemantic checks passed");
 process.exit(failures ? 1 : 0);

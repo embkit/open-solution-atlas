@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#f6f9fc">
+<title>发布契约实验室 — Publishing-contract lab</title>
+<style>
+  /* The demo carries the app's tokens inline because it must open on its own:
+     a demo that depends on the site's stylesheet cannot be opened from the
+     repository or from a file:// path. These are EmbKit's values and no others
+     — the brand indigo is LOCKED in the contract, and the neutrals are cold by
+     rule. Repeating values is how a second palette appears, so this block is
+     byte-identical across every demo and a test keeps it that way. */
+  /* The demo is light-only, and the site and the demo share one theme. */
+  :root{ color-scheme:light;
+    --page:#f6f9fc; --surface:#ffffff; --surface-2:#fafbfd; --surface-3:#eef2f7;
+    --line:#e8edf3; --line-strong:#d3dae3;
+    --navy:#0a2540; --text:#0a2540; --text-2:#425466; --text-3:#5f6b79;
+    --primary:#4f46e5; --primary-hover:#4338ca; --primary-active:#3730a3;
+    --primary-tint:#eef2ff; --primary-ring:rgba(79,70,229,.28); --on-primary:#ffffff;
+    --ok:#0e7c5a; --ok-soft:#dff5ec;
+    --warn:#8a5409; --warn-soft:#fdf1dc;
+    --danger:#c2373c; --danger-soft:#fdeaeb;
+    --r-sm:6px; --r-md:8px; --r-lg:10px; --r-xl:12px; --r-2xl:14px; --r-full:999px;
+    --shadow-card:0 1px 2px rgba(15,23,42,.04), 0 8px 24px rgba(15,23,42,.06);
+    --shadow-pop:0 12px 32px rgba(15,23,42,.12);
+    --sans:"Inter","MiSans","HarmonyOS Sans SC","PingFang SC","Microsoft YaHei",-apple-system,"Segoe UI",sans-serif;
+    --mono:ui-monospace,"SF Mono","Cascadia Mono",Menlo,Consolas,monospace;
+    /* aliases the demo bodies already use */
+    --vellum:var(--page); --vellum-2:var(--surface-3); --ink:var(--text);
+    --muted:var(--text-3); --rule:var(--line); --rule-strong:var(--line-strong);
+    --draft:var(--primary); --draft-soft:var(--primary-tint);
+    --accent:var(--primary); --accent-soft:var(--primary-tint); --link:var(--primary);
+    --revise:var(--danger); --revise-soft:var(--danger-soft);
+    --bad:var(--danger); --bad-soft:var(--danger-soft);
+    --bg:var(--page); --elev:var(--surface); --fg:var(--text);
+    --border:var(--line); --border-strong:var(--line-strong);
+  }
+  *{box-sizing:border-box}
+  /* An identifier is one token: `FR-018` was breaking after the hyphen in the
+     narrow ID column, which stops it reading as an identifier. Scoped to table
+     cells so the long paths in the source note can still wrap. */
+  td code, th code { white-space: nowrap; }
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:13px;line-height:1.6}
+  .wrap{max-width:1200px;margin:0 auto;padding:1.4rem 1.1rem 4rem}
+  header{border-bottom:1px solid var(--rule-strong);padding-bottom:.9rem;margin-bottom:1.2rem}
+  h1{font-family:var(--sans);font-size:20px;font-weight:600;line-height:1.35;letter-spacing:-.015em;margin:0 0 6px}
+  .sub{color:var(--muted);font-size:.86rem;margin:0;max-width:80ch;line-height:1.6}
+  .grid{display:grid;grid-template-columns:300px minmax(0,1fr) 290px;gap:var(--sp-3,12px);align-items:start}
+  @media (max-width:960px){.grid{grid-template-columns:1fr}}
+  .panel{padding:20px;background:var(--surface);border:1px solid var(--line);
+    border-radius:var(--r-xl);box-shadow:var(--shadow-card);margin-bottom:12px}
+  .panel h2{font:600 12px/1.5 var(--mono);letter-spacing:.06em;color:var(--muted);
+    margin:0 0 .6rem;border-bottom:1px solid var(--rule);padding-bottom:.35rem}
+  .panel h3{font-size:.95rem;margin:1rem 0 .35rem;font-weight:600}
+  button{font:500 12px/1 var(--mono);cursor:pointer;background:var(--bg);color:var(--fg);
+    border:1px solid var(--line);border-radius:var(--r-md);padding:6px 12px;margin:2px 4px 2px 0}
+  button:hover{border-color:var(--draft);color:var(--draft)}
+  button[aria-pressed="true"]{background:var(--draft);border-color:var(--draft);color:var(--vellum);font-weight:600}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  select{font:400 12px/1 var(--mono);background:var(--bg);color:var(--fg);
+    border:1px solid var(--line);border-radius:var(--r-md);padding:6px 10px;width:100%}
+  code{font-family:var(--mono);font-size:.76rem}
+  .kv{display:flex;gap:.5rem;font:400 12.5px/1.7 var(--mono);margin:.18rem 0}
+  .kv b{color:var(--muted);font-weight:600;min-width:5.2rem}
+  .log{max-height:230px;overflow:auto;font-family:var(--mono);font-size:11px;line-height:1.7;
+    background:var(--surface-3);border:1px solid var(--line);border-radius:var(--r-md);padding:10px 12px}
+  .log div{padding:.1rem 0;border-bottom:1px solid var(--rule)}
+  .log div:last-child{border:0}
+  /* Red means violated. The passing state is a quiet note, not a green banner:
+     a second semantic colour for "all clear" trains a reader to skim past the
+     states that matter. */
+  .viol{background:var(--danger-soft);border:1px solid var(--danger);
+    border-radius:var(--r-md);padding:10px 12px;font-size:12px;line-height:1.6;margin:8px 0;color:var(--danger)}
+  .ok{background:var(--surface-3);border:1px solid var(--line);
+    border-radius:var(--r-md);padding:10px 12px;font-size:12px;line-height:1.6;margin:8px 0;color:var(--text-3)}
+  .sig{display:inline-block;font:700 10.5px/1.4 var(--mono);letter-spacing:.03em;
+    padding:.1rem .32rem;border:1px solid currentColor;vertical-align:.08em}
+  table{width:100%;border-collapse:collapse;font:400 12px/1.6 var(--mono)}
+  th,td{text-align:left;padding:.32rem .4rem;border-bottom:1px solid var(--rule);vertical-align:top}
+  th{color:var(--muted);font-size:11px;letter-spacing:.05em;font-weight:600}
+  .note{font-size:12px;color:var(--muted);margin:.5rem 0 0;line-height:1.6}
+  .def{font-size:12.5px;line-height:1.6;margin:.35rem 0}
+  details{margin:.5rem 0}
+  summary{cursor:pointer;font:500 12px/1.5 var(--mono);color:var(--muted)}
+  a{color:var(--link)}
+  .src{font:400 11.5px/1.7 var(--mono);color:var(--muted);margin-top:1.4rem;
+    border-top:1px solid var(--rule-strong);padding-top:.8rem;max-width:100ch}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>发布契约实验室 <span style="font-weight:400;color:var(--muted)">Publishing-contract lab</span></h1>
+  <p class="sub">
+    本页演示 <code>packs/horizontal/personal-blog</code> 的核心决策（ADR-0001/0002/0003）：
+    <strong>发布是一份对读者与爬虫的契约，不是一个开关</strong>。slug 在首次发布后可改但
+    必须留下重定向（BR-04），取消发布返回 <code>410 Gone</code> 而不是 404（BR-06），
+    可见当且仅当 <code>PUBLISHED</code> 且 <code>published_at &lt;= now</code>（BR-07），
+    草稿永不进入 sitemap / feed / 搜索（BR-14），没有匿名写入路径（BR-11），
+    而 webmention 按 <code>(source, target)</code> 幂等（BR-09）。
+    需要这个 demo 的理由：<strong>一个静默的 404 会同时骗过读者、爬虫和你自己的归档。</strong>
+  </p>
+</header>
+<div class="grid">
+
+<section class="panel">
+  <h2>文章 · the post</h2>
+  <div id="post"></div>
+  <h3>规范链接</h3>
+  <div id="canon"></div>
+</section>
+
+<section class="panel">
+  <h2>你可以做什么 · what you may do</h2>
+  <div id="acts"></div>
+  <h3>可见性与索引</h3>
+  <div id="visible"></div>
+</section>
+
+<section class="panel">
+  <h2>零容忍不变量</h2>
+  <div id="violations"></div>
+  <p class="note">
+    本包 14 个不可交易不变量中的 6 个，取自其存储强制约束。第 7 条看起来最平凡，
+    也最常被实现错：<strong>可见当且仅当状态是 PUBLISHED 且发布时间已到</strong>——
+    没有任何渲染、搜索或 feed 路径可以绕过它。
+  </p>
+  <table>
+    <thead><tr><th>ID</th><th>要求</th><th>状态</th></tr></thead>
+    <tbody id="invTable"></tbody>
+  </table>
+</section>
+
+</div>
+
+<section class="panel">
+  <h2>事件轨迹 · append-only</h2>
+  <div class="log" id="log"></div>
+  <p class="note">
+    改名、合并、取消发布都<strong>增加</strong>记录；旧的规范链接永远不会静默消失。
+  </p>
+</section>
+<p class="src">内容来源：<code>01-business/business-rules.md</code>（BR-01/04/06/07/09/11/14）、<code>04-architecture/adr/0001-*.md</code>、<code>0002-*.md</code>、<code>0003-*.md</code>、<code>05-data/logical-data-model.md</code>（约束 1/3/7/9/11）。本页为手写演示：它编码本包的语义，不声称符合任何 profile。WCAG 2.1 AA 在本包中作为图片替代文本的要求出现，是<b>指称</b>，不是本页的符合性结论。<code>verification: unverified</code>。</p>
+</div>
+<script>
+(function(){
+"use strict";
+/* ---- shared plumbing (assembled; the semantics below are this pack's) ---- */
+var INVARIANTS = [{"id": "BR-01", "what": "每篇文章恰好有一个规范链接；第二行是非法的"}, {"id": "BR-04", "what": "首次发布后 slug 可改，但旧链接必须留下处置，不能静默消失"}, {"id": "BR-06", "what": "取消发布返回 410 Gone；把「已撤下」伪装成「从未存在」是欺骗读者与爬虫"}, {"id": "BR-07", "what": "可见当且仅当状态为 PUBLISHED 且发布时间已到；没有路径可以绕过"}, {"id": "BR-11", "what": "没有匿名写入路径能到达公开内容；发布需要已认证的作者身份"}, {"id": "BR-14", "what": "草稿永不进入 sitemap、feed 或搜索索引"}, {"id": "BR-09", "what": "webmention 按 (source, target) 幂等：重试更新状态而不是新增"}];
+function el(id){ return document.getElementById(id); }
+function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function bt(label, action, field){
+  var b = document.createElement("button");
+  b.type = "button"; b.textContent = label;
+  b.setAttribute("data-action", action);
+  if (field) b.setAttribute("data-field", field);
+  return b;
+}
+var EVENT_LOG = [];
+function paint(){
+  render();
+  var inv = checkInvariants();
+  var box = el("violations"); box.innerHTML = "";
+  var broken = INVARIANTS.filter(function(i){ return inv[i.id]; });
+  if (!broken.length) {
+    var ok = document.createElement("div");
+    ok.className = "ok";
+    ok.textContent = "\u2713 当前配置未违反任何零容忍不变量";
+    box.appendChild(ok);
+  } else {
+    broken.forEach(function(i){
+      var d = document.createElement("div");
+      d.className = "viol";
+      d.innerHTML = '<span class="sig">sev-1</span> <code>' + i.id + "</code> "
+        + esc(i.what) + " \u2014 已记录。真实系统里这是一个会 <strong>失败构建</strong> 的缺陷。";
+      box.appendChild(d);
+    });
+  }
+  var tb = el("invTable"); tb.innerHTML = "";
+  INVARIANTS.forEach(function(i){
+    var tr = document.createElement("tr");
+    tr.innerHTML = "<td><code>" + i.id + "</code></td><td>" + esc(i.what) + "</td><td>"
+      + (inv[i.id] ? '<span class="sig" style="color:var(--danger)">violated</span>'
+                   : '<span class="sig" style="color:var(--muted)">held</span>') + "</td>";
+    tb.appendChild(tr);
+  });
+  var lg = el("log"); lg.innerHTML = "";
+  EVENT_LOG.slice().reverse().forEach(function(t){
+    var d = document.createElement("div"); d.textContent = t; lg.appendChild(d);
+  });
+}
+function logEvent(text){
+  EVENT_LOG.push(text);
+  if (EVENT_LOG.length > 80) EVENT_LOG.shift();
+  paint();
+}
+function render(){}
+function checkInvariants(){ return {}; }
+
+var NOW = 1760486400;   /* 2026-10-14T16:00Z */
+
+var state = {
+  post: {id: "P-31", title: "\u4e00\u4e2a\u5173\u4e8e\u8fb9\u754c\u7684\u7b14\u8bb0",
+    slug: "notes-on-boundaries", status: "DRAFT", published_at: NOW + 86400,
+    author: "sulay"},
+  canonical_count: 1,
+  slug_published: false,
+  rename: null,             /* 'redirect' | 'silent' */
+  unpublish: null,          /* 'gone' | '404' */
+  indexed: [],              /* what sitemap/feed/search actually contain */
+  anonymous: false,
+  webmentions: []
+};
+
+function isVisible(){
+  return state.post.status === "PUBLISHED" && state.post.published_at <= NOW;
+}
+
+function kv(label, value, warn){
+  var d = document.createElement("div");
+  d.className = "kv";
+  d.innerHTML = "<b>" + esc(label) + "</b><span"
+    + (warn ? ' style="color:var(--danger);font-weight:600"' : "") + ">"
+    + esc(String(value)) + "</span>";
+  return d;
+}
+
+function render(){
+  var p = el("post"); p.innerHTML = "";
+  p.appendChild(kv("\u6807\u9898", state.post.title));
+  p.appendChild(kv("slug", "/" + state.post.slug));
+  p.appendChild(kv("\u72b6\u6001", state.post.status));
+  p.appendChild(kv("\u53d1\u5e03\u65f6\u95f4", state.post.published_at <= NOW
+    ? "\u5df2\u5230" : "\u672a\u5230\uff08\u5b9a\u65f6\uff09", state.post.published_at > NOW));
+  p.appendChild(kv("\u4f5c\u8005", state.anonymous ? "\uff08\u533f\u540d\uff09" : state.post.author, state.anonymous));
+
+  var c = el("canon"); c.innerHTML = "";
+  c.appendChild(kv("\u89c4\u8303\u94fe\u63a5\u884c\u6570", state.canonical_count, state.canonical_count !== 1));
+  c.appendChild(kv("\u6539\u540d\u5904\u7f6e", state.rename === null ? "\u2014"
+    : (state.rename === "redirect" ? "301 \u5230\u65b0 slug" : "\u65e7\u94fe\u63a5\u9759\u9ed8 404"),
+    state.rename === "silent"));
+  c.appendChild(kv("\u53d6\u6d88\u53d1\u5e03\u54cd\u5e94", state.unpublish === null ? "\u2014"
+    : (state.unpublish === "gone" ? "410 Gone" : "404 Not Found"), state.unpublish === "404"));
+
+  var v = el("visible"); v.innerHTML = "";
+  v.appendChild(kv("\u5bf9\u8bfb\u8005\u53ef\u89c1", isVisible() ? "\u662f" : "\u5426"));
+  v.appendChild(kv("\u5728\u7d22\u5f15\u4e2d", state.indexed.length ? state.indexed.join("\u3001") : "\u65e0",
+    state.indexed.indexOf("\u9884\u89c8\u7248") >= 0 || (!isVisible() && state.indexed.length > 0)));
+  v.appendChild(kv("webmention", state.webmentions.length + " \u6761\uff08\u6309 source+target \u53bb\u91cd\uff09"));
+
+  renderActs();
+}
+
+function renderActs(){
+  var box = el("acts"); box.innerHTML = "";
+  function add(label, action, handler){
+    var b = bt(label, action);
+    b.onclick = handler;
+    box.appendChild(b);
+  }
+
+  add("\u53d1\u5e03", "publish", function(){
+    state.post.status = "PUBLISHED";
+    state.post.published_at = NOW - 60;
+    state.slug_published = true;
+    logEvent("STATUS PUBLISHED published_at=" + state.post.published_at + " \u2192 \u5bf9\u8bfb\u8005\u53ef\u89c1");
+  });
+
+  add("\u5b9a\u65f6\u5230\u672a\u6765", "schedule", function(){
+    state.post.status = "PUBLISHED";
+    state.post.published_at = NOW + 86400;
+    logEvent("STATUS PUBLISHED published_at \u5728\u672a\u6765 \u2192 \u4e0d\u53ef\u89c1\uff08BR-07\uff09");
+  });
+
+  add("\u53d1\u5e03\u540e\u6539\u540d\uff08\u7559\u91cd\u5b9a\u5411\uff09", "rename-redirect", function(){
+    state.post.slug = "boundaries-revisited";
+    state.rename = "redirect";
+    logEvent("SLUG \u6539\u4e3a boundaries-revisited\uff0c\u65e7\u94fe\u63a5 301 \u5230\u65b0\u5730\u5740");
+  });
+
+  add("\u53d1\u5e03\u540e\u6539\u540d\uff08\u65e7\u94fe\u63a5\u9759\u9ed8 404\uff09", "rename-silent", function(){
+    state.post.slug = "boundaries-v2";
+    state.rename = "silent";
+    logEvent("SLUG \u6539\u4e3a boundaries-v2 \u2014 \u65e7\u94fe\u63a5\u65e0\u5904\u7f6e\uff08BR-04\uff09");
+  });
+
+  add("\u53d6\u6d88\u53d1\u5e03\uff08410 Gone\uff09", "unpublish-gone", function(){
+    state.post.status = "GONE";
+    state.unpublish = "gone";
+    state.indexed = [];
+    logEvent("UNPUBLISH \u2192 410 Gone\uff0c\u5e76\u4ece sitemap / feed / \u641c\u7d22\u4e2d\u79fb\u9664");
+  });
+
+  add("\u53d6\u6d88\u53d1\u5e03\uff08404\uff09", "unpublish-404", function(){
+    state.post.status = "GONE";
+    state.unpublish = "404";
+    logEvent("UNPUBLISH \u2192 404 \u2014 \u8bfb\u8005\u4e0e\u722c\u866b\u65e0\u6cd5\u533a\u5206\u300c\u4ece\u672a\u5b58\u5728\u300d\u4e0e\u300c\u5df2\u64a4\u4e0b\u300d\uff08BR-06\uff09");
+  });
+
+  add("\u628a\u8349\u7a3f\u653e\u8fdb sitemap", "index-draft", function(){
+    state.post.status = "DRAFT";
+    state.indexed = ["\u9884\u89c8\u7248"];
+    logEvent("\u8349\u7a3f\u51fa\u73b0\u5728 SITEMAP/FEED/\u641c\u7d22\u4e2d \u2014 \u6cc4\u9732\uff08BR-14\uff09");
+  });
+
+  add("\u52a0\u4e00\u6761\u7b2c\u4e8c\u4e2a\u89c4\u8303\u94fe\u63a5", "second-canonical", function(){
+    state.canonical_count = 2;
+    logEvent("CANONICAL_URL \u7b2c\u4e8c\u884c \u2014 \u6bcf\u7bc7\u6587\u7ae0\u6070\u597d\u4e00\u4e2a\uff08BR-01 / \u7ea6\u675f 1\uff09");
+  });
+
+  add("\u533f\u540d\u53d1\u5e03", "anonymous-publish", function(){
+    state.anonymous = true;
+    logEvent("PUBLISH \u65e0\u5df2\u8ba4\u8bc1\u7684\u4f5c\u8005\u8eab\u4efd \u2014 \u6ca1\u6709\u533f\u540d\u5199\u5165\u8def\u5f84\uff08BR-11 / \u7ea6\u675f 11\uff09");
+  });
+
+  add("\u91cd\u590d\u6295\u9012\u540c\u4e00\u6761 webmention", "webmention-duplicate", function(){
+    state.webmentions.push("wm-1");
+    state.webmentions.push("wm-1");
+    logEvent("WEBMENTION \u540c\u4e00 (source,target) \u7b2c\u4e8c\u6b21 \u2014 \u5e94\u66f4\u65b0\u72b6\u6001\u800c\u4e0d\u662f\u65b0\u589e\uff08BR-09 / \u7ea6\u675f 9\uff09");
+  });
+
+  add("\u6309 (source,target) \u5e42\u7b49\u53bb\u91cd", "webmention-idempotent", function(){
+    state.webmentions = ["wm-1"];
+    logEvent("WEBMENTION \u53bb\u91cd\u540e\u4ecd\u4e3a 1 \u6761 \u2014 \u7f51\u7edc\u91cd\u8bd5\u662f\u5e38\u6001");
+  });
+}
+
+function checkInvariants(){
+  var inv = {};
+  inv["BR-01"] = state.canonical_count !== 1;
+  inv["BR-04"] = state.rename === "silent";
+  inv["BR-06"] = state.unpublish === "404";
+  inv["BR-07"] = state.indexed.indexOf("\u9884\u89c8\u7248") >= 0 || (!isVisible() && state.indexed.length > 0);
+  inv["BR-11"] = state.anonymous;
+  inv["BR-14"] = state.post.status === "DRAFT" && state.indexed.length > 0;
+  inv["BR-09"] = state.webmentions.length !== new Set(state.webmentions).size;
+  return inv;
+}
+
+logEvent("P-31 \u5c31\u7eea\uff1aDRAFT\uff0csitemap/feed/\u641c\u7d22\u5747\u4e0d\u542b\u5b83");
+paint();
+})();
+</script>
+</body>
+</html>
