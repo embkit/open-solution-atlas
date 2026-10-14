@@ -1,0 +1,14 @@
+{
+  "title": "工序前置实验室 — Routing-precedence lab",
+  "kind": "invariant-lab",
+  "summary": "工序不能跳过前序，车间物料批次不会为负，阻塞性检验闸门由流程强制，成品必须有完整谱系，OEE 只从已校验状态算出。",
+  "entry": "index.html",
+  "demonstrates": [
+    "BR-02",
+    "BR-04",
+    "BR-05",
+    "BR-06",
+    "BR-09",
+    "ADR-0002"
+  ]
+}

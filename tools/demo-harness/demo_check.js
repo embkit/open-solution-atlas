@@ -280,5 +280,156 @@ if (slug.indexOf("enterprise-bi") >= 0) {
     d.text("violations").indexOf("BR-08") >= 0);
 }
 
+if (slug.indexOf("iam-platform") >= 0) {
+  // Every control here is one an operator is under pressure to wave through.
+  // Each must refuse, and the refusal must be a policy decision with a reason.
+  check("starts with no violation", d.text("violations").indexOf("sev-1") < 0);
+
+  // an elevation with a lifetime, and the auto-revoke that follows from it
+  d.act("elevate-1h");
+  check("a time-limited elevation holds every invariant",
+    d.text("violations").indexOf("sev-1") < 0);
+  d.act("advance-time");
+  check("the elevation is auto-revoked at expiry",
+    d.text("elev").indexOf("\u65e0") >= 0);
+
+  // an elevation with no lifetime is illegal
+  d.act("elevate-open");
+  check("an open-ended elevation trips BR-05",
+    d.text("violations").indexOf("BR-05") >= 0);
+
+  // segregation of duties, caught at write time
+  d.act("grant-conflict");
+  check("a conflicting role pair trips BR-03",
+    d.text("violations").indexOf("BR-03") >= 0);
+  d.act("grant-with-exception");
+  check("a recorded exception clears BR-03",
+    d.text("violations").indexOf("BR-03") < 0);
+
+  // deny-overrides
+  d.act("add-deny");
+  d.act("evaluate");
+  check("deny wins even with permits present",
+    d.text("decisionNote").indexOf("deny") >= 0);
+  d.act("evaluate-first-match");
+  check("first-match semantics let a permit through past a deny",
+    d.text("violations").indexOf("BR-14") >= 0);
+
+  // a cross-realm read is impossible, not filtered
+  d.act("read-cross-realm");
+  check("reading another realm trips BR-07",
+    d.text("violations").indexOf("BR-07") >= 0);
+
+  // a federated subject has no local credential
+  d.act("set-local-password");
+  check("a local password on a federated subject trips BR-15",
+    d.text("violations").indexOf("BR-15") >= 0);
+
+  // overdue access review
+  d.act("advance-time");
+  d.act("advance-time");
+  check("an overdue access review trips BR-04",
+    d.text("violations").indexOf("BR-04") >= 0);
+}
+
+if (slug.indexOf("/mes/") >= 0) {
+  // Every step here is one a shop floor under schedule pressure skips. Each is
+  // refused, and the refusal is a constraint rather than a reminder.
+  check("starts with no violation", d.text("violations").indexOf("sev-1") < 0);
+
+  // routing precedence
+  d.act("start-op20");
+  check("starting an operation before its predecessor trips BR-02",
+    d.text("violations").indexOf("BR-02") >= 0);
+  d.act("finish-op10");
+  check("completing the predecessor clears BR-02",
+    d.text("violations").indexOf("BR-02") < 0);
+
+  // the blocking inspection gate
+  d.act("gate-skip");
+  check("starting with a blocking inspection outstanding trips BR-05",
+    d.text("violations").indexOf("BR-05") >= 0);
+  d.act("gate-pass");
+  check("passing the inspection clears BR-05",
+    d.text("violations").indexOf("BR-05") < 0);
+
+  // shop-floor material never goes negative
+  d.act("consume-ok");
+  check("consuming within the lot balance holds every invariant",
+    d.text("violations").indexOf("sev-1") < 0);
+  d.act("consume-over", "12");
+  check("consuming beyond the lot balance trips BR-04",
+    d.text("violations").indexOf("BR-04") >= 0);
+  check("the lot is shown negative rather than clamped",
+    d.text("material").indexOf("-") >= 0);
+  d.act("receive-lot");
+  check("receiving stock clears BR-04", d.text("violations").indexOf("BR-04") < 0);
+
+  // genealogy completeness
+  d.act("close-unit");
+  check("closing a unit without a complete genealogy trips BR-06",
+    d.text("violations").indexOf("BR-06") >= 0);
+  d.act("scan", "LOT-STEEL-88");
+  check("one component is not enough", d.text("violations").indexOf("BR-06") >= 0);
+  d.act("scan", "LOT-BOLT-14");
+  check("the dossier resolving to every key component clears BR-06",
+    d.text("violations").indexOf("BR-06") < 0);
+
+  // OEE from validated state only
+  d.act("enter-oee");
+  check("a hand-entered OEE trips BR-09",
+    d.text("violations").indexOf("BR-09") >= 0);
+}
+
+if (slug.indexOf("/tms/") >= 0) {
+  // "Get the truck out, the POD can follow" is the most ordinary sentence in
+  // this business. Each step below is refused, and the money follows the frozen
+  // snapshot rather than the current contract.
+  check("starts with no violation", d.text("violations").indexOf("sev-1") < 0);
+
+  // dispatch before the tender is accepted
+  d.act("dispatch-before-tender");
+  check("dispatching with no tender trips BR-03",
+    d.text("violations").indexOf("BR-03") >= 0);
+  d.act("tender-accept");
+  check("accepting the tender freezes the rate snapshot",
+    d.text("money").indexOf("2025-Q4") >= 0);
+  d.act("dispatch");
+  check("…and clears BR-03", d.text("violations").indexOf("BR-03") < 0);
+
+  // delivered without a captured proof
+  d.act("deliver-without-pod");
+  check("reaching DELIVERED with no POD trips BR-06",
+    d.text("violations").indexOf("BR-06") >= 0);
+  d.act("capture-pod");
+  check("capturing the POD clears BR-06",
+    d.text("violations").indexOf("BR-06") < 0);
+
+  // the invoice is priced from the frozen snapshot, not the current contract
+  d.act("publish-contract");
+  d.act("invoice-from-latest");
+  check("pricing an invoice from a newer contract trips BR-04",
+    d.text("violations").indexOf("BR-04") >= 0);
+  d.act("invoice-from-snapshot");
+  check("pricing from the snapshot clears BR-04",
+    d.text("violations").indexOf("BR-04") < 0);
+
+  // three-way match
+  d.act("invoice-mismatch");
+  check("an invoice that does not match trips BR-05",
+    d.text("violations").indexOf("BR-05") >= 0);
+  d.act("invoice-match");
+  check("a matching invoice clears BR-05",
+    d.text("violations").indexOf("BR-05") < 0);
+
+  // dangerous goods are validated, not re-implemented
+  d.act("dg-unknown");
+  check("an unknown UN number trips BR-07",
+    d.text("violations").indexOf("BR-07") >= 0);
+  d.act("dg-validate");
+  check("validating against the reference dataset clears BR-07",
+    d.text("violations").indexOf("BR-07") < 0);
+}
+
 console.log(failures ? "\nFAILURES: " + failures : "\nsemantic checks passed");
 process.exit(failures ? 1 : 0);

@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#f6f9fc">
+<title>交付凭证与费率冻结实验室 — Delivery-evidence lab</title>
+<style>
+  /* The demo carries the app's tokens inline because it must open on its own:
+     a demo that depends on the site's stylesheet cannot be opened from the
+     repository or from a file:// path. These are EmbKit's values and no others
+     — the brand indigo is LOCKED in the contract, and the neutrals are cold by
+     rule. Repeating values is how a second palette appears, so this block is
+     byte-identical across every demo and a test keeps it that way. */
+  /* The demo is light-only, and the site and the demo share one theme. */
+  :root{ color-scheme:light;
+    --page:#f6f9fc; --surface:#ffffff; --surface-2:#fafbfd; --surface-3:#eef2f7;
+    --line:#e8edf3; --line-strong:#d3dae3;
+    --navy:#0a2540; --text:#0a2540; --text-2:#425466; --text-3:#5f6b79;
+    --primary:#4f46e5; --primary-hover:#4338ca; --primary-active:#3730a3;
+    --primary-tint:#eef2ff; --primary-ring:rgba(79,70,229,.28); --on-primary:#ffffff;
+    --ok:#0e7c5a; --ok-soft:#dff5ec;
+    --warn:#8a5409; --warn-soft:#fdf1dc;
+    --danger:#c2373c; --danger-soft:#fdeaeb;
+    --r-sm:6px; --r-md:8px; --r-lg:10px; --r-xl:12px; --r-2xl:14px; --r-full:999px;
+    --shadow-card:0 1px 2px rgba(15,23,42,.04), 0 8px 24px rgba(15,23,42,.06);
+    --shadow-pop:0 12px 32px rgba(15,23,42,.12);
+    --sans:"Inter","MiSans","HarmonyOS Sans SC","PingFang SC","Microsoft YaHei",-apple-system,"Segoe UI",sans-serif;
+    --mono:ui-monospace,"SF Mono","Cascadia Mono",Menlo,Consolas,monospace;
+    /* aliases the demo bodies already use */
+    --vellum:var(--page); --vellum-2:var(--surface-3); --ink:var(--text);
+    --muted:var(--text-3); --rule:var(--line); --rule-strong:var(--line-strong);
+    --draft:var(--primary); --draft-soft:var(--primary-tint);
+    --accent:var(--primary); --accent-soft:var(--primary-tint); --link:var(--primary);
+    --revise:var(--danger); --revise-soft:var(--danger-soft);
+    --bad:var(--danger); --bad-soft:var(--danger-soft);
+    --bg:var(--page); --elev:var(--surface); --fg:var(--text);
+    --border:var(--line); --border-strong:var(--line-strong);
+  }
+  *{box-sizing:border-box}
+  /* An identifier is one token: `FR-018` was breaking after the hyphen in the
+     narrow ID column, which stops it reading as an identifier. Scoped to table
+     cells so the long paths in the source note can still wrap. */
+  td code, th code { white-space: nowrap; }
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:13px;line-height:1.6}
+  .wrap{max-width:1200px;margin:0 auto;padding:1.4rem 1.1rem 4rem}
+  header{border-bottom:1px solid var(--rule-strong);padding-bottom:.9rem;margin-bottom:1.2rem}
+  h1{font-family:var(--sans);font-size:20px;font-weight:600;line-height:1.35;letter-spacing:-.015em;margin:0 0 6px}
+  .sub{color:var(--muted);font-size:.86rem;margin:0;max-width:80ch;line-height:1.6}
+  .grid{display:grid;grid-template-columns:300px minmax(0,1fr) 290px;gap:var(--sp-3,12px);align-items:start}
+  @media (max-width:960px){.grid{grid-template-columns:1fr}}
+  .panel{padding:20px;background:var(--surface);border:1px solid var(--line);
+    border-radius:var(--r-xl);box-shadow:var(--shadow-card);margin-bottom:12px}
+  .panel h2{font:600 12px/1.5 var(--mono);letter-spacing:.06em;color:var(--muted);
+    margin:0 0 .6rem;border-bottom:1px solid var(--rule);padding-bottom:.35rem}
+  .panel h3{font-size:.95rem;margin:1rem 0 .35rem;font-weight:600}
+  button{font:500 12px/1 var(--mono);cursor:pointer;background:var(--bg);color:var(--fg);
+    border:1px solid var(--line);border-radius:var(--r-md);padding:6px 12px;margin:2px 4px 2px 0}
+  button:hover{border-color:var(--draft);color:var(--draft)}
+  button[aria-pressed="true"]{background:var(--draft);border-color:var(--draft);color:var(--vellum);font-weight:600}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  select{font:400 12px/1 var(--mono);background:var(--bg);color:var(--fg);
+    border:1px solid var(--line);border-radius:var(--r-md);padding:6px 10px;width:100%}
+  code{font-family:var(--mono);font-size:.76rem}
+  .kv{display:flex;gap:.5rem;font:400 12.5px/1.7 var(--mono);margin:.18rem 0}
+  .kv b{color:var(--muted);font-weight:600;min-width:5.2rem}
+  .log{max-height:230px;overflow:auto;font-family:var(--mono);font-size:11px;line-height:1.7;
+    background:var(--surface-3);border:1px solid var(--line);border-radius:var(--r-md);padding:10px 12px}
+  .log div{padding:.1rem 0;border-bottom:1px solid var(--rule)}
+  .log div:last-child{border:0}
+  /* Red means violated. The passing state is a quiet note, not a green banner:
+     a second semantic colour for "all clear" trains a reader to skim past the
+     states that matter. */
+  .viol{background:var(--danger-soft);border:1px solid var(--danger);
+    border-radius:var(--r-md);padding:10px 12px;font-size:12px;line-height:1.6;margin:8px 0;color:var(--danger)}
+  .ok{background:var(--surface-3);border:1px solid var(--line);
+    border-radius:var(--r-md);padding:10px 12px;font-size:12px;line-height:1.6;margin:8px 0;color:var(--text-3)}
+  .sig{display:inline-block;font:700 10.5px/1.4 var(--mono);letter-spacing:.03em;
+    padding:.1rem .32rem;border:1px solid currentColor;vertical-align:.08em}
+  table{width:100%;border-collapse:collapse;font:400 12px/1.6 var(--mono)}
+  th,td{text-align:left;padding:.32rem .4rem;border-bottom:1px solid var(--rule);vertical-align:top}
+  th{color:var(--muted);font-size:11px;letter-spacing:.05em;font-weight:600}
+  .note{font-size:12px;color:var(--muted);margin:.5rem 0 0;line-height:1.6}
+  .def{font-size:12.5px;line-height:1.6;margin:.35rem 0}
+  details{margin:.5rem 0}
+  summary{cursor:pointer;font:500 12px/1.5 var(--mono);color:var(--muted)}
+  a{color:var(--link)}
+  .src{font:400 11.5px/1.7 var(--mono);color:var(--muted);margin-top:1.4rem;
+    border-top:1px solid var(--rule-strong);padding-top:.8rem;max-width:100ch}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>交付凭证与费率冻结实验室 <span style="font-weight:400;color:var(--muted)">Delivery-evidence lab</span></h1>
+  <p class="sub">
+    本页演示 <code>packs/manufacturing/tms</code> 的核心决策（ADR-0004/0005）：
+    <strong>计划与实际是两个状态，而钱跟着被冻结的那一刻走</strong>。承运人接受投标后
+    费率快照被冻结（BR-04），腿次只有在存在投标接受后才能发运（BR-03），
+    到达 <code>DELIVERED</code> 必须有捕获的签收凭证（BR-06），运费发票三方匹配（BR-05），
+    危险品<strong>只做校验、绝不重新实现法规</strong>（BR-07）。
+    需要这个 demo 的理由：<strong>「先把车发出去，签收单回头补」是这门生意里最日常的一句话。</strong>
+  </p>
+</header>
+<div class="grid">
+
+<section class="panel">
+  <h2>运输订单 · the transport order</h2>
+  <div id="order"></div>
+  <h3>腿次</h3>
+  <div id="leg"></div>
+</section>
+
+<section class="panel">
+  <h2>你可以做什么 · what you may do</h2>
+  <div id="acts"></div>
+  <h3>费率与发票</h3>
+  <div id="money"></div>
+  <h3>危险品</h3>
+  <div id="dg"></div>
+</section>
+
+<section class="panel">
+  <h2>零容忍不变量</h2>
+  <div id="violations"></div>
+  <p class="note">
+    本包 12 个不可交易不变量中的 5 个，取自其存储强制约束。第 7 条最容易被做错方向：
+    危险品是<strong>对照参考数据集校验</strong>，未知 UN 号被拒绝——
+    <b>把法规搬进代码，就是把一份会被修订的文本冻结成缺陷</b>。
+  </p>
+  <table>
+    <thead><tr><th>ID</th><th>要求</th><th>状态</th></tr></thead>
+    <tbody id="invTable"></tbody>
+  </table>
+</section>
+
+</div>
+
+<section class="panel">
+  <h2>执行事件轨迹 · append-only</h2>
+  <div class="log" id="log"></div>
+  <p class="note">
+    每个执行事件都带<strong>来源与摄取时间</strong>，且只追加。
+    计划行永远不会被一条实际事件就地改写（约束 1）。
+  </p>
+</section>
+<p class="src">内容来源：<code>01-business/business-rules.md</code>（BR-03/04/05/06/07）、<code>04-architecture/adr/0004-*.md</code>、<code>0005-*.md</code>、<code>05-data/logical-data-model.md</code>（约束 1/3/4/6/7/11）。本页为手写演示：它编码本包的语义，不声称符合任何 profile。危险品规则（ADR/IMDG/IATA/JT/T 617 等）在包中<b>是指称</b>，本页不复制其条文。<code>verification: unverified</code>。</p>
+</div>
+<script>
+(function(){
+"use strict";
+/* ---- shared plumbing (assembled; the semantics below are this pack's) ---- */
+var INVARIANTS = [{"id": "BR-03", "what": "腿次只有在存在承运人投标接受后才能发运"}, {"id": "BR-04", "what": "投标接受冻结费率快照；发票绝不以新于快照的合同版本计价"}, {"id": "BR-05", "what": "运费发票经三方匹配（订单 / 费率快照 / 交付事实）才可付"}, {"id": "BR-06", "what": "腿次只有捕获到签收凭证才能到达 DELIVERED"}, {"id": "BR-07", "what": "危险品对照参考数据集校验；未知 UN 号被拒绝，法规不被重新实现"}];
+function el(id){ return document.getElementById(id); }
+function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function bt(label, action, field){
+  var b = document.createElement("button");
+  b.type = "button"; b.textContent = label;
+  b.setAttribute("data-action", action);
+  if (field) b.setAttribute("data-field", field);
+  return b;
+}
+var EVENT_LOG = [];
+function paint(){
+  render();
+  var inv = checkInvariants();
+  var box = el("violations"); box.innerHTML = "";
+  var broken = INVARIANTS.filter(function(i){ return inv[i.id]; });
+  if (!broken.length) {
+    var ok = document.createElement("div");
+    ok.className = "ok";
+    ok.textContent = "\u2713 当前配置未违反任何零容忍不变量";
+    box.appendChild(ok);
+  } else {
+    broken.forEach(function(i){
+      var d = document.createElement("div");
+      d.className = "viol";
+      d.innerHTML = '<span class="sig">sev-1</span> <code>' + i.id + "</code> "
+        + esc(i.what) + " \u2014 已记录。真实系统里这是一个会 <strong>失败构建</strong> 的缺陷。";
+      box.appendChild(d);
+    });
+  }
+  var tb = el("invTable"); tb.innerHTML = "";
+  INVARIANTS.forEach(function(i){
+    var tr = document.createElement("tr");
+    tr.innerHTML = "<td><code>" + i.id + "</code></td><td>" + esc(i.what) + "</td><td>"
+      + (inv[i.id] ? '<span class="sig" style="color:var(--danger)">violated</span>'
+                   : '<span class="sig" style="color:var(--muted)">held</span>') + "</td>";
+    tb.appendChild(tr);
+  });
+  var lg = el("log"); lg.innerHTML = "";
+  EVENT_LOG.slice().reverse().forEach(function(t){
+    var d = document.createElement("div"); d.textContent = t; lg.appendChild(d);
+  });
+}
+function logEvent(text){
+  EVENT_LOG.push(text);
+  if (EVENT_LOG.length > 80) EVENT_LOG.shift();
+  paint();
+}
+function render(){}
+function checkInvariants(){ return {}; }
+
+var state = {
+  order: {id: "TO-88121", material: "\u94a2\u5377", qty: 1200},
+  leg: {id: "LEG-3", state: "PLANNED", tender: null, snapshot: null, pod: null},
+  contract: "2025-Q4",
+  invoice: null,
+  dg: {un: "UN1993", reference: true}
+};
+
+function kv(label, value, warn){
+  var d = document.createElement("div");
+  d.className = "kv";
+  d.innerHTML = "<b>" + esc(label) + "</b><span"
+    + (warn ? ' style="color:var(--danger);font-weight:600"' : "") + ">"
+    + esc(String(value)) + "</span>";
+  return d;
+}
+
+function render(){
+  var o = el("order"); o.innerHTML = "";
+  o.appendChild(kv("\u8ba2\u5355", state.order.id));
+  o.appendChild(kv("\u8d27\u7269", state.order.material));
+  o.appendChild(kv("\u6570\u91cf", state.order.qty + " kg"));
+
+  var l = el("leg"); l.innerHTML = "";
+  l.appendChild(kv("\u817f\u6b21", state.leg.id));
+  l.appendChild(kv("\u72b6\u6001", state.leg.state,
+    state.leg.state === "DELIVERED" && !state.leg.pod));
+  l.appendChild(kv("\u6295\u6807", state.leg.tender ? state.leg.tender.result : "\u65e0",
+    state.leg.state === "DISPATCHED" && !state.leg.tender));
+  l.appendChild(kv("\u7b7e\u6536\u51ed\u8bc1", state.leg.pod ? state.leg.pod.type + " " + state.leg.pod.ref : "\u65e0",
+    state.leg.state === "DELIVERED" && !state.leg.pod));
+
+  var m = el("money"); m.innerHTML = "";
+  m.appendChild(kv("\u5408\u540c\u7248\u672c\uff08\u5f53\u524d\uff09", state.contract));
+  m.appendChild(kv("\u8d39\u7387\u5feb\u7167", state.leg.snapshot
+    ? state.leg.snapshot.contract + " / " + state.leg.snapshot.rate : "\u5c1a\u672a\u51bb\u7ed3"));
+  if (state.invoice) {
+    m.appendChild(kv("\u53d1\u7968\u53d6\u4ef7", state.invoice.pricedFrom,
+      state.invoice.pricedFrom !== (state.leg.snapshot && state.leg.snapshot.contract)));
+    m.appendChild(kv("\u4e09\u65b9\u5339\u914d", state.invoice.matched ? "\u4e00\u81f4" : "\u4e0d\u4e00\u81f4",
+      !state.invoice.matched));
+  }
+
+  var g = el("dg"); g.innerHTML = "";
+  g.appendChild(kv("UN \u53f7", state.dg.un, !state.dg.reference));
+  g.appendChild(kv("\u53c2\u8003\u6570\u636e\u96c6", state.dg.reference ? "\u547d\u4e2d" : "\u672a\u77e5\uff08\u62d2\u7edd\uff09",
+    !state.dg.reference));
+
+  renderActs();
+}
+
+function renderActs(){
+  var box = el("acts"); box.innerHTML = "";
+  function add(label, action, handler){
+    var b = bt(label, action);
+    b.onclick = handler;
+    box.appendChild(b);
+  }
+
+  add("\u53d1\u8fd0\uff08\u5c1a\u672a\u63a5\u53d7\u6295\u6807\uff09", "dispatch-before-tender", function(){
+    state.leg.state = "DISPATCHED";
+    logEvent("LEG DISPATCHED \u800c\u65e0 TENDER \u63a5\u53d7\uff08BR-03 / \u7ea6\u675f 3\uff09");
+  });
+
+  add("\u63a5\u53d7\u6295\u6807", "tender-accept", function(){
+    state.leg.tender = {carrier: "\u534e\u8fd0\u7269\u6d41", result: "accepted"};
+    state.leg.snapshot = {contract: state.contract, rate: "\uffe53.20/kg"};
+    logEvent("TENDER accepted \u2014 RATE_SNAPSHOT \u51bb\u7ed3\u4e8e " + state.contract
+      + " / \uffe53.20/kg\uff08BR-04 / \u7ea6\u675f 4\uff09");
+  });
+
+  add("\u53d1\u8fd0", "dispatch", function(){
+    if (!state.leg.tender) { logEvent("DISPATCH \u88ab\u62d2\uff1a\u6ca1\u6709\u6295\u6807\u63a5\u53d7"); return; }
+    state.leg.state = "DISPATCHED";
+    logEvent("LEG DISPATCHED \u2014 \u6295\u6807\u5df2\u63a5\u53d7");
+  });
+
+  add("\u6807\u8bb0\u5df2\u9001\u8fbe\uff08\u65e0\u7b7e\u6536\u51ed\u8bc1\uff09", "deliver-without-pod", function(){
+    state.leg.state = "DELIVERED";
+    logEvent("LEG DELIVERED \u800c POD = NULL\uff08BR-06 / \u7ea6\u675f 6\uff09");
+  });
+
+  add("\u6355\u83b7\u7b7e\u6536\u51ed\u8bc1", "capture-pod", function(){
+    state.leg.pod = {type: "e-POD", ref: "POD-5512"};
+    logEvent("POD e-POD/POD-5512 \u5df2\u6355\u83b7 \u2014 \u7b7e\u540d + \u7167\u7247\u5b58\u8bc1");
+  });
+
+  add("\u53d1\u5e03\u65b0\u5408\u540c\u7248\u672c", "publish-contract", function(){
+    state.contract = "2026-Q1";
+    logEvent("CONTRACT 2026-Q1 \u751f\u6548 \u2014 \u5df2\u51bb\u7ed3\u7684\u5feb\u7167\u4e0d\u53d8");
+  });
+
+  add("\u6309\u6700\u65b0\u5408\u540c\u7ed9\u53d1\u7968\u8ba1\u4ef7", "invoice-from-latest", function(){
+    state.invoice = {pricedFrom: state.contract, matched: true};
+    logEvent("INVOICE \u4ee5 " + state.contract
+      + " \u8ba1\u4ef7 \u2014 \u65b0\u4e8e\u5feb\u7167\u7248\u672c\uff08BR-04 \u8fdd\u53cd\uff09");
+  });
+
+  add("\u6309\u5feb\u7167\u7ed9\u53d1\u7968\u8ba1\u4ef7", "invoice-from-snapshot", function(){
+    state.invoice = {pricedFrom: state.leg.snapshot ? state.leg.snapshot.contract : state.contract,
+      matched: state.invoice ? state.invoice.matched : false};
+    logEvent("INVOICE \u4ee5\u5feb\u7167\u7248\u672c\u8ba1\u4ef7");
+  });
+
+  add("\u53d1\u7968\u91d1\u989d\u4e0d\u7b26", "invoice-mismatch", function(){
+    state.invoice = {pricedFrom: state.leg.snapshot ? state.leg.snapshot.contract : state.contract,
+      matched: false};
+    logEvent("\u4e09\u65b9\u5339\u914d\u5931\u8d25\uff1a\u8ba2\u5355 / \u5feb\u7167 / POD \u5bf9\u4e0d\u4e0a\uff08BR-05\uff09");
+  });
+
+  add("\u4e09\u65b9\u5339\u914d\u901a\u8fc7", "invoice-match", function(){
+    state.invoice = {pricedFrom: state.leg.snapshot ? state.leg.snapshot.contract : state.contract,
+      matched: true};
+    logEvent("\u4e09\u65b9\u5339\u914d\u901a\u8fc7 \u2014 \u53d1\u7968\u53ef\u4ed8");
+  });
+
+  add("\u5f55\u5165\u672a\u77e5 UN \u53f7", "dg-unknown", function(){
+    state.dg = {un: "UN9999", reference: false};
+    logEvent("DG \u6e05\u5355\u884c UN9999 \u2014 \u53c2\u8003\u6570\u636e\u96c6\u672a\u547d\u4e2d\uff08BR-07 / \u7ea6\u675f 7\uff09");
+  });
+
+  add("\u6821\u9a8c\u5df2\u77e5 UN \u53f7", "dg-validate", function(){
+    state.dg = {un: "UN1993", reference: true};
+    logEvent("DG \u6821\u9a8c\u547d\u4e2d\u53c2\u8003\u6570\u636e\u96c6 \u2014 \u6821\u9a8c\u800c\u975e\u91cd\u65b0\u5b9e\u73b0\u6cd5\u89c4");
+  });
+}
+
+function checkInvariants(){
+  var inv = {};
+  inv["BR-03"] = state.leg.state === "DISPATCHED" && !state.leg.tender;
+  inv["BR-04"] = !!(state.invoice && state.leg.snapshot
+    && state.invoice.pricedFrom !== state.leg.snapshot.contract);
+  inv["BR-05"] = !!(state.invoice && !state.invoice.matched);
+  inv["BR-06"] = state.leg.state === "DELIVERED" && !state.leg.pod;
+  inv["BR-07"] = !state.dg.reference;
+  return inv;
+}
+
+logEvent("TO-88121 \u5df2\u521b\u5efa\uff1a\u817f\u6b21 LEG-3 PLANNED\uff0c\u65e0\u6295\u6807\u63a5\u53d7");
+paint();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+{
+  "title": "授权决策实验室 — Policy-decision lab",
+  "kind": "decision-lab",
+  "summary": "提升限时并自动回收，deny 优先于 permit，角色冲突在写入时发现，跨 realm 读取不可能，联邦主体没有本地口令。",
+  "entry": "index.html",
+  "demonstrates": [
+    "BR-03",
+    "BR-04",
+    "BR-05",
+    "BR-07",
+    "BR-14",
+    "BR-15"
+  ]
+}
