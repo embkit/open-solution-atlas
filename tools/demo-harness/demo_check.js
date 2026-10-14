@@ -134,5 +134,55 @@ if (slug.indexOf("data-exchange") >= 0) {
     d.text("violations").indexOf("BR-07") < 0);
 }
 
+if (slug.indexOf("/wms/") >= 0) {
+  // Stock is a fold of the event stream, not a number you can edit. Two
+  // different repairs, and conflating them is the point of the demo: a wrong
+  // *fact* is reversed by a compensating event; a wrong *projection* is rebuilt
+  // from the stream. Neither is an UPDATE.
+  check("starts with no violation", d.text("violations").indexOf("sev-1") < 0);
+
+  // the legitimate path holds every invariant
+  d.act("receive");
+  d.act("reserve-ok");
+  d.act("deduct");
+  check("receiving, reserving and picking within availability holds everything",
+    d.text("violations").indexOf("sev-1") < 0);
+
+  // a reservation with no lifetime
+  d.act("reserve-noexp");
+  check("a reservation with no expiry trips BR-05",
+    d.text("violations").indexOf("BR-05") >= 0);
+  d.act("release");
+  check("expiry release clears BR-05", d.text("violations").indexOf("BR-05") < 0);
+
+  // a change that bypasses the event stream
+  d.act("edit-direct");
+  check("editing the quantity off-stream trips BR-14",
+    d.text("violations").indexOf("BR-14") >= 0);
+  check("…and ADR-0002", d.text("violations").indexOf("ADR-0002") >= 0);
+  check("the projection is shown to diverge from the fold",
+    d.text("foldNote").indexOf("偏离") >= 0);
+  d.act("rebuild");
+  check("rebuilding the projection from the stream clears it",
+    d.text("violations").indexOf("BR-14") < 0);
+
+  // a deduction beyond available
+  d.act("deduct-over");
+  check("a deduction beyond available trips BR-02",
+    d.text("violations").indexOf("BR-02") >= 0);
+  check("…and BR-01, because the buckets no longer reconcile",
+    d.text("violations").indexOf("BR-01") >= 0);
+  check("the bucket is shown negative, not clamped to zero",
+    d.text("buckets").indexOf("-") >= 0);
+
+  // the fact is wrong, so only a compensating event reverses it
+  d.els.reason.value = "mis-pick";
+  d.act("compensate");
+  check("a compensating event with a reason clears BR-02",
+    d.text("violations").indexOf("BR-02") < 0);
+  check("…and the buckets reconcile again",
+    d.text("violations").indexOf("BR-01") < 0);
+}
+
 console.log(failures ? "\nFAILURES: " + failures : "\nsemantic checks passed");
 process.exit(failures ? 1 : 0);
