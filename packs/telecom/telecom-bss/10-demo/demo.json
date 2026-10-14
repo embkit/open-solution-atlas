@@ -1,0 +1,15 @@
+{
+  "title": "计费规则版本实验室 — Rule-version lab",
+  "kind": "version-lab",
+  "summary": "每一分钱都要能走回它被算出时用的规则版本：事件不可变、发票可重生、账期按各自期间切分、对账双向、订单链双向可追。",
+  "entry": "index.html",
+  "demonstrates": [
+    "BR-04",
+    "BR-08",
+    "BR-09",
+    "BR-11",
+    "BR-12",
+    "ADR-0003",
+    "ADR-0005"
+  ]
+}
