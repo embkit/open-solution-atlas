@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#f6f9fc">
+<title>工单骨架与升级实验室 — Ticket-backbone lab</title>
+<style>
+  /* The demo carries the app's tokens inline because it must open on its own:
+     a demo that depends on the site's stylesheet cannot be opened from the
+     repository or from a file:// path. These are EmbKit's values and no others
+     — the brand indigo is LOCKED in the contract, and the neutrals are cold by
+     rule. Repeating values is how a second palette appears, so this block is
+     byte-identical across every demo and a test keeps it that way. */
+  /* The demo is light-only, and the site and the demo share one theme. */
+  :root{ color-scheme:light;
+    --page:#f6f9fc; --surface:#ffffff; --surface-2:#fafbfd; --surface-3:#eef2f7;
+    --line:#e8edf3; --line-strong:#d3dae3;
+    --navy:#0a2540; --text:#0a2540; --text-2:#425466; --text-3:#5f6b79;
+    --primary:#4f46e5; --primary-hover:#4338ca; --primary-active:#3730a3;
+    --primary-tint:#eef2ff; --primary-ring:rgba(79,70,229,.28); --on-primary:#ffffff;
+    --ok:#0e7c5a; --ok-soft:#dff5ec;
+    --warn:#8a5409; --warn-soft:#fdf1dc;
+    --danger:#c2373c; --danger-soft:#fdeaeb;
+    --r-sm:6px; --r-md:8px; --r-lg:10px; --r-xl:12px; --r-2xl:14px; --r-full:999px;
+    --shadow-card:0 1px 2px rgba(15,23,42,.04), 0 8px 24px rgba(15,23,42,.06);
+    --shadow-pop:0 12px 32px rgba(15,23,42,.12);
+    --sans:"Inter","MiSans","HarmonyOS Sans SC","PingFang SC","Microsoft YaHei",-apple-system,"Segoe UI",sans-serif;
+    --mono:ui-monospace,"SF Mono","Cascadia Mono",Menlo,Consolas,monospace;
+    /* aliases the demo bodies already use */
+    --vellum:var(--page); --vellum-2:var(--surface-3); --ink:var(--text);
+    --muted:var(--text-3); --rule:var(--line); --rule-strong:var(--line-strong);
+    --draft:var(--primary); --draft-soft:var(--primary-tint);
+    --accent:var(--primary); --accent-soft:var(--primary-tint); --link:var(--primary);
+    --revise:var(--danger); --revise-soft:var(--danger-soft);
+    --bad:var(--danger); --bad-soft:var(--danger-soft);
+    --bg:var(--page); --elev:var(--surface); --fg:var(--text);
+    --border:var(--line); --border-strong:var(--line-strong);
+  }
+  *{box-sizing:border-box}
+  /* An identifier is one token: `FR-018` was breaking after the hyphen in the
+     narrow ID column, which stops it reading as an identifier. Scoped to table
+     cells so the long paths in the source note can still wrap. */
+  td code, th code { white-space: nowrap; }
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:13px;line-height:1.6}
+  .wrap{max-width:1200px;margin:0 auto;padding:1.4rem 1.1rem 4rem}
+  header{border-bottom:1px solid var(--rule-strong);padding-bottom:.9rem;margin-bottom:1.2rem}
+  h1{font-family:var(--sans);font-size:20px;font-weight:600;line-height:1.35;letter-spacing:-.015em;margin:0 0 6px}
+  .sub{color:var(--muted);font-size:.86rem;margin:0;max-width:80ch;line-height:1.6}
+  .grid{display:grid;grid-template-columns:300px minmax(0,1fr) 290px;gap:var(--sp-3,12px);align-items:start}
+  @media (max-width:960px){.grid{grid-template-columns:1fr}}
+  .panel{padding:20px;background:var(--surface);border:1px solid var(--line);
+    border-radius:var(--r-xl);box-shadow:var(--shadow-card);margin-bottom:12px}
+  .panel h2{font:600 12px/1.5 var(--mono);letter-spacing:.06em;color:var(--muted);
+    margin:0 0 .6rem;border-bottom:1px solid var(--rule);padding-bottom:.35rem}
+  .panel h3{font-size:.95rem;margin:1rem 0 .35rem;font-weight:600}
+  button{font:500 12px/1 var(--mono);cursor:pointer;background:var(--bg);color:var(--fg);
+    border:1px solid var(--line);border-radius:var(--r-md);padding:6px 12px;margin:2px 4px 2px 0}
+  button:hover{border-color:var(--draft);color:var(--draft)}
+  button[aria-pressed="true"]{background:var(--draft);border-color:var(--draft);color:var(--vellum);font-weight:600}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  select{font:400 12px/1 var(--mono);background:var(--bg);color:var(--fg);
+    border:1px solid var(--line);border-radius:var(--r-md);padding:6px 10px;width:100%}
+  code{font-family:var(--mono);font-size:.76rem}
+  .kv{display:flex;gap:.5rem;font:400 12.5px/1.7 var(--mono);margin:.18rem 0}
+  .kv b{color:var(--muted);font-weight:600;min-width:5.2rem}
+  .log{max-height:230px;overflow:auto;font-family:var(--mono);font-size:11px;line-height:1.7;
+    background:var(--surface-3);border:1px solid var(--line);border-radius:var(--r-md);padding:10px 12px}
+  .log div{padding:.1rem 0;border-bottom:1px solid var(--rule)}
+  .log div:last-child{border:0}
+  /* Red means violated. The passing state is a quiet note, not a green banner:
+     a second semantic colour for "all clear" trains a reader to skim past the
+     states that matter. */
+  .viol{background:var(--danger-soft);border:1px solid var(--danger);
+    border-radius:var(--r-md);padding:10px 12px;font-size:12px;line-height:1.6;margin:8px 0;color:var(--danger)}
+  .ok{background:var(--surface-3);border:1px solid var(--line);
+    border-radius:var(--r-md);padding:10px 12px;font-size:12px;line-height:1.6;margin:8px 0;color:var(--text-3)}
+  .sig{display:inline-block;font:700 10.5px/1.4 var(--mono);letter-spacing:.03em;
+    padding:.1rem .32rem;border:1px solid currentColor;vertical-align:.08em}
+  table{width:100%;border-collapse:collapse;font:400 12px/1.6 var(--mono)}
+  th,td{text-align:left;padding:.32rem .4rem;border-bottom:1px solid var(--rule);vertical-align:top}
+  th{color:var(--muted);font-size:11px;letter-spacing:.05em;font-weight:600}
+  .note{font-size:12px;color:var(--muted);margin:.5rem 0 0;line-height:1.6}
+  .def{font-size:12.5px;line-height:1.6;margin:.35rem 0}
+  details{margin:.5rem 0}
+  summary{cursor:pointer;font:500 12px/1.5 var(--mono);color:var(--muted)}
+  a{color:var(--link)}
+  .src{font:400 11.5px/1.7 var(--mono);color:var(--muted);margin-top:1.4rem;
+    border-top:1px solid var(--rule-strong);padding-top:.8rem;max-width:100ch}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>工单骨架与升级实验室 <span style="font-weight:400;color:var(--muted)">Ticket-backbone lab</span></h1>
+  <p class="sub">
+    本页演示 <code>packs/horizontal/itsm-helpdesk</code> 的核心决策（ADR-0002/0003）：
+    <strong>工单历史只追加，而优先级与关闭都是算出来的</strong>。优先级由影响 × 紧急度
+    经矩阵得出（BR-03），历史只追加（BR-07），关闭需要解决码与请求人确认（BR-15），
+    服务请求必须落到已发布的服务目录项（BR-12），自动化规则是确定且带版本的（BR-14），
+    而<strong>未登记发件人不能接触 CMDB 内容</strong>（BR-11）。
+    需要这个 demo 的理由：<strong>「先关掉，回头补」和「先按 P1 挂上」，
+    都会让 MTTR 这个数字开始说谎。</strong>
+  </p>
+</header>
+<div class="grid">
+
+<section class="panel">
+  <h2>工单 · the ticket</h2>
+  <div id="ticket"></div>
+  <h3>历史 · append-only</h3>
+  <div id="history"></div>
+</section>
+
+<section class="panel">
+  <h2>你可以做什么 · what you may do</h2>
+  <div id="acts"></div>
+  <h3>规则与流入口 · rules &amp; intake</h3>
+  <div id="rules"></div>
+</section>
+
+<section class="panel">
+  <h2>零容忍不变量</h2>
+  <div id="violations"></div>
+  <p class="note">
+    本包 16 个不可交易不变量中的 6 个，取自其存储强制约束。第 15 条最容易被当成
+    「邮件网关的细节」：<strong>隔离中的消息永不向下游投递，而鉴权结论先于对其载荷的任何解析</strong>——
+    顺序反了，解析过的载荷就已经发生过一次了。
+  </p>
+  <table>
+    <thead><tr><th>ID</th><th>要求</th><th>状态</th></tr></thead>
+    <tbody id="invTable"></tbody>
+  </table>
+</section>
+
+</div>
+
+<section class="panel">
+  <h2>事件轨迹 · append-only</h2>
+  <div class="log" id="log"></div>
+  <p class="note">
+    SLA 时钟是历史事件的 <strong>fold</strong>，不是一个可以重置的字段。
+  </p>
+</section>
+<p class="src">内容来源：<code>01-business/business-rules.md</code>（BR-03/07/11/12/14/15）、<code>04-architecture/adr/0002-*.md</code>、<code>0003-*.md</code>、<code>05-data/logical-data-model.md</code>（约束 1/3/8/10/11/12/15）。本页为手写演示：它编码本包的语义，不声称符合任何 profile。ISO/IEC 20000-1 与 ISO/IEC 27001 在本包中是<b>指称</b>；本页不复制其条款。<code>verification: unverified</code>。</p>
+</div>
+<script>
+(function(){
+"use strict";
+/* ---- shared plumbing (assembled; the semantics below are this pack's) ---- */
+var INVARIANTS = [{"id": "BR-03", "what": "优先级由影响 × 紧急度经优先级矩阵得出，不是手工挂上的"}, {"id": "BR-07", "what": "工单历史只追加：分类、指派、状态与时钟都是事件"}, {"id": "BR-15", "what": "关闭需要解决码与请求人确认——否则 MTTR 从此开始说谎"}, {"id": "BR-11", "what": "未登记发件人不能接触 CMDB 内容或受限知识"}, {"id": "BR-12", "what": "服务请求必须解析到已发布的服务目录项；定制工作退回目录流程"}, {"id": "BR-14", "what": "自动化规则确定且带版本；无版本将要触发的规则不被接受"}];
+function el(id){ return document.getElementById(id); }
+function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function bt(label, action, field){
+  var b = document.createElement("button");
+  b.type = "button"; b.textContent = label;
+  b.setAttribute("data-action", action);
+  if (field) b.setAttribute("data-field", field);
+  return b;
+}
+var EVENT_LOG = [];
+function paint(){
+  render();
+  var inv = checkInvariants();
+  var box = el("violations"); box.innerHTML = "";
+  var broken = INVARIANTS.filter(function(i){ return inv[i.id]; });
+  if (!broken.length) {
+    var ok = document.createElement("div");
+    ok.className = "ok";
+    ok.textContent = "\u2713 当前配置未违反任何零容忍不变量";
+    box.appendChild(ok);
+  } else {
+    broken.forEach(function(i){
+      var d = document.createElement("div");
+      d.className = "viol";
+      d.innerHTML = '<span class="sig">sev-1</span> <code>' + i.id + "</code> "
+        + esc(i.what) + " \u2014 已记录。真实系统里这是一个会 <strong>失败构建</strong> 的缺陷。";
+      box.appendChild(d);
+    });
+  }
+  var tb = el("invTable"); tb.innerHTML = "";
+  INVARIANTS.forEach(function(i){
+    var tr = document.createElement("tr");
+    tr.innerHTML = "<td><code>" + i.id + "</code></td><td>" + esc(i.what) + "</td><td>"
+      + (inv[i.id] ? '<span class="sig" style="color:var(--danger)">violated</span>'
+                   : '<span class="sig" style="color:var(--muted)">held</span>') + "</td>";
+    tb.appendChild(tr);
+  });
+  var lg = el("log"); lg.innerHTML = "";
+  EVENT_LOG.slice().reverse().forEach(function(t){
+    var d = document.createElement("div"); d.textContent = t; lg.appendChild(d);
+  });
+}
+function logEvent(text){
+  EVENT_LOG.push(text);
+  if (EVENT_LOG.length > 80) EVENT_LOG.shift();
+  paint();
+}
+function render(){}
+function checkInvariants(){ return {}; }
+
+var state = {
+  ticket: {id: "INC-88214", kind: "incident", impact: "high", urgency: "medium",
+    priority: "P3", state: "in progress", resolution_code: null, confirmed: false},
+  history: [{n: 1, what: "created", who: "\u8c03\u5ea6\u53f0"}],
+  history_edited: false,
+  request_source: null,       /* 'catalog' | 'bespoke' */
+  automation_version: true,
+  sender: {registered: true},
+  quarantined: false
+};
+
+function derive(){
+  var m = {"high|high": "P1", "high|medium": "P3", "medium|high": "P2", "medium|medium": "P3",
+    "low|high": "P3", "low|medium": "P4"};
+  return m[state.ticket.impact + "|" + state.ticket.urgency] || "P4";
+}
+
+function kv(label, value, warn){
+  var d = document.createElement("div");
+  d.className = "kv";
+  d.innerHTML = "<b>" + esc(label) + "</b><span"
+    + (warn ? ' style="color:var(--danger);font-weight:600"' : "") + ">"
+    + esc(String(value)) + "</span>";
+  return d;
+}
+
+function render(){
+  var t = el("ticket"); t.innerHTML = "";
+  t.appendChild(kv("\u5de5\u5355", state.ticket.id + " " + state.ticket.kind));
+  t.appendChild(kv("\u5f71\u54cd", state.ticket.impact));
+  t.appendChild(kv("\u7d27\u6025\u5ea6", state.ticket.urgency));
+  t.appendChild(kv("\u4f18\u5148\u7ea7", state.ticket.priority + "\uff08\u77e9\u9635\u5f97\u51fa " + derive() + "\uff09",
+    state.ticket.priority !== derive()));
+  t.appendChild(kv("\u72b6\u6001", state.ticket.state));
+  t.appendChild(kv("\u89e3\u51b3\u7801", state.ticket.resolution_code || "\u65e0",
+    state.ticket.state === "closed" && !state.ticket.resolution_code));
+  t.appendChild(kv("\u8bf7\u6c42\u4eba\u786e\u8ba4", state.ticket.confirmed ? "\u5df2\u786e\u8ba4" : "\u672a\u786e\u8ba4",
+    state.ticket.state === "closed" && !state.ticket.confirmed));
+
+  var h = el("history"); h.innerHTML = "";
+  state.history.forEach(function(x){
+    var row = document.createElement("div");
+    row.className = "kv";
+    row.innerHTML = "<b>#" + x.n + "</b><span>\u3010" + esc(x.what) + "\u3011" + esc(x.who) + "</span>";
+    h.appendChild(row);
+  });
+  h.appendChild(kv("\u6574\u4f53\u72b6\u6001", state.history_edited ? "\u5df2\u88ab\u5c31\u5730\u7f16\u8f91" : "\u53ea\u8ffd\u52a0",
+    state.history_edited));
+
+  var r = el("rules"); r.innerHTML = "";
+  r.appendChild(kv("\u670d\u52a1\u8bf7\u6c42\u6765\u6e90", state.request_source || "\u65e0",
+    state.request_source === "bespoke"));
+  r.appendChild(kv("\u81ea\u52a8\u5316\u89c4\u5219\u7248\u672c", state.automation_version ? "rule_id + version" : "\u65e0\u7248\u672c",
+    !state.automation_version));
+  r.appendChild(kv("\u53d1\u4ef6\u4eba", state.sender.registered ? "\u5df2\u767b\u8bb0" : "\u672a\u767b\u8bb0"));
+  r.appendChild(kv("\u6d88\u606f\u9694\u79bb", state.quarantined ? "\u5df2\u9694\u79bb" : "\u65e0", state.quarantined));
+
+  renderActs();
+}
+
+function renderActs(){
+  var box = el("acts"); box.innerHTML = "";
+  function add(label, action, handler){
+    var b = bt(label, action);
+    b.onclick = handler;
+    box.appendChild(b);
+  }
+
+  add("\u624b\u5de5\u6302 P1", "priority-manual", function(){
+    state.ticket.priority = "P1";
+    logEvent("PRIORITY P1 \u624b\u5de5\u6302\u4e0a \u2014 \u4e0d\u662f impact\u00d7urgency \u77e9\u9635\u5f97\u51fa\u7684\uff08BR-03\uff09");
+  });
+
+  add("\u6309\u5f71\u54cd\u00d7\u7d27\u6025\u5ea6\u91cd\u7b97", "priority-derive", function(){
+    state.ticket.priority = derive();
+    logEvent("PRIORITY " + derive() + " \u7531\u77e9\u9635\u5f97\u51fa\uff08P1..P4\uff09");
+  });
+
+  add("\u5c31\u5730\u4fee\u6539\u5386\u53f2\u4e8b\u4ef6", "edit-history", function(){
+    state.history[0] = {n: 1, what: "reclassified", who: "\u8c03\u5ea6\u53f0"};
+    state.history_edited = true;
+    logEvent("UPDATE ticket_event ... \u2014 TICKET_EVENT \u53ea\u8ffd\u52a0\uff08BR-07 / \u7ea6\u675f 1\uff09");
+  });
+
+  add("\u8ffd\u52a0\u4e00\u6761\u5386\u53f2\u4e8b\u4ef6", "append-history", function(){
+    state.history.push({n: state.history.length + 1, what: "classified", who: "\u4e8c\u7ebf"});
+    state.history_edited = false;
+    logEvent("TICKET_EVENT \u8ffd\u52a0 #" + state.history.length + " \u2014 \u4e0a\u4e00\u6761\u4fdd\u7559");
+  });
+
+  add("\u65e0\u89e3\u51b3\u7801\u5173\u5355", "close-raw", function(){
+    state.ticket.state = "closed";
+    state.ticket.resolution_code = null;
+    state.ticket.confirmed = false;
+    logEvent("TICKET CLOSED \u65e0 resolution_code\uff0c\u672a\u7ecf\u8bf7\u6c42\u4eba\u786e\u8ba4\uff08BR-15\uff09");
+  });
+
+  add("\u5e26\u89e3\u51b3\u7801\u4e0e\u786e\u8ba4\u5173\u5355", "close-with-code", function(){
+    state.ticket.state = "closed";
+    state.ticket.resolution_code = "RES-FIXED-AT-SOURCE";
+    state.ticket.confirmed = true;
+    logEvent("TICKET CLOSED resolution_code=RES-FIXED-AT-SOURCE \u2014 \u8bf7\u6c42\u4eba\u5df2\u786e\u8ba4");
+  });
+
+  add("\u672a\u767b\u8bb0\u53d1\u4ef6\u4eba\u53d1\u6765\u6d88\u606f", "unregistered-sender", function(){
+    state.sender.registered = false;
+    logEvent("INTAKE \u672a\u767b\u8bb0\u53d1\u4ef6\u4eba \u2014 \u6210\u4e3a unregistered-requester \u5de5\u5355\uff08BR-11 / \u7ea6\u675f 11\uff09");
+  });
+
+  add("\u9694\u79bb\u5e76\u4e0d\u5411\u4e0b\u6e38\u6295\u9012", "quarantine", function(){
+    state.quarantined = true;
+    logEvent("QUARANTINE \u2014 \u9274\u6743\u7ed3\u8bba\u5148\u4e8e\u5bf9\u8f7d\u8377\u7684\u4efb\u4f55\u89e3\u6790\uff1b\u9694\u79bb\u6d88\u606f\u4e0d\u5411\u4e0b\u6e38\u6295\u9012\uff08\u7ea6\u675f 15\uff09");
+  });
+
+  add("\u5b9a\u5236\u8bf7\u6c42\uff08\u4e0d\u843d\u76ee\u5f55\uff09", "bespoke-request", function(){
+    state.request_source = "bespoke";
+    logEvent("SERVICE_REQUEST \u4e0d\u89e3\u6790\u5230\u5df2\u53d1\u5e03\u7684\u76ee\u5f55\u9879 \u2014 \u9000\u56de request-offering \u6d41\u7a0b\uff08BR-12 / \u7ea6\u675f 10\uff09");
+  });
+
+  add("\u76ee\u5f55\u9879\u8bf7\u6c42", "catalog-request", function(){
+    state.request_source = "catalog";
+    logEvent("SERVICE_REQUEST \u89e3\u6790\u5230 CAT-\u0041-\u0031\u0032\uff08\u5df2\u53d1\u5e03\uff09\uff0c\u76f4\u63a5\u5c65\u7ea6");
+  });
+
+  add("\u89c4\u5219\u5c06\u89e6\u53d1\u4f46\u65e0\u7248\u672c", "automation-no-version", function(){
+    state.automation_version = false;
+    logEvent("RULE_APPLICATION \u65e0 rule_version \u2014 \u5c06\u8981\u89e6\u53d1\u7684\u89c4\u5219\u5fc5\u987b\u6709\u7248\u672c\uff08BR-14 / \u7ea6\u675f 12\uff09");
+  });
+
+  add("\u89c4\u5219\u5e26\u7248\u672c\u5e94\u7528", "automation-versioned", function(){
+    state.automation_version = true;
+    logEvent("RULE_APPLICATION rule_id=rule-40 rule_version=v5 dry_run=false \u2014 \u53ef\u590d\u73b0\uff0c\u53ef\u6f14\u7ec3");
+  });
+}
+
+function checkInvariants(){
+  var inv = {};
+  inv["BR-03"] = state.ticket.priority !== derive();
+  inv["BR-07"] = state.history_edited;
+  inv["BR-15"] = state.ticket.state === "closed"
+    && (!state.ticket.resolution_code || !state.ticket.confirmed);
+  inv["BR-11"] = !state.sender.registered && !state.quarantined;
+  inv["BR-12"] = state.request_source === "bespoke";
+  inv["BR-14"] = !state.automation_version;
+  return inv;
+}
+
+logEvent("INC-88214 \u5165\u5e93\uff1aimpact=high urgency=medium \u2192 P3\uff1b\u5386\u53f2 1 \u6761");
+paint();
+})();
+</script>
+</body>
+</html>

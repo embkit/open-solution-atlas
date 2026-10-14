@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#f6f9fc">
+<title>实验可信度实验室 — Experiment-credibility lab</title>
+<style>
+  /* The demo carries the app's tokens inline because it must open on its own:
+     a demo that depends on the site's stylesheet cannot be opened from the
+     repository or from a file:// path. These are EmbKit's values and no others
+     — the brand indigo is LOCKED in the contract, and the neutrals are cold by
+     rule. Repeating values is how a second palette appears, so this block is
+     byte-identical across every demo and a test keeps it that way. */
+  /* The demo is light-only, and the site and the demo share one theme. */
+  :root{ color-scheme:light;
+    --page:#f6f9fc; --surface:#ffffff; --surface-2:#fafbfd; --surface-3:#eef2f7;
+    --line:#e8edf3; --line-strong:#d3dae3;
+    --navy:#0a2540; --text:#0a2540; --text-2:#425466; --text-3:#5f6b79;
+    --primary:#4f46e5; --primary-hover:#4338ca; --primary-active:#3730a3;
+    --primary-tint:#eef2ff; --primary-ring:rgba(79,70,229,.28); --on-primary:#ffffff;
+    --ok:#0e7c5a; --ok-soft:#dff5ec;
+    --warn:#8a5409; --warn-soft:#fdf1dc;
+    --danger:#c2373c; --danger-soft:#fdeaeb;
+    --r-sm:6px; --r-md:8px; --r-lg:10px; --r-xl:12px; --r-2xl:14px; --r-full:999px;
+    --shadow-card:0 1px 2px rgba(15,23,42,.04), 0 8px 24px rgba(15,23,42,.06);
+    --shadow-pop:0 12px 32px rgba(15,23,42,.12);
+    --sans:"Inter","MiSans","HarmonyOS Sans SC","PingFang SC","Microsoft YaHei",-apple-system,"Segoe UI",sans-serif;
+    --mono:ui-monospace,"SF Mono","Cascadia Mono",Menlo,Consolas,monospace;
+    /* aliases the demo bodies already use */
+    --vellum:var(--page); --vellum-2:var(--surface-3); --ink:var(--text);
+    --muted:var(--text-3); --rule:var(--line); --rule-strong:var(--line-strong);
+    --draft:var(--primary); --draft-soft:var(--primary-tint);
+    --accent:var(--primary); --accent-soft:var(--primary-tint); --link:var(--primary);
+    --revise:var(--danger); --revise-soft:var(--danger-soft);
+    --bad:var(--danger); --bad-soft:var(--danger-soft);
+    --bg:var(--page); --elev:var(--surface); --fg:var(--text);
+    --border:var(--line); --border-strong:var(--line-strong);
+  }
+  *{box-sizing:border-box}
+  /* An identifier is one token: `FR-018` was breaking after the hyphen in the
+     narrow ID column, which stops it reading as an identifier. Scoped to table
+     cells so the long paths in the source note can still wrap. */
+  td code, th code { white-space: nowrap; }
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:13px;line-height:1.6}
+  .wrap{max-width:1200px;margin:0 auto;padding:1.4rem 1.1rem 4rem}
+  header{border-bottom:1px solid var(--rule-strong);padding-bottom:.9rem;margin-bottom:1.2rem}
+  h1{font-family:var(--sans);font-size:20px;font-weight:600;line-height:1.35;letter-spacing:-.015em;margin:0 0 6px}
+  .sub{color:var(--muted);font-size:.86rem;margin:0;max-width:80ch;line-height:1.6}
+  .grid{display:grid;grid-template-columns:300px minmax(0,1fr) 290px;gap:var(--sp-3,12px);align-items:start}
+  @media (max-width:960px){.grid{grid-template-columns:1fr}}
+  .panel{padding:20px;background:var(--surface);border:1px solid var(--line);
+    border-radius:var(--r-xl);box-shadow:var(--shadow-card);margin-bottom:12px}
+  .panel h2{font:600 12px/1.5 var(--mono);letter-spacing:.06em;color:var(--muted);
+    margin:0 0 .6rem;border-bottom:1px solid var(--rule);padding-bottom:.35rem}
+  .panel h3{font-size:.95rem;margin:1rem 0 .35rem;font-weight:600}
+  button{font:500 12px/1 var(--mono);cursor:pointer;background:var(--bg);color:var(--fg);
+    border:1px solid var(--line);border-radius:var(--r-md);padding:6px 12px;margin:2px 4px 2px 0}
+  button:hover{border-color:var(--draft);color:var(--draft)}
+  button[aria-pressed="true"]{background:var(--draft);border-color:var(--draft);color:var(--vellum);font-weight:600}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  select{font:400 12px/1 var(--mono);background:var(--bg);color:var(--fg);
+    border:1px solid var(--line);border-radius:var(--r-md);padding:6px 10px;width:100%}
+  code{font-family:var(--mono);font-size:.76rem}
+  .kv{display:flex;gap:.5rem;font:400 12.5px/1.7 var(--mono);margin:.18rem 0}
+  .kv b{color:var(--muted);font-weight:600;min-width:5.2rem}
+  .log{max-height:230px;overflow:auto;font-family:var(--mono);font-size:11px;line-height:1.7;
+    background:var(--surface-3);border:1px solid var(--line);border-radius:var(--r-md);padding:10px 12px}
+  .log div{padding:.1rem 0;border-bottom:1px solid var(--rule)}
+  .log div:last-child{border:0}
+  /* Red means violated. The passing state is a quiet note, not a green banner:
+     a second semantic colour for "all clear" trains a reader to skim past the
+     states that matter. */
+  .viol{background:var(--danger-soft);border:1px solid var(--danger);
+    border-radius:var(--r-md);padding:10px 12px;font-size:12px;line-height:1.6;margin:8px 0;color:var(--danger)}
+  .ok{background:var(--surface-3);border:1px solid var(--line);
+    border-radius:var(--r-md);padding:10px 12px;font-size:12px;line-height:1.6;margin:8px 0;color:var(--text-3)}
+  .sig{display:inline-block;font:700 10.5px/1.4 var(--mono);letter-spacing:.03em;
+    padding:.1rem .32rem;border:1px solid currentColor;vertical-align:.08em}
+  table{width:100%;border-collapse:collapse;font:400 12px/1.6 var(--mono)}
+  th,td{text-align:left;padding:.32rem .4rem;border-bottom:1px solid var(--rule);vertical-align:top}
+  th{color:var(--muted);font-size:11px;letter-spacing:.05em;font-weight:600}
+  .note{font-size:12px;color:var(--muted);margin:.5rem 0 0;line-height:1.6}
+  .def{font-size:12.5px;line-height:1.6;margin:.35rem 0}
+  details{margin:.5rem 0}
+  summary{cursor:pointer;font:500 12px/1.5 var(--mono);color:var(--muted)}
+  a{color:var(--link)}
+  .src{font:400 11.5px/1.7 var(--mono);color:var(--muted);margin-top:1.4rem;
+    border-top:1px solid var(--rule-strong);padding-top:.8rem;max-width:100ch}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>实验可信度实验室 <span style="font-weight:400;color:var(--muted)">Experiment-credibility lab</span></h1>
+  <p class="sub">
+    本页演示 <code>packs/data-ai/growth-analytics</code> 的核心决策（ADR-0001/0003）：
+    <strong>结论由预先声明的规则在先、真实统计在后共同支撑</strong>。决策规则必须在
+    结果可见之前声明（BR-08），统计是样本量、SRM 与护栏指标而不是一个总数字（BR-07），
+    分桶由实验引擎写入（BR-05），事件必须带已声明的 schema 版本、否则进入隔离（BR-02），
+    而激活要有覆盖该用途的同意状态（BR-11）。
+    需要这个 demo 的理由：<strong>「看着不错，全量吧」是这套系统里最自然、
+    也最不可复原的一句话。</strong>
+  </p>
+</header>
+<div class="grid">
+
+<section class="panel">
+  <h2>实验 · the experiment</h2>
+  <div id="exp"></div>
+  <h3>决策规则</h3>
+  <div id="rule"></div>
+</section>
+
+<section class="panel">
+  <h2>你可以做什么 · what you may do</h2>
+  <div id="acts"></div>
+  <h3>统计与分桶</h3>
+  <div id="stats"></div>
+</section>
+
+<section class="panel">
+  <h2>零容忍不变量</h2>
+  <div id="violations"></div>
+  <p class="note">
+    本包 13 个不可交易不变量中的 5 个，取自其存储强制约束。第 7 条最容易被当成
+    「分析师的事」：<strong>决策规则在实验创建时就写死，早于任何结果可见</strong>——
+    这不是流程洁癖，它是<strong>让结果无法被挑选的唯一机制</b>。
+  </p>
+  <table>
+    <thead><tr><th>ID</th><th>要求</th><th>状态</th></tr></thead>
+    <tbody id="invTable"></tbody>
+  </table>
+</section>
+
+</div>
+
+<section class="panel">
+  <h2>事件轨迹 · append-only</h2>
+  <div class="log" id="log"></div>
+  <p class="note">
+    事件只有在 schema 已声明时才被接受；否则它以<strong>带原因</strong>的隔离记录
+    存在——隔离不是丢弃，是<strong>把「我们收到了一个我们不认识的东西」变成一条事实</strong>。
+  </p>
+</section>
+<p class="src">内容来源：<code>01-business/business-rules.md</code>（BR-02/05/07/08/11）、<code>04-architecture/adr/0001-*.md</code>、<code>0003-*.md</code>、<code>05-data/logical-data-model.md</code>（约束 2/3/6/7/8/10）。本页为手写演示：它编码本包的语义，不声称符合任何 profile，也不声称任何法规结论。<code>verification: unverified</code>。</p>
+</div>
+<script>
+(function(){
+"use strict";
+/* ---- shared plumbing (assembled; the semantics below are this pack's) ---- */
+var INVARIANTS = [{"id": "BR-08", "what": "决策规则在结果可见之前预先声明，不可在看过结果后补写"}, {"id": "BR-02", "what": "schema 版本随事件同行；未声明的 schema 进入带原因的隔离"}, {"id": "BR-05", "what": "分桶由实验引擎写入；投放与开关系统没有写入路径"}, {"id": "BR-07", "what": "统计是样本量、SRM 与护栏，而不是一个总数字"}, {"id": "BR-11", "what": "同意在采集端与激活端都被强制，且状态必须覆盖该用途"}];
+function el(id){ return document.getElementById(id); }
+function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function bt(label, action, field){
+  var b = document.createElement("button");
+  b.type = "button"; b.textContent = label;
+  b.setAttribute("data-action", action);
+  if (field) b.setAttribute("data-field", field);
+  return b;
+}
+var EVENT_LOG = [];
+function paint(){
+  render();
+  var inv = checkInvariants();
+  var box = el("violations"); box.innerHTML = "";
+  var broken = INVARIANTS.filter(function(i){ return inv[i.id]; });
+  if (!broken.length) {
+    var ok = document.createElement("div");
+    ok.className = "ok";
+    ok.textContent = "\u2713 当前配置未违反任何零容忍不变量";
+    box.appendChild(ok);
+  } else {
+    broken.forEach(function(i){
+      var d = document.createElement("div");
+      d.className = "viol";
+      d.innerHTML = '<span class="sig">sev-1</span> <code>' + i.id + "</code> "
+        + esc(i.what) + " \u2014 已记录。真实系统里这是一个会 <strong>失败构建</strong> 的缺陷。";
+      box.appendChild(d);
+    });
+  }
+  var tb = el("invTable"); tb.innerHTML = "";
+  INVARIANTS.forEach(function(i){
+    var tr = document.createElement("tr");
+    tr.innerHTML = "<td><code>" + i.id + "</code></td><td>" + esc(i.what) + "</td><td>"
+      + (inv[i.id] ? '<span class="sig" style="color:var(--danger)">violated</span>'
+                   : '<span class="sig" style="color:var(--muted)">held</span>') + "</td>";
+    tb.appendChild(tr);
+  });
+  var lg = el("log"); lg.innerHTML = "";
+  EVENT_LOG.slice().reverse().forEach(function(t){
+    var d = document.createElement("div"); d.textContent = t; lg.appendChild(d);
+  });
+}
+function logEvent(text){
+  EVENT_LOG.push(text);
+  if (EVENT_LOG.length > 80) EVENT_LOG.shift();
+  paint();
+}
+function render(){}
+function checkInvariants(){ return {}; }
+
+var state = {
+  exp: {id: "EXP-4417", name: "\u7ed3\u8d26\u9875\u6539\u7248", hypothesis: "\u63d0\u5347\u6210\u4ea4\u7387"},
+  rule: null,
+  results_viewed: false,
+  schema: {declared: true},
+  quarantine: [],
+  assignments_from: null,   /* 'engine' | 'flag' */
+  sample: {n: 0, srm: false, guardrail_breach: false},
+  consent: null,
+  consent_attempted: false
+};
+
+function kv(label, value, warn){
+  var d = document.createElement("div");
+  d.className = "kv";
+  d.innerHTML = "<b>" + esc(label) + "</b><span"
+    + (warn ? ' style="color:var(--danger);font-weight:600"' : "") + ">"
+    + esc(String(value)) + "</span>";
+  return d;
+}
+
+function render(){
+  var e = el("exp"); e.innerHTML = "";
+  e.appendChild(kv("\u5b9e\u9a8c", state.exp.id + " " + state.exp.name));
+  e.appendChild(kv("\u5047\u8bbe", state.exp.hypothesis));
+  e.appendChild(kv("\u7ed3\u679c\u5df2\u67e5\u770b", state.results_viewed ? "\u662f" : "\u5426",
+    state.results_viewed && !state.rule));
+
+  var r = el("rule"); r.innerHTML = "";
+  r.appendChild(kv("\u51b3\u7b56\u89c4\u5219", state.rule ? state.rule.text : "\u672a\u58f0\u660e",
+    !state.rule));
+  r.appendChild(kv("\u58f0\u660e\u65f6\u70b9", state.rule ? state.rule.at : "\u2014"));
+
+  var s = el("stats"); s.innerHTML = "";
+  s.appendChild(kv("\u6837\u672c\u91cf", state.sample.n, state.sample.n > 0 && state.sample.n < 5000));
+  s.appendChild(kv("SRM", state.sample.srm ? "\u68c0\u51fa\uff08\u5206\u6d41\u5931\u8861\uff09" : "\u672a\u68c0\u51fa", state.sample.srm));
+  s.appendChild(kv("\u62a4\u680f\u6307\u6807", state.sample.guardrail_breach ? "\u5df2\u7a81\u7834" : "\u6b63\u5e38",
+    state.sample.guardrail_breach));
+  s.appendChild(kv("\u5206\u6876\u6765\u6e90", state.assignments_from || "\u65e0", state.assignments_from === "flag"));
+  s.appendChild(kv("\u540c\u610f\u72b6\u6001", state.consent || "\u65e0", !state.consent));
+  s.appendChild(kv("\u9694\u79bb\u8bb0\u5f55", state.quarantine.length + " \u6761"));
+
+  renderActs();
+}
+
+function renderActs(){
+  var box = el("acts"); box.innerHTML = "";
+  function add(label, action, handler){
+    var b = bt(label, action);
+    b.onclick = handler;
+    box.appendChild(b);
+  }
+
+  add("\u5148\u58f0\u660e\u51b3\u7b56\u89c4\u5219", "declare-rule", function(){
+    state.rule = {text: "\u6210\u4ea4\u7387 +2% \u4e14\u62a4\u680f\u65e0\u7a81\u7834 \u2192 \u5168\u91cf", at: "\u521b\u5efa\u65f6"};
+    logEvent("DECISION_RULE \u5df2\u5728\u521b\u5efa\u65f6\u58f0\u660e\uff08\u7ea6\u675f 7\uff09");
+  });
+
+  add("\u5148\u770b\u7ed3\u679c", "read-results", function(){
+    state.results_viewed = true;
+    logEvent("\u67e5\u770b\u7ed3\u679c \u2014 \u800c\u51b3\u7b56\u89c4\u5219\u5c1a\u672a\u58f0\u660e\uff08BR-08\uff09");
+  });
+
+  add("\u672a\u58f0\u660e schema \u7684\u4e8b\u4ef6", "undeclared-event", function(){
+    state.schema.declared = false;
+    state.quarantine.push("\u65e0 schema_version_id");
+    logEvent("EVENT \u62d2\u6536 \u2192 QUARANTINE_RECORD reason=\u65e0\u58f0\u660e schema\uff08BR-02 / \u7ea6\u675f 2/3\uff09");
+  });
+
+  add("\u6309\u58f0\u660e\u7684 schema \u5165\u5e93", "declared-event", function(){
+    state.schema.declared = true;
+    logEvent("EVENT \u63a5\u53d7 \u2014 schema_version \u968f\u4e8b\u4ef6\u540c\u884c\uff0c\u4e0b\u6e38\u53ef\u89e3\u91ca");
+  });
+
+  add("\u7531\u6807\u5fd7\u7cfb\u7edf\u5199\u5165\u5206\u6876", "flag-assigns", function(){
+    state.assignments_from = "flag";
+    logEvent("ASSIGNMENT \u7531\u53d1\u5e03\u5f00\u5173\u7cfb\u7edf\u5199\u5165 \u2014 \u5206\u6876\u5c5e\u4e8e\u5b9e\u9a8c\u5f15\u64ce\uff08BR-05 / \u7ea6\u675f 8\uff09");
+  });
+
+  add("\u7531\u5b9e\u9a8c\u5f15\u64ce\u5199\u5165\u5206\u6876", "engine-assigns", function(){
+    state.assignments_from = "engine";
+    logEvent("ASSIGNMENT \u7531\u5b9e\u9a8c\u5f15\u64ce\u5199\u5165 \u2014 \u5f00\u5173\u7cfb\u7edf\u65e0\u5199\u5165\u8def\u5f84");
+  });
+
+  add("\u6837\u672c\u4e0d\u8db3\u65f6\u4e0b\u7ed3\u8bba", "decide-early", function(){
+    state.sample.n = 2400;
+    logEvent("\u5728 " + state.sample.n + " \u6837\u672c\u4e0b\u4e0b\u7ed3\u8bba \u2014 \u672a\u8fbe\u5230\u9884\u5b9a\u6837\u672c\u91cf\uff08BR-07\uff09");
+  });
+
+  add("\u5b8c\u6210\u5b9e\u9a8c\uff08\u6837\u672c\u5145\u8db3\uff09", "run-powered", function(){
+    state.sample.n = 12000;
+    state.sample.srm = false;
+    logEvent("\u6837\u672c\u91cf 12000\uff0cSRM \u672a\u68c0\u51fa\uff0c\u62a4\u680f\u6307\u6807\u6b63\u5e38");
+  });
+
+  add("\u5ffd\u7565 SRM \u5f02\u5e38", "ignore-srm", function(){
+    state.sample.srm = true;
+    logEvent("SRM \u5df2\u68c0\u51fa\u4f46\u7ee7\u7eed \u2014 \u5206\u6d41\u5931\u8861\u4f7f\u6240\u6709\u7ed3\u679c\u4e0d\u53ef\u89e3\u91ca\uff08BR-07\uff09");
+  });
+
+  add("\u62a4\u680f\u6307\u6807\u7a81\u7834\u540e\u4e0a\u7ebf", "guardrail-breach", function(){
+    state.sample.guardrail_breach = true;
+    logEvent("GUARDRAIL \u7a81\u7834 \u4ecd\u63a8\u5168\u91cf \u2014 \u4e3b\u6307\u6807\u4e0a\u6da8\u4e0d\u62b5\u6d88\u9690\u6027\u4f24\u5bb3\uff08BR-07\uff09");
+  });
+
+  add("\u65e0\u540c\u610f\u72b6\u6001\u4e0b\u6fc0\u6d3b", "activate-no-consent", function(){
+    state.consent = null;
+    state.consent_attempted = true;
+    logEvent("ACTIVATION_RECORD \u65e0 consent_state_ref \u2014 \u7528\u9014\u4e0d\u88ab\u8986\u76d6\uff08BR-11 / \u7ea6\u675f 6\uff09");
+  });
+
+  add("\u5728\u540c\u610f\u8986\u76d6\u4e0b\u6fc0\u6d3b", "activate-with-consent", function(){
+    state.consent = "consent://purposes/marketing-2026-09";
+    state.consent_attempted = false;
+    logEvent("ACTIVATION_RECORD consent=\u8986\u76d6 marketing \u7528\u9014 \u2014 \u91c7\u96c6\u4e0e\u6fc0\u6d3b\u4e24\u7aef\u90fd\u88ab\u5f3a\u5236");
+  });
+}
+
+function checkInvariants(){
+  var inv = {};
+  inv["BR-08"] = state.results_viewed && !state.rule;
+  inv["BR-02"] = !state.schema.declared;
+  inv["BR-05"] = state.assignments_from === "flag";
+  inv["BR-07"] = (state.sample.n > 0 && state.sample.n < 5000)
+    || state.sample.srm || state.sample.guardrail_breach;
+  inv["BR-11"] = state.consent_attempted && !state.consent;
+  return inv;
+}
+
+logEvent("EXP-4417 \u5c31\u7eea\uff1a\u65e0\u51b3\u7b56\u89c4\u5219\uff0c\u65e0\u5206\u6876\uff0c\u65e0\u540c\u610f\u72b6\u6001");
+paint();
+})();
+</script>
+</body>
+</html>

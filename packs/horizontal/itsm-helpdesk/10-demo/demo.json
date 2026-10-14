@@ -1,0 +1,16 @@
+{
+  "title": "工单骨架与升级实验室 — Ticket-backbone lab",
+  "kind": "invariant-lab",
+  "summary": "优先级由矩阵得出，历史只追加，关闭需要解决码与确认，服务请求落到已发布目录项，自动化规则带版本，未登记发件人不接触 CMDB。",
+  "entry": "index.html",
+  "demonstrates": [
+    "BR-03",
+    "BR-07",
+    "BR-11",
+    "BR-12",
+    "BR-14",
+    "BR-15",
+    "ADR-0002",
+    "ADR-0003"
+  ]
+}

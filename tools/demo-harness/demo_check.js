@@ -579,5 +579,161 @@ if (slug.indexOf("lakehouse-platform") >= 0) {
     d.text("violations").indexOf("BR-12") < 0);
 }
 
+if (slug.indexOf("growth-analytics") >= 0) {
+  // "Looks good, ship it to everyone" is the most natural and least reversible
+  // sentence in this system.
+  check("starts with no violation", d.text("violations").indexOf("sev-1") < 0);
+
+  // the decision rule is declared before results are visible
+  d.act("read-results");
+  check("reading results with no declared rule trips BR-08",
+    d.text("violations").indexOf("BR-08") >= 0);
+  d.act("declare-rule");
+  check("declaring the rule clears BR-08",
+    d.text("violations").indexOf("BR-08") < 0);
+
+  // an event whose schema is not declared is quarantined, with a reason
+  d.act("undeclared-event");
+  check("an event with no declared schema trips BR-02",
+    d.text("violations").indexOf("BR-02") >= 0);
+  check("it is recorded as a quarantine record rather than dropped",
+    d.text("stats").indexOf("1") >= 0);
+  d.act("declared-event");
+  check("a declared schema clears BR-02",
+    d.text("violations").indexOf("BR-02") < 0);
+
+  // assignment belongs to the engine
+  d.act("flag-assigns");
+  check("a flag system writing assignments trips BR-05",
+    d.text("violations").indexOf("BR-05") >= 0);
+  d.act("engine-assigns");
+  check("the engine writing them clears BR-05",
+    d.text("violations").indexOf("BR-05") < 0);
+
+  // real statistics
+  d.act("decide-early");
+  check("deciding on an underpowered sample trips BR-07",
+    d.text("violations").indexOf("BR-07") >= 0);
+  d.act("run-powered");
+  check("a powered sample clears BR-07",
+    d.text("violations").indexOf("BR-07") < 0);
+  d.act("ignore-srm");
+  check("ignoring SRM trips BR-07 again",
+    d.text("violations").indexOf("BR-07") >= 0);
+  d.act("run-powered");
+  d.act("guardrail-breach");
+  check("shipping past a guardrail breach trips BR-07",
+    d.text("violations").indexOf("BR-07") >= 0);
+
+  // consent covers the purpose
+  d.act("activate-no-consent");
+  check("activating with no consent state trips BR-11",
+    d.text("violations").indexOf("BR-11") >= 0);
+  d.act("activate-with-consent");
+  check("a consent state covering the purpose clears BR-11",
+    d.text("violations").indexOf("BR-11") < 0);
+}
+
+if (slug.indexOf("mlops-platform") >= 0) {
+  // "Hot-patch it" and "the feature was available" both turn an incident into an
+  // investigation nobody can conclude.
+  check("starts with no violation", d.text("violations").indexOf("sev-1") < 0);
+
+  // serving requires a named approver
+  d.act("serve-no-approval");
+  check("serving with no approval record trips BR-04",
+    d.text("violations").indexOf("BR-04") >= 0);
+  d.act("approve-by-person");
+  check("a named person's approval clears BR-04",
+    d.text("violations").indexOf("BR-04") < 0);
+
+  // a binding is recorded as a unit
+  d.act("edit-binding");
+  check("editing a binding in place trips BR-01",
+    d.text("violations").indexOf("BR-01") >= 0);
+  d.act("new-binding");
+  check("a new binding clears BR-01",
+    d.text("violations").indexOf("BR-01") < 0);
+
+  // sliced evaluation
+  d.act("eval-aggregate");
+  check("promoting on an aggregate metric trips BR-02",
+    d.text("violations").indexOf("BR-02") >= 0);
+  d.act("eval-sliced");
+  check("a sliced evaluation clears BR-02",
+    d.text("violations").indexOf("BR-02") < 0);
+
+  // no hindsight
+  d.act("feature-hindsight");
+  check("a feature value from after the observation trips BR-13",
+    d.text("violations").indexOf("BR-13") >= 0);
+  d.act("feature-pointintime");
+  check("point-in-time correctness clears BR-13",
+    d.text("violations").indexOf("BR-13") < 0);
+
+  // production reads from the registry
+  d.act("hotfix");
+  check("serving a version outside the registry trips BR-05",
+    d.text("violations").indexOf("BR-05") >= 0);
+  d.act("rollback");
+  check("rollback selecting an earlier binding clears BR-05",
+    d.text("violations").indexOf("BR-05") < 0);
+}
+
+if (slug.indexOf("itsm-helpdesk") >= 0) {
+  // "Close it and backfill later" and "raise it as P1" both make MTTR start
+  // lying, and a lying MTTR is worse than no MTTR.
+  check("starts with no violation", d.text("violations").indexOf("sev-1") < 0);
+
+  // priority is derived, not hung by hand
+  d.act("priority-manual");
+  check("hanging P1 by hand trips BR-03",
+    d.text("violations").indexOf("BR-03") >= 0);
+  d.act("priority-derive");
+  check("recomputing from the matrix clears BR-03",
+    d.text("violations").indexOf("BR-03") < 0);
+
+  // history is append-only
+  d.act("edit-history");
+  check("editing a history event trips BR-07",
+    d.text("violations").indexOf("BR-07") >= 0);
+  d.act("append-history");
+  check("appending instead clears BR-07",
+    d.text("violations").indexOf("BR-07") < 0);
+
+  // closure needs a resolution code and a confirmation
+  d.act("close-raw");
+  check("closing with no resolution code trips BR-15",
+    d.text("violations").indexOf("BR-15") >= 0);
+  d.act("close-with-code");
+  check("a resolution code and a confirmation clear BR-15",
+    d.text("violations").indexOf("BR-15") < 0);
+
+  // an unregistered sender cannot reach CMDB content, and the auth verdict
+  // precedes any parse of the payload
+  d.act("unregistered-sender");
+  check("an unregistered sender with no quarantine trips BR-11",
+    d.text("violations").indexOf("BR-11") >= 0);
+  d.act("quarantine");
+  check("quarantining the message ahead of any parse clears BR-11",
+    d.text("violations").indexOf("BR-11") < 0);
+
+  // service requests resolve a published catalog item
+  d.act("bespoke-request");
+  check("a bespoke request trips BR-12",
+    d.text("violations").indexOf("BR-12") >= 0);
+  d.act("catalog-request");
+  check("resolving a published catalog item clears BR-12",
+    d.text("violations").indexOf("BR-12") < 0);
+
+  // automation rules are versioned
+  d.act("automation-no-version");
+  check("a rule firing with no version trips BR-14",
+    d.text("violations").indexOf("BR-14") >= 0);
+  d.act("automation-versioned");
+  check("a versioned rule application clears BR-14",
+    d.text("violations").indexOf("BR-14") < 0);
+}
+
 console.log(failures ? "\nFAILURES: " + failures : "\nsemantic checks passed");
 process.exit(failures ? 1 : 0);
