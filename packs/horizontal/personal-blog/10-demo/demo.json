@@ -1,0 +1,18 @@
+{
+  "title": "发布契约实验室 — Publishing-contract lab",
+  "kind": "invariant-lab",
+  "summary": "发布是对读者与爬虫的契约：改名留重定向，撤下返回 410，可见性由状态与时间共同决定，草稿不进索引，webmention 幂等。",
+  "entry": "index.html",
+  "demonstrates": [
+    "BR-01",
+    "BR-04",
+    "BR-06",
+    "BR-07",
+    "BR-09",
+    "BR-11",
+    "BR-14",
+    "ADR-0001",
+    "ADR-0002",
+    "ADR-0003"
+  ]
+}

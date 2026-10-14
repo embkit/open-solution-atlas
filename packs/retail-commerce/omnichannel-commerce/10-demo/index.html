@@ -1,0 +1,371 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#f6f9fc">
+<title>定价快照与幂等实验室 — Snapshot &amp; idempotency lab</title>
+<style>
+  /* The demo carries the app's tokens inline because it must open on its own:
+     a demo that depends on the site's stylesheet cannot be opened from the
+     repository or from a file:// path. These are EmbKit's values and no others
+     — the brand indigo is LOCKED in the contract, and the neutrals are cold by
+     rule. Repeating values is how a second palette appears, so this block is
+     byte-identical across every demo and a test keeps it that way. */
+  /* The demo is light-only, and the site and the demo share one theme. */
+  :root{ color-scheme:light;
+    --page:#f6f9fc; --surface:#ffffff; --surface-2:#fafbfd; --surface-3:#eef2f7;
+    --line:#e8edf3; --line-strong:#d3dae3;
+    --navy:#0a2540; --text:#0a2540; --text-2:#425466; --text-3:#5f6b79;
+    --primary:#4f46e5; --primary-hover:#4338ca; --primary-active:#3730a3;
+    --primary-tint:#eef2ff; --primary-ring:rgba(79,70,229,.28); --on-primary:#ffffff;
+    --ok:#0e7c5a; --ok-soft:#dff5ec;
+    --warn:#8a5409; --warn-soft:#fdf1dc;
+    --danger:#c2373c; --danger-soft:#fdeaeb;
+    --r-sm:6px; --r-md:8px; --r-lg:10px; --r-xl:12px; --r-2xl:14px; --r-full:999px;
+    --shadow-card:0 1px 2px rgba(15,23,42,.04), 0 8px 24px rgba(15,23,42,.06);
+    --shadow-pop:0 12px 32px rgba(15,23,42,.12);
+    --sans:"Inter","MiSans","HarmonyOS Sans SC","PingFang SC","Microsoft YaHei",-apple-system,"Segoe UI",sans-serif;
+    --mono:ui-monospace,"SF Mono","Cascadia Mono",Menlo,Consolas,monospace;
+    /* aliases the demo bodies already use */
+    --vellum:var(--page); --vellum-2:var(--surface-3); --ink:var(--text);
+    --muted:var(--text-3); --rule:var(--line); --rule-strong:var(--line-strong);
+    --draft:var(--primary); --draft-soft:var(--primary-tint);
+    --accent:var(--primary); --accent-soft:var(--primary-tint); --link:var(--primary);
+    --revise:var(--danger); --revise-soft:var(--danger-soft);
+    --bad:var(--danger); --bad-soft:var(--danger-soft);
+    --bg:var(--page); --elev:var(--surface); --fg:var(--text);
+    --border:var(--line); --border-strong:var(--line-strong);
+  }
+  *{box-sizing:border-box}
+  /* An identifier is one token: `FR-018` was breaking after the hyphen in the
+     narrow ID column, which stops it reading as an identifier. Scoped to table
+     cells so the long paths in the source note can still wrap. */
+  td code, th code { white-space: nowrap; }
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:13px;line-height:1.6}
+  .wrap{max-width:1200px;margin:0 auto;padding:1.4rem 1.1rem 4rem}
+  header{border-bottom:1px solid var(--rule-strong);padding-bottom:.9rem;margin-bottom:1.2rem}
+  h1{font-family:var(--sans);font-size:20px;font-weight:600;line-height:1.35;letter-spacing:-.015em;margin:0 0 6px}
+  .sub{color:var(--muted);font-size:.86rem;margin:0;max-width:80ch;line-height:1.6}
+  .grid{display:grid;grid-template-columns:300px minmax(0,1fr) 290px;gap:var(--sp-3,12px);align-items:start}
+  @media (max-width:960px){.grid{grid-template-columns:1fr}}
+  .panel{padding:20px;background:var(--surface);border:1px solid var(--line);
+    border-radius:var(--r-xl);box-shadow:var(--shadow-card);margin-bottom:12px}
+  .panel h2{font:600 12px/1.5 var(--mono);letter-spacing:.06em;color:var(--muted);
+    margin:0 0 .6rem;border-bottom:1px solid var(--rule);padding-bottom:.35rem}
+  .panel h3{font-size:.95rem;margin:1rem 0 .35rem;font-weight:600}
+  button{font:500 12px/1 var(--mono);cursor:pointer;background:var(--bg);color:var(--fg);
+    border:1px solid var(--line);border-radius:var(--r-md);padding:6px 12px;margin:2px 4px 2px 0}
+  button:hover{border-color:var(--draft);color:var(--draft)}
+  button[aria-pressed="true"]{background:var(--draft);border-color:var(--draft);color:var(--vellum);font-weight:600}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  select{font:400 12px/1 var(--mono);background:var(--bg);color:var(--fg);
+    border:1px solid var(--line);border-radius:var(--r-md);padding:6px 10px;width:100%}
+  code{font-family:var(--mono);font-size:.76rem}
+  .kv{display:flex;gap:.5rem;font:400 12.5px/1.7 var(--mono);margin:.18rem 0}
+  .kv b{color:var(--muted);font-weight:600;min-width:5.2rem}
+  .log{max-height:230px;overflow:auto;font-family:var(--mono);font-size:11px;line-height:1.7;
+    background:var(--surface-3);border:1px solid var(--line);border-radius:var(--r-md);padding:10px 12px}
+  .log div{padding:.1rem 0;border-bottom:1px solid var(--rule)}
+  .log div:last-child{border:0}
+  /* Red means violated. The passing state is a quiet note, not a green banner:
+     a second semantic colour for "all clear" trains a reader to skim past the
+     states that matter. */
+  .viol{background:var(--danger-soft);border:1px solid var(--danger);
+    border-radius:var(--r-md);padding:10px 12px;font-size:12px;line-height:1.6;margin:8px 0;color:var(--danger)}
+  .ok{background:var(--surface-3);border:1px solid var(--line);
+    border-radius:var(--r-md);padding:10px 12px;font-size:12px;line-height:1.6;margin:8px 0;color:var(--text-3)}
+  .sig{display:inline-block;font:700 10.5px/1.4 var(--mono);letter-spacing:.03em;
+    padding:.1rem .32rem;border:1px solid currentColor;vertical-align:.08em}
+  table{width:100%;border-collapse:collapse;font:400 12px/1.6 var(--mono)}
+  th,td{text-align:left;padding:.32rem .4rem;border-bottom:1px solid var(--rule);vertical-align:top}
+  th{color:var(--muted);font-size:11px;letter-spacing:.05em;font-weight:600}
+  .note{font-size:12px;color:var(--muted);margin:.5rem 0 0;line-height:1.6}
+  .def{font-size:12.5px;line-height:1.6;margin:.35rem 0}
+  details{margin:.5rem 0}
+  summary{cursor:pointer;font:500 12px/1.5 var(--mono);color:var(--muted)}
+  a{color:var(--link)}
+  .src{font:400 11.5px/1.7 var(--mono);color:var(--muted);margin-top:1.4rem;
+    border-top:1px solid var(--rule-strong);padding-top:.8rem;max-width:100ch}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>定价快照与幂等实验室 <span style="font-weight:400;color:var(--muted)">Snapshot &amp; idempotency lab</span></h1>
+  <p class="sub">
+    本页演示 <code>packs/retail-commerce/omnichannel-commerce</code> 的核心决策
+    （ADR-0001..0005）：<strong>价格在成交那一刻冻结，钱的操作由平台发键</strong>。
+    预占没有过期时间是非法状态（BR-02），定价快照在成交时冻结、永不重算（BR-06），
+    钱的操作需要平台签发的幂等键（BR-07），<strong>冲正不是逆运算</strong>（BR-09），
+    卡号不落在任何一列里（BR-10），履约状态<strong>按行</strong>而不是按单（BR-11），
+    退货处置在授权时决定（BR-12）。
+    需要这个 demo 的理由：<strong>「重试一下」和「把这一单回滚掉」，
+    分别会造出多收一次钱和一条说不清的历史。</strong>
+  </p>
+</header>
+<div class="grid">
+
+<section class="panel">
+  <h2>订单 · the order</h2>
+  <div id="order"></div>
+  <h3>库存与预占</h3>
+  <div id="stock"></div>
+</section>
+
+<section class="panel">
+  <h2>你可以做什么 · what you may do</h2>
+  <div id="acts"></div>
+  <h3>定价与钱</h3>
+  <div id="money"></div>
+</section>
+
+<section class="panel">
+  <h2>零容忍不变量</h2>
+  <div id="violations"></div>
+  <p class="note">
+    本包 15 个不可交易不变量中的 7 个，取自其存储强制约束。第 7 条是一个
+    <strong>零容忍不变式</strong>而不是服务水平：<b>它的失败在被发现之前一直不可见</b>——
+    顾客付了两次，而系统认为自己只收了一次。
+  </p>
+  <table>
+    <thead><tr><th>ID</th><th>要求</th><th>状态</th></tr></thead>
+    <tbody id="invTable"></tbody>
+  </table>
+</section>
+
+</div>
+
+<section class="panel">
+  <h2>流水 · append-only</h2>
+  <div class="log" id="log"></div>
+  <p class="note">
+    定价快照与流水都是只插入的；订单状态<strong>由行状态推导</strong>，没有独立写入路径。
+  </p>
+</section>
+<p class="src">内容来源：<code>01-business/business-rules.md</code>（BR-02/06/07/09/10/11/12）、<code>04-architecture/adr/0001-*.md</code> … <code>0005-*.md</code>、<code>05-data/logical-data-model.md</code>（约束 1/2/3/4/5/7/8/9/10）。本页为手写演示：它编码本包的语义，不声称符合任何 profile。PCI DSS 与 PSP 在本包中是指称；本页不复制其要求，<b>也不构成符合性结论</b>。<code>verification: unverified</code>。</p>
+</div>
+<script>
+(function(){
+"use strict";
+/* ---- shared plumbing (assembled; the semantics below are this pack's) ---- */
+var INVARIANTS = [{"id": "BR-02", "what": "预占没有过期时间是非法状态；到期自动释放"}, {"id": "BR-06", "what": "定价快照在成交时冻结，永不重算——后的路径只能读它"}, {"id": "BR-07", "what": "钱的操作需要平台签发的幂等键；重复效果共享同一个键是零容忍缺陷"}, {"id": "BR-09", "what": "冲正不是逆运算：它走自己的状态与钱的操作，不回写原件"}, {"id": "BR-10", "what": "PCI 范围排除是演示出来的：任何实体都不得存卡号"}, {"id": "BR-11", "what": "履约状态按行记录，订单状态由行推导，没有独立写入路径"}, {"id": "BR-12", "what": "退货处置在授权时决定，不在收货时"}];
+function el(id){ return document.getElementById(id); }
+function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function bt(label, action, field){
+  var b = document.createElement("button");
+  b.type = "button"; b.textContent = label;
+  b.setAttribute("data-action", action);
+  if (field) b.setAttribute("data-field", field);
+  return b;
+}
+var EVENT_LOG = [];
+function paint(){
+  render();
+  var inv = checkInvariants();
+  var box = el("violations"); box.innerHTML = "";
+  var broken = INVARIANTS.filter(function(i){ return inv[i.id]; });
+  if (!broken.length) {
+    var ok = document.createElement("div");
+    ok.className = "ok";
+    ok.textContent = "\u2713 当前配置未违反任何零容忍不变量";
+    box.appendChild(ok);
+  } else {
+    broken.forEach(function(i){
+      var d = document.createElement("div");
+      d.className = "viol";
+      d.innerHTML = '<span class="sig">sev-1</span> <code>' + i.id + "</code> "
+        + esc(i.what) + " \u2014 已记录。真实系统里这是一个会 <strong>失败构建</strong> 的缺陷。";
+      box.appendChild(d);
+    });
+  }
+  var tb = el("invTable"); tb.innerHTML = "";
+  INVARIANTS.forEach(function(i){
+    var tr = document.createElement("tr");
+    tr.innerHTML = "<td><code>" + i.id + "</code></td><td>" + esc(i.what) + "</td><td>"
+      + (inv[i.id] ? '<span class="sig" style="color:var(--danger)">violated</span>'
+                   : '<span class="sig" style="color:var(--muted)">held</span>') + "</td>";
+    tb.appendChild(tr);
+  });
+  var lg = el("log"); lg.innerHTML = "";
+  EVENT_LOG.slice().reverse().forEach(function(t){
+    var d = document.createElement("div"); d.textContent = t; lg.appendChild(d);
+  });
+}
+function logEvent(text){
+  EVENT_LOG.push(text);
+  if (EVENT_LOG.length > 80) EVENT_LOG.shift();
+  paint();
+}
+function render(){}
+function checkInvariants(){ return {}; }
+
+var state = {
+  order: {id: "SO-90118", state: null /* derived */, lines: [
+    {sku: "SKU-1", qty: 2, fulfilment: "pending"},
+    {sku: "SKU-2", qty: 1, fulfilment: "pending"}
+  ]},
+  reservation: null,        /* {expires: number|null} */
+  snapshot: {total: 268.00, ruleset: "RULESET-2026-10-01", frozen: false},
+  currentRuleset: "RULESET-2026-10-01",
+  money: [],                /* {id, key, kind, effect} */
+  reversed_original: false,
+  disposition: null,
+  pan_column: false
+};
+
+function kv(label, value, warn){
+  var d = document.createElement("div");
+  d.className = "kv";
+  d.innerHTML = "<b>" + esc(label) + "</b><span"
+    + (warn ? ' style="color:var(--danger);font-weight:600"' : "") + ">"
+    + esc(String(value)) + "</span>";
+  return d;
+}
+
+function deriveOrderState(){
+  var f = state.order.lines.map(function(l){ return l.fulfilment; });
+  if (f.every(function(x){ return x === "shipped"; })) return "shipped";
+  if (f.some(function(x){ return x === "shipped"; })) return "partially shipped";
+  return "pending";
+}
+
+function render(){
+  var o = el("order"); o.innerHTML = "";
+  o.appendChild(kv("\u8ba2\u5355", state.order.id));
+  o.appendChild(kv("\u72b6\u6001\uff08\u63a8\u5bfc\uff09", state.order.state || deriveOrderState(),
+    !!state.order.state && state.order.state !== deriveOrderState()));
+  state.order.lines.forEach(function(l, i){
+    o.appendChild(kv("\u884c " + (i + 1) + " " + l.sku + " \u00d7 " + l.qty, l.fulfilment));
+  });
+
+  var s = el("stock"); s.innerHTML = "";
+  s.appendChild(kv("\u9884\u5360", state.reservation === null ? "\u65e0"
+    : (state.reservation.expires === null ? "\u65e0\u8fc7\u671f\u65f6\u95f4\uff08\u975e\u6cd5\uff09" : "\u81f3 " + state.reservation.expires),
+    !!state.reservation && state.reservation.expires === null));
+  s.appendChild(kv("\u5f53\u524d\u89c4\u5219\u96c6", state.currentRuleset,
+    state.currentRuleset !== state.snapshot.ruleset));
+
+  var m = el("money"); m.innerHTML = "";
+  m.appendChild(kv("\u5feb\u7167\u603b\u989d", "\uffe5" + state.snapshot.total + "\uff08" + state.snapshot.ruleset + "\uff09"));
+  m.appendChild(kv("\u5feb\u7167\u5df2\u51bb\u7ed3", state.snapshot.frozen ? "\u662f" : "\u5426"));
+  m.appendChild(kv("\u94b1\u7684\u64cd\u4f5c", state.money.length + " \u6761"));
+  state.money.forEach(function(x){
+    m.appendChild(kv(x.kind + " " + x.id, x.key));
+  });
+  m.appendChild(kv("\u539f\u4ed3\u88ab\u6807\u4e3a\u5df2\u51b2\u6b63", state.reversed_original ? "\u662f" : "\u5426",
+    state.reversed_original));
+  m.appendChild(kv("\u9000\u8d27\u5904\u7f6e", state.disposition || "\u672a\u5b9a",
+    state.disposition === "later"));
+  m.appendChild(kv("\u5b58\u50a8\u5361\u53f7\u7684\u5217", state.pan_column ? "\u5b58\u5728" : "\u4e0d\u5b58\u5728", state.pan_column));
+
+  renderActs();
+}
+
+function renderActs(){
+  var box = el("acts"); box.innerHTML = "";
+  function add(label, action, handler){
+    var b = bt(label, action);
+    b.onclick = handler;
+    box.appendChild(b);
+  }
+
+  add("\u9884\u5360\uff08\u65e0\u8fc7\u671f\u65f6\u95f4\uff09", "reserve-no-expiry", function(){
+    state.reservation = {expires: null};
+    logEvent("RESERVATION expires_ts = NULL \u2014 \u9884\u5360\u65e0\u8fc7\u671f\u65f6\u95f4\uff08BR-02 / \u7ea6\u675f 5\uff09");
+  });
+
+  add("\u9884\u5360\uff08\u5e26\u8fc7\u671f\u65f6\u95f4\uff09", "reserve-with-expiry", function(){
+    state.reservation = {expires: 900};
+    logEvent("RESERVATION expires_ts = now+900s \u2014 \u5230\u671f\u81ea\u52a8\u91ca\u653e");
+  });
+
+  add("\u6210\u4ea4\u5e76\u51bb\u7ed3\u5feb\u7167", "capture", function(){
+    state.snapshot.frozen = true;
+    state.money.push({id: "MO-1", key: "pk-order-90118-capture", kind: "capture", effect: 268.00});
+    logEvent("CAPTURE \u5feb\u7167\u5df2\u51bb\u7ed3\uff08" + state.snapshot.ruleset
+      + "\uff09\uff1bMONEY_OPERATION key=pk-order-90118-capture\uff08\u7ea6\u675f 2\uff09");
+  });
+
+  add("\u6210\u4ea4\u540e\u6539\u89c4\u5219\u96c6\u5e76\u91cd\u7b97", "promo-change", function(){
+    state.currentRuleset = "RULESET-2026-10-09";
+    state.snapshot.total = 241.20;
+    logEvent("PRICING_SNAPSHOT \u88ab\u91cd\u7b97\u4e3a \uffe5241.20 \u2014 \u5feb\u7167\u53ea\u63d2\u5165\uff08BR-06 / \u7ea6\u675f 2\uff09");
+  });
+
+  add("\u8bfb\u5df2\u5b58\u7684\u5feb\u7167", "read-snapshot", function(){
+    state.snapshot.total = 268.00;
+    state.snapshot.ruleset = "RULESET-2026-10-01";
+    logEvent("\u540e\u7f6e\u8def\u5f84\u8bfb\u5feb\u7167 \u2014 \u4e0d\u91cd\u65b0\u8bc4\u4f30\u4fc3\u9500");
+  });
+
+  add("\u91cd\u8bd5\uff08\u540c\u4e00\u5e73\u53f0\u5e42\u7b49\u952e\uff09", "retry-same-key", function(){
+    logEvent("RETRY key=pk-order-90118-capture \u2014 \u6298\u53e0\u4e3a\u5355\u4e00\u6388\u6743\uff0c\u65e0\u65b0\u589e\u6548\u679c");
+  });
+
+  add("\u91cd\u8bd5\uff08\u672c\u5730\u751f\u6210\u65b0\u952e\uff09", "retry-new-key", function(){
+    state.money.push({id: "MO-2", key: "pk-order-90118-capture", kind: "capture",
+      effect: 268.00, duplicate: true});
+    logEvent("\u7b2c\u4e8c\u7b14\u6388\u6743\u5171\u7528\u540c\u4e00\u4e2a key \u2014 \u91cd\u590d\u6548\u679c\uff08BR-07 / \u7ea6\u675f 3\uff09");
+  });
+
+  add("\u9000\u6b3e\uff08\u65b0\u64cd\u4f5c + \u65b0\u952e\uff09", "refund-new-key", function(){
+    state.money.push({id: "MO-3", key: "pk-order-90118-refund-1", kind: "refund", effect: -68.00});
+    logEvent("REFUND MONEY_OPERATION key=pk-order-90118-refund-1 \u2014 \u65b0\u64cd\u4f5c\uff0c\u4e0d\u662f\u9006\u8fd0\u7b97\uff08BR-08\uff09");
+  });
+
+  add("\u628a\u539f\u91c7\u5355\u6807\u4e3a\u5df2\u51b2\u6b63", "reverse-original", function(){
+    state.reversed_original = true;
+    logEvent("UPDATE money_operation SET reversed = true \u2014 \u51b2\u6b63\u4e0d\u662f\u9006\u8fd0\u7b97\uff08BR-09 / ADR-0004\uff09");
+  });
+
+  add("\u76f4\u63a5\u5199\u5165\u8ba2\u5355\u72b6\u6001", "set-order-state", function(){
+    state.order.state = "shipped";
+    logEvent("UPDATE order SET state = 'shipped' \u2014 \u8ba2\u5355\u72b6\u6001\u5e94\u7531\u884c\u72b6\u6001\u63a8\u5bfc\uff08BR-11 / \u7ea6\u675f 10\uff09");
+  });
+
+  add("\u9010\u884c\u53d1\u8d27\uff08\u90e8\u5206\uff09", "line-ship-one", function(){
+    state.order.lines[0].fulfilment = "shipped";
+    state.order.state = null;
+    logEvent("\u884c 1 \u5df2\u53d1\u8d27 \u2192 \u8ba2\u5355\u72b6\u6001\u63a8\u5bfc\u4e3a " + deriveOrderState());
+  });
+
+  add("\u6574\u5355\u53d1\u8d27\uff08\u4e00\u884c\u672a\u53d1\uff09", "whole-order-shipped", function(){
+    state.order.state = "shipped";
+    logEvent("ORDER.state = shipped \u800c\u884c 2 \u4ecd\u672a\u53d1\uff08BR-11 \u8fdd\u53cd\uff09");
+  });
+
+  add("\u9000\u8d27\u6388\u6743\uff08\u65e0\u5904\u7f6e\uff09", "return-no-disposition", function(){
+    state.disposition = "later";
+    logEvent("RETURN_AUTHORIZATION disposition \u5f85\u5b9a \u2014 \u5904\u7f6e\u5728\u6388\u6743\u65f6\u5c31\u5e94\u786e\u5b9a\uff08BR-12 / \u7ea6\u675f 7\uff09");
+  });
+
+  add("\u9000\u8d27\u6388\u6743\uff08\u660e\u786e\u5904\u7f6e\uff09", "return-with-disposition", function(){
+    state.disposition = "restock";
+    logEvent("RETURN_AUTHORIZATION disposition=restock \u2014 \u5728\u6388\u6743\u65f6\u5c31\u5b9a\uff0c\u4e0d\u7b49\u6536\u8d27");
+  });
+
+  add("\u5728\u8868\u4e2d\u5b58\u4e00\u4e2a\u5361\u53f7\u5217", "pan-column", function(){
+    state.pan_column = true;
+    logEvent("ALTER TABLE payment ADD card_number \u2014 \u4efb\u4f55\u5b9e\u4f53\u90fd\u4e0d\u5f97\u5b58 PAN\uff08BR-10 / \u7ea6\u675f 4\uff09");
+  });
+}
+
+function checkInvariants(){
+  var inv = {};
+  inv["BR-02"] = !!state.reservation && state.reservation.expires === null;
+  inv["BR-06"] = state.snapshot.total !== 268.00 || state.snapshot.ruleset !== "RULESET-2026-10-01";
+  inv["BR-07"] = state.money.some(function(m){ return m.duplicate; });
+  inv["BR-09"] = state.reversed_original;
+  inv["BR-10"] = state.pan_column;
+  inv["BR-11"] = !!state.order.state && state.order.state !== deriveOrderState();
+  inv["BR-12"] = state.disposition === "later";
+  return inv;
+}
+
+logEvent("SO-90118 \u5c31\u7eea\uff1a\u65e0\u9884\u5360\uff0c\u65e0\u5feb\u7167\uff0c\u65e0\u94b1\u7684\u64cd\u4f5c");
+paint();
+})();
+</script>
+</body>
+</html>
