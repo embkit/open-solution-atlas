@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#f6f9fc">
+<title>上线绑定与无后见之明实验室 — Serving-binding lab</title>
+<style>
+  /* The demo carries the app's tokens inline because it must open on its own:
+     a demo that depends on the site's stylesheet cannot be opened from the
+     repository or from a file:// path. These are EmbKit's values and no others
+     — the brand indigo is LOCKED in the contract, and the neutrals are cold by
+     rule. Repeating values is how a second palette appears, so this block is
+     byte-identical across every demo and a test keeps it that way. */
+  /* The demo is light-only, and the site and the demo share one theme. */
+  :root{ color-scheme:light;
+    --page:#f6f9fc; --surface:#ffffff; --surface-2:#fafbfd; --surface-3:#eef2f7;
+    --line:#e8edf3; --line-strong:#d3dae3;
+    --navy:#0a2540; --text:#0a2540; --text-2:#425466; --text-3:#5f6b79;
+    --primary:#4f46e5; --primary-hover:#4338ca; --primary-active:#3730a3;
+    --primary-tint:#eef2ff; --primary-ring:rgba(79,70,229,.28); --on-primary:#ffffff;
+    --ok:#0e7c5a; --ok-soft:#dff5ec;
+    --warn:#8a5409; --warn-soft:#fdf1dc;
+    --danger:#c2373c; --danger-soft:#fdeaeb;
+    --r-sm:6px; --r-md:8px; --r-lg:10px; --r-xl:12px; --r-2xl:14px; --r-full:999px;
+    --shadow-card:0 1px 2px rgba(15,23,42,.04), 0 8px 24px rgba(15,23,42,.06);
+    --shadow-pop:0 12px 32px rgba(15,23,42,.12);
+    --sans:"Inter","MiSans","HarmonyOS Sans SC","PingFang SC","Microsoft YaHei",-apple-system,"Segoe UI",sans-serif;
+    --mono:ui-monospace,"SF Mono","Cascadia Mono",Menlo,Consolas,monospace;
+    /* aliases the demo bodies already use */
+    --vellum:var(--page); --vellum-2:var(--surface-3); --ink:var(--text);
+    --muted:var(--text-3); --rule:var(--line); --rule-strong:var(--line-strong);
+    --draft:var(--primary); --draft-soft:var(--primary-tint);
+    --accent:var(--primary); --accent-soft:var(--primary-tint); --link:var(--primary);
+    --revise:var(--danger); --revise-soft:var(--danger-soft);
+    --bad:var(--danger); --bad-soft:var(--danger-soft);
+    --bg:var(--page); --elev:var(--surface); --fg:var(--text);
+    --border:var(--line); --border-strong:var(--line-strong);
+  }
+  *{box-sizing:border-box}
+  /* An identifier is one token: `FR-018` was breaking after the hyphen in the
+     narrow ID column, which stops it reading as an identifier. Scoped to table
+     cells so the long paths in the source note can still wrap. */
+  td code, th code { white-space: nowrap; }
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:13px;line-height:1.6}
+  .wrap{max-width:1200px;margin:0 auto;padding:1.4rem 1.1rem 4rem}
+  header{border-bottom:1px solid var(--rule-strong);padding-bottom:.9rem;margin-bottom:1.2rem}
+  h1{font-family:var(--sans);font-size:20px;font-weight:600;line-height:1.35;letter-spacing:-.015em;margin:0 0 6px}
+  .sub{color:var(--muted);font-size:.86rem;margin:0;max-width:80ch;line-height:1.6}
+  .grid{display:grid;grid-template-columns:300px minmax(0,1fr) 290px;gap:var(--sp-3,12px);align-items:start}
+  @media (max-width:960px){.grid{grid-template-columns:1fr}}
+  .panel{padding:20px;background:var(--surface);border:1px solid var(--line);
+    border-radius:var(--r-xl);box-shadow:var(--shadow-card);margin-bottom:12px}
+  .panel h2{font:600 12px/1.5 var(--mono);letter-spacing:.06em;color:var(--muted);
+    margin:0 0 .6rem;border-bottom:1px solid var(--rule);padding-bottom:.35rem}
+  .panel h3{font-size:.95rem;margin:1rem 0 .35rem;font-weight:600}
+  button{font:500 12px/1 var(--mono);cursor:pointer;background:var(--bg);color:var(--fg);
+    border:1px solid var(--line);border-radius:var(--r-md);padding:6px 12px;margin:2px 4px 2px 0}
+  button:hover{border-color:var(--draft);color:var(--draft)}
+  button[aria-pressed="true"]{background:var(--draft);border-color:var(--draft);color:var(--vellum);font-weight:600}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  select{font:400 12px/1 var(--mono);background:var(--bg);color:var(--fg);
+    border:1px solid var(--line);border-radius:var(--r-md);padding:6px 10px;width:100%}
+  code{font-family:var(--mono);font-size:.76rem}
+  .kv{display:flex;gap:.5rem;font:400 12.5px/1.7 var(--mono);margin:.18rem 0}
+  .kv b{color:var(--muted);font-weight:600;min-width:5.2rem}
+  .log{max-height:230px;overflow:auto;font-family:var(--mono);font-size:11px;line-height:1.7;
+    background:var(--surface-3);border:1px solid var(--line);border-radius:var(--r-md);padding:10px 12px}
+  .log div{padding:.1rem 0;border-bottom:1px solid var(--rule)}
+  .log div:last-child{border:0}
+  /* Red means violated. The passing state is a quiet note, not a green banner:
+     a second semantic colour for "all clear" trains a reader to skim past the
+     states that matter. */
+  .viol{background:var(--danger-soft);border:1px solid var(--danger);
+    border-radius:var(--r-md);padding:10px 12px;font-size:12px;line-height:1.6;margin:8px 0;color:var(--danger)}
+  .ok{background:var(--surface-3);border:1px solid var(--line);
+    border-radius:var(--r-md);padding:10px 12px;font-size:12px;line-height:1.6;margin:8px 0;color:var(--text-3)}
+  .sig{display:inline-block;font:700 10.5px/1.4 var(--mono);letter-spacing:.03em;
+    padding:.1rem .32rem;border:1px solid currentColor;vertical-align:.08em}
+  table{width:100%;border-collapse:collapse;font:400 12px/1.6 var(--mono)}
+  th,td{text-align:left;padding:.32rem .4rem;border-bottom:1px solid var(--rule);vertical-align:top}
+  th{color:var(--muted);font-size:11px;letter-spacing:.05em;font-weight:600}
+  .note{font-size:12px;color:var(--muted);margin:.5rem 0 0;line-height:1.6}
+  .def{font-size:12.5px;line-height:1.6;margin:.35rem 0}
+  details{margin:.5rem 0}
+  summary{cursor:pointer;font:500 12px/1.5 var(--mono);color:var(--muted)}
+  a{color:var(--link)}
+  .src{font:400 11.5px/1.7 var(--mono);color:var(--muted);margin-top:1.4rem;
+    border-top:1px solid var(--rule-strong);padding-top:.8rem;max-width:100ch}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>上线绑定与无后见之明实验室 <span style="font-weight:400;color:var(--muted)">Serving-binding lab</span></h1>
+  <p class="sub">
+    本页演示 <code>packs/data-ai/mlops-platform</code> 的核心决策（ADR-0001/0002/0005）：
+    <strong>线上跑的是哪一版，必须是一个被记录下来的事实；特征值只能用它当时可用的信息算</strong>。
+    上线绑定作为一个整体被记录、不可更新（BR-01），生产只从注册表读（BR-05），
+    晋级需要<strong>具名的人</strong>的审批记录（BR-04），评估是<strong>分片</strong>的（BR-02），
+    特征值以观测时刻为准、<strong>没有后见之明</strong>（BR-13）。
+    需要这个 demo 的理由：<strong>「先把这个热修上去」和「这个特征当时是有的」，
+    都会让一次事故变成一次无法复盘的调查。</strong>
+  </p>
+</header>
+<div class="grid">
+
+<section class="panel">
+  <h2>注册表与服务 · registry &amp; serving</h2>
+  <div id="reg"></div>
+  <h3>绑定</h3>
+  <div id="binding"></div>
+</section>
+
+<section class="panel">
+  <h2>你可以做什么 · what you may do</h2>
+  <div id="acts"></div>
+  <h3>评估与特征</h3>
+  <div id="eval"></div>
+</section>
+
+<section class="panel">
+  <h2>零容忍不变量</h2>
+  <div id="violations"></div>
+  <p class="note">
+    本包 13 个不可交易不变量中的 5 个，取自其存储强制约束。第 9 条最容易被当成
+    「数据工程细节」：<strong>特征值的 available_at 必须不晚于观测时刻</strong>——
+    否则离线评估里那个漂亮的分数，<b>用的是当时根本还不存在的信息</b>。
+  </p>
+  <table>
+    <thead><tr><th>ID</th><th>要求</th><th>状态</th></tr></thead>
+    <tbody id="invTable"></tbody>
+  </table>
+</section>
+
+</div>
+
+<section class="panel">
+  <h2>事件轨迹 · append-only</h2>
+  <div class="log" id="log"></div>
+  <p class="note">
+    绑定的更正是<strong>一条新绑定</strong>；审批记录只追加，且审批人是一个<b>人的引用</b>，
+    不是一个构建号。回滚是<strong>选择一条更早的绑定</strong>，不是覆盖当前这一条。
+  </p>
+</section>
+<p class="src">内容来源：<code>01-business/business-rules.md</code>（BR-01/02/04/05/13）、<code>04-architecture/adr/0001-*.md</code>、<code>0002-*.md</code>、<code>0005-*.md</code>、<code>05-data/logical-data-model.md</code>（约束 1/3/7/8/9/10）。本页为手写演示：它编码本包的语义，不声称符合任何 profile。<code>verification: unverified</code>。</p>
+</div>
+<script>
+(function(){
+"use strict";
+/* ---- shared plumbing (assembled; the semantics below are this pack's) ---- */
+var INVARIANTS = [{"id": "BR-01", "what": "上线绑定作为一个整体被记录，不可更新；更正是新绑定"}, {"id": "BR-02", "what": "评估是分片的，不是总体一个数字——总体 AUC 会藏住某个片段上的失败"}, {"id": "BR-04", "what": "晋级需要具名的人的审批记录；构建号不是审批人"}, {"id": "BR-05", "what": "生产只从注册表读；不在注册表里的版本不能上线"}, {"id": "BR-13", "what": "特征值以观测时刻当时可用的信息算出——没有后见之明"}];
+function el(id){ return document.getElementById(id); }
+function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function bt(label, action, field){
+  var b = document.createElement("button");
+  b.type = "button"; b.textContent = label;
+  b.setAttribute("data-action", action);
+  if (field) b.setAttribute("data-field", field);
+  return b;
+}
+var EVENT_LOG = [];
+function paint(){
+  render();
+  var inv = checkInvariants();
+  var box = el("violations"); box.innerHTML = "";
+  var broken = INVARIANTS.filter(function(i){ return inv[i.id]; });
+  if (!broken.length) {
+    var ok = document.createElement("div");
+    ok.className = "ok";
+    ok.textContent = "\u2713 当前配置未违反任何零容忍不变量";
+    box.appendChild(ok);
+  } else {
+    broken.forEach(function(i){
+      var d = document.createElement("div");
+      d.className = "viol";
+      d.innerHTML = '<span class="sig">sev-1</span> <code>' + i.id + "</code> "
+        + esc(i.what) + " \u2014 已记录。真实系统里这是一个会 <strong>失败构建</strong> 的缺陷。";
+      box.appendChild(d);
+    });
+  }
+  var tb = el("invTable"); tb.innerHTML = "";
+  INVARIANTS.forEach(function(i){
+    var tr = document.createElement("tr");
+    tr.innerHTML = "<td><code>" + i.id + "</code></td><td>" + esc(i.what) + "</td><td>"
+      + (inv[i.id] ? '<span class="sig" style="color:var(--danger)">violated</span>'
+                   : '<span class="sig" style="color:var(--muted)">held</span>') + "</td>";
+    tb.appendChild(tr);
+  });
+  var lg = el("log"); lg.innerHTML = "";
+  EVENT_LOG.slice().reverse().forEach(function(t){
+    var d = document.createElement("div"); d.textContent = t; lg.appendChild(d);
+  });
+}
+function logEvent(text){
+  EVENT_LOG.push(text);
+  if (EVENT_LOG.length > 80) EVENT_LOG.shift();
+  paint();
+}
+function render(){}
+function checkInvariants(){ return {}; }
+
+var state = {
+  model: {id: "m-churn-v9", registry: true},
+  binding: {id: "BIND-221", model: "m-churn-v9", tier: "high-risk", recorded: true},
+  approval: null,
+  serving: false,
+  edited_binding: false,
+  evaluation: null,     /* 'aggregate' | 'sliced' */
+  feature: {available_at: null, observation: 1760486400},
+  hotfix: false
+};
+
+function kv(label, value, warn){
+  var d = document.createElement("div");
+  d.className = "kv";
+  d.innerHTML = "<b>" + esc(label) + "</b><span"
+    + (warn ? ' style="color:var(--danger);font-weight:600"' : "") + ">"
+    + esc(String(value)) + "</span>";
+  return d;
+}
+
+function render(){
+  var r = el("reg"); r.innerHTML = "";
+  r.appendChild(kv("\u6a21\u578b", state.model.id));
+  r.appendChild(kv("\u98ce\u9669\u6863\u7ea7", state.binding.tier));
+  r.appendChild(kv("\u5ba1\u6279\u8bb0\u5f55", state.approval
+    ? state.approval.approver + " / " + state.approval.at : "\u65e0", !state.approval));
+  r.appendChild(kv("\u5728\u7ebf", state.serving ? "\u670d\u52a1\u4e2d" : "\u672a\u4e0a\u7ebf", state.serving && !state.approval));
+  r.appendChild(kv("\u70ed\u4fee", state.hotfix ? "\u5df2\u4e0a\u4e00\u4e2a\u4e0d\u5728\u6ce8\u518c\u8868\u91cc\u7684\u7248\u672c" : "\u65e0", state.hotfix));
+
+  var b = el("binding"); b.innerHTML = "";
+  b.appendChild(kv("\u7ed1\u5b9a", state.binding.id));
+  b.appendChild(kv("\u72b6\u6001", state.edited_binding ? "\u5df2\u88ab\u5c31\u5730\u4fee\u6539" : "\u4e0d\u53ef\u66f4\u65b0",
+    state.edited_binding));
+
+  var e = el("eval"); e.innerHTML = "";
+  e.appendChild(kv("\u8bc4\u4f30\u65b9\u5f0f", state.evaluation || "\u2014",
+    state.evaluation === "aggregate"));
+  e.appendChild(kv("\u8982\u89c2\u65f6\u523b", state.feature.observation));
+  e.appendChild(kv("\u7279\u5f81\u53ef\u7528\u65f6\u523b", state.feature.available_at === null ? "\u65e0" : state.feature.available_at,
+    state.feature.available_at !== null && state.feature.available_at > state.feature.observation));
+
+  renderActs();
+}
+
+function renderActs(){
+  var box = el("acts"); box.innerHTML = "";
+  function add(label, action, handler){
+    var b = bt(label, action);
+    b.onclick = handler;
+    box.appendChild(b);
+  }
+
+  add("\u65e0\u5ba1\u6279\u4e0a\u7ebf", "serve-no-approval", function(){
+    state.serving = true;
+    logEvent("SERVING \u72b6\u6001\u800c\u65e0 APPROVAL_RECORD\uff08BR-04 / \u7ea6\u675f 8\uff09");
+  });
+
+  add("\u7531\u5177\u540d\u4eba\u5ba1\u6279", "approve-by-person", function(){
+    state.approval = {approver: "person://\u98ce\u63a7-\u674e\u5de5", at: "2026-10-12T08:10Z"};
+    logEvent("APPROVAL_RECORD approver=\u98ce\u63a7-\u674e\u5de5\uff08\u4eba\u7684\u5f15\u7528\uff0c\u4e0d\u662f\u6784\u5efa\u53f7\uff09");
+  });
+
+  add("\u5c31\u5730\u4fee\u6539\u7ed1\u5b9a", "edit-binding", function(){
+    state.edited_binding = true;
+    logEvent("UPDATE binding SET ... \u2014 \u7ed1\u5b9a\u65e0 UPDATE \u6743\u9650\uff08BR-01 / \u7ea6\u675f 1\uff09");
+  });
+
+  add("\u8bb0\u4e00\u6761\u65b0\u7ed1\u5b9a\uff08\u66f4\u6b63\uff09", "new-binding", function(){
+    state.edited_binding = false;
+    state.binding = {id: "BIND-222", model: state.binding.model, tier: state.binding.tier, recorded: true};
+    logEvent("BINDING BIND-222 \u65b0\u589e \u2014 \u66f4\u6b63\u662f\u4e00\u6761\u65b0\u7ed1\u5b9a\uff1b\u65e7\u7ed1\u5b9a\u4fdd\u7559");
+  });
+
+  add("\u6309\u603b\u4f53\u6307\u6807\u664b\u7ea7", "eval-aggregate", function(){
+    state.evaluation = "aggregate";
+    logEvent("PROMOTION \u4ee5\u603b\u4f53 AUC 0.91 \u4e3a\u636e \u2014 \u672a\u5206\u7247\uff08BR-02\uff09");
+  });
+
+  add("\u6309\u5206\u7247\u8bc4\u4f30\u664b\u7ea7", "eval-sliced", function(){
+    state.evaluation = "sliced";
+    logEvent("EVALUATION \u5df2\u5206\u7247\uff1a\u65b0\u5ba2\u6237 / \u8001\u5ba2\u6237 / \u9ad8\u52a8\u652f\u4ed8\uff0c\u6bcf\u7247\u5404\u81ea\u51fa\u7ed3\u679c");
+  });
+
+  add("\u7279\u5f81\u7528\u4e86\u540e\u6765\u624d\u6709\u7684\u4fe1\u606f", "feature-hindsight", function(){
+    state.feature.available_at = state.feature.observation + 86400;
+    logEvent("FEATURE_VALUE available_at \u665a\u4e8e observation_ts \u2014 \u540e\u89c1\u4e4b\u660e\uff08BR-13 / \u7ea6\u675f 9\uff09");
+  });
+
+  add("\u7279\u5f81\u53d6\u89c2\u6d4b\u65f6\u523b\u53ef\u7528\u7684\u503c", "feature-pointintime", function(){
+    state.feature.available_at = state.feature.observation - 3600;
+    logEvent("FEATURE_VALUE \u53d6\u89c2\u6d4b\u65f6\u523b\u4e4b\u524d\u53ef\u7528\u7684\u503c \u2014 \u65e0\u540e\u89c1\u4e4b\u660e");
+  });
+
+  add("\u70ed\u4fee\u4e0a\u4e00\u4e2a\u4e0d\u5728\u6ce8\u518c\u8868\u91cc\u7684\u7248\u672c", "hotfix", function(){
+    state.hotfix = true;
+    logEvent("SERVED_MODEL_DEPLOYMENT.model_version_ref \u65e0\u6cd5\u89e3\u6790\u5230\u6ce8\u518c\u8868\u6761\u76ee\uff08BR-05 / \u7ea6\u675f 7\uff09");
+  });
+
+  add("\u56de\u6eda\u5230\u66f4\u65e9\u7684\u7ed1\u5b9a", "rollback", function(){
+    state.hotfix = false;
+    state.serving = true;
+    state.binding = {id: "BIND-207", model: state.binding.model, tier: state.binding.tier, recorded: true};
+    logEvent("ROLLBACK \u9009\u62e9\u4e86\u66f4\u65e9\u7684\u7ed1\u5b9a BIND-207 \u2014 \u800c\u4e0d\u662f\u8986\u76d6\u5f53\u524d\u8fd9\u4e00\u6761");
+  });
+}
+
+function checkInvariants(){
+  var inv = {};
+  inv["BR-01"] = state.edited_binding;
+  inv["BR-02"] = state.evaluation === "aggregate";
+  inv["BR-04"] = state.serving && !state.approval;
+  inv["BR-05"] = state.hotfix;
+  inv["BR-13"] = state.feature.available_at !== null
+    && state.feature.available_at > state.feature.observation;
+  return inv;
+}
+
+logEvent("m-churn-v9 \u5df2\u6ce8\u518c\uff1bBIND-221 \u5df2\u8bb0\u5f55\u800c\u672a\u5ba1\u6279\uff0c\u672a\u4e0a\u7ebf");
+paint();
+})();
+</script>
+</body>
+</html>

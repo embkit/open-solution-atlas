@@ -1,0 +1,15 @@
+{
+  "title": "实验可信度实验室 — Experiment-credibility lab",
+  "kind": "invariant-lab",
+  "summary": "决策规则先于结果声明，统计是样本量加 SRM 加护栏，分桶由实验引擎写入，事件带 schema 版本，激活需要覆盖用途的同意。",
+  "entry": "index.html",
+  "demonstrates": [
+    "BR-02",
+    "BR-05",
+    "BR-07",
+    "BR-08",
+    "BR-11",
+    "ADR-0001",
+    "ADR-0003"
+  ]
+}

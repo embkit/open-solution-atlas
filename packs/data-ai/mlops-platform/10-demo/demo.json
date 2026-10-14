@@ -1,0 +1,16 @@
+{
+  "title": "上线绑定与无后见之明实验室 — Serving-binding lab",
+  "kind": "version-lab",
+  "summary": "线上跑哪一版是一个被记录的事实，晋级要具名人审批，评估分片，特征值不得使用观测时刻之后才可用的信息。",
+  "entry": "index.html",
+  "demonstrates": [
+    "BR-01",
+    "BR-02",
+    "BR-04",
+    "BR-05",
+    "BR-13",
+    "ADR-0001",
+    "ADR-0002",
+    "ADR-0005"
+  ]
+}
