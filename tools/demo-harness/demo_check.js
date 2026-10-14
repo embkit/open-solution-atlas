@@ -184,5 +184,49 @@ if (slug.indexOf("/wms/") >= 0) {
     d.text("violations").indexOf("BR-01") < 0);
 }
 
+if (slug.indexOf("his-emr") >= 0) {
+  // A signed clinical document is evidence. Corrections are additive, a
+  // retraction keeps the original, and no billing artefact may edit it. The
+  // substitute for the edit is an addendum — so the demo has to show both the
+  // forbidden path and the permitted one.
+  check("starts with no violation", d.text("violations").indexOf("sev-1") < 0);
+
+  // the permitted repair: an addendum that references the original
+  d.act("addendum");
+  check("an addendum leaves every invariant held",
+    d.text("violations").indexOf("sev-1") < 0);
+  check("…and the current text is the original plus the addendum",
+    d.text("currentNote").indexOf("追加更正") >= 0);
+
+  // the forbidden repair: edit the signed document in place
+  d.act("edit-inplace");
+  check("editing a signed document in place trips BR-07",
+    d.text("violations").indexOf("BR-07") >= 0);
+  check("…and ADR-0002, because the signature is the evidence",
+    d.text("violations").indexOf("ADR-0002") >= 0);
+  check("the divergence is shown rather than described",
+    d.text("currentNote").indexOf("不一致") >= 0);
+
+  // a retraction keeps the original
+  d.act("retract-delete");
+  check("deleting the original on retraction trips BR-08",
+    d.text("violations").indexOf("BR-08") >= 0);
+  check("the original is shown as gone, which is the defect",
+    d.text("original").indexOf("已被删除") >= 0);
+
+  // coded facts carry the version they were recorded under
+  d.act("remap-inplace");
+  check("rewriting a mapping in place trips BR-11",
+    d.text("violations").indexOf("BR-11") >= 0);
+  d.act("new-mapping-version");
+  check("a new mapping version clears BR-11",
+    d.text("violations").indexOf("BR-11") < 0);
+
+  // the billing pressure
+  d.act("bill-adjust");
+  check("billing editing the clinical record trips BR-12",
+    d.text("violations").indexOf("BR-12") >= 0);
+}
+
 console.log(failures ? "\nFAILURES: " + failures : "\nsemantic checks passed");
 process.exit(failures ? 1 : 0);

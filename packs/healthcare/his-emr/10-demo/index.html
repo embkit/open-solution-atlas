@@ -1,0 +1,367 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#f6f9fc">
+<title>签名证据实验室 — Signed-evidence lab</title>
+<style>
+  /* The demo carries the app's tokens inline because it must open on its own:
+     a demo that depends on the site's stylesheet cannot be opened from the
+     repository or from a file:// path. These are EmbKit's values and no others
+     — the brand indigo is LOCKED in the contract, and the neutrals are cold by
+     rule. Repeating values is how a second palette appears, so this block is
+     byte-identical across every demo and a test keeps it that way. */
+  /* The demo is light-only, and the site and the demo share one theme. */
+  :root{ color-scheme:light;
+    --page:#f6f9fc; --surface:#ffffff; --surface-2:#fafbfd; --surface-3:#eef2f7;
+    --line:#e8edf3; --line-strong:#d3dae3;
+    --navy:#0a2540; --text:#0a2540; --text-2:#425466; --text-3:#5f6b79;
+    --primary:#4f46e5; --primary-hover:#4338ca; --primary-active:#3730a3;
+    --primary-tint:#eef2ff; --primary-ring:rgba(79,70,229,.28); --on-primary:#ffffff;
+    --ok:#0e7c5a; --ok-soft:#dff5ec;
+    --warn:#8a5409; --warn-soft:#fdf1dc;
+    --danger:#c2373c; --danger-soft:#fdeaeb;
+    --r-sm:6px; --r-md:8px; --r-lg:10px; --r-xl:12px; --r-2xl:14px; --r-full:999px;
+    --shadow-card:0 1px 2px rgba(15,23,42,.04), 0 8px 24px rgba(15,23,42,.06);
+    --shadow-pop:0 12px 32px rgba(15,23,42,.12);
+    --sans:"Inter","MiSans","HarmonyOS Sans SC","PingFang SC","Microsoft YaHei",-apple-system,"Segoe UI",sans-serif;
+    --mono:ui-monospace,"SF Mono","Cascadia Mono",Menlo,Consolas,monospace;
+    /* aliases the demo bodies already use */
+    --vellum:var(--page); --vellum-2:var(--surface-3); --ink:var(--text);
+    --muted:var(--text-3); --rule:var(--line); --rule-strong:var(--line-strong);
+    --draft:var(--primary); --draft-soft:var(--primary-tint);
+    --accent:var(--primary); --accent-soft:var(--primary-tint); --link:var(--primary);
+    --revise:var(--danger); --revise-soft:var(--danger-soft);
+    --bad:var(--danger); --bad-soft:var(--danger-soft);
+    --bg:var(--page); --elev:var(--surface); --fg:var(--text);
+    --border:var(--line); --border-strong:var(--line-strong);
+  }
+  *{box-sizing:border-box}
+  /* An identifier is one token: `FR-018` was breaking after the hyphen in the
+     narrow ID column, which stops it reading as an identifier. Scoped to table
+     cells so the long paths in the source note can still wrap. */
+  td code, th code { white-space: nowrap; }
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:13px;line-height:1.6}
+  .wrap{max-width:1200px;margin:0 auto;padding:1.4rem 1.1rem 4rem}
+  header{border-bottom:1px solid var(--rule-strong);padding-bottom:.9rem;margin-bottom:1.2rem}
+  h1{font-family:var(--sans);font-size:20px;font-weight:600;line-height:1.35;letter-spacing:-.015em;margin:0 0 6px}
+  .sub{color:var(--muted);font-size:.86rem;margin:0;max-width:80ch;line-height:1.6}
+  .grid{display:grid;grid-template-columns:300px minmax(0,1fr) 290px;gap:var(--sp-3,12px);align-items:start}
+  @media (max-width:960px){.grid{grid-template-columns:1fr}}
+  .panel{padding:20px;background:var(--surface);border:1px solid var(--line);
+    border-radius:var(--r-xl);box-shadow:var(--shadow-card);margin-bottom:12px}
+  .panel h2{font:600 12px/1.5 var(--mono);letter-spacing:.06em;color:var(--muted);
+    margin:0 0 .6rem;border-bottom:1px solid var(--rule);padding-bottom:.35rem}
+  .panel h3{font-size:.95rem;margin:1rem 0 .35rem;font-weight:600}
+  button{font:500 12px/1 var(--mono);cursor:pointer;background:var(--bg);color:var(--fg);
+    border:1px solid var(--line);border-radius:var(--r-md);padding:6px 12px;margin:2px 4px 2px 0}
+  button:hover{border-color:var(--draft);color:var(--draft)}
+  button[aria-pressed="true"]{background:var(--draft);border-color:var(--draft);color:var(--vellum);font-weight:600}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  select{font:400 12px/1 var(--mono);background:var(--bg);color:var(--fg);
+    border:1px solid var(--line);border-radius:var(--r-md);padding:6px 10px;width:100%}
+  code{font-family:var(--mono);font-size:.76rem}
+  .kv{display:flex;gap:.5rem;font:400 12.5px/1.7 var(--mono);margin:.18rem 0}
+  .kv b{color:var(--muted);font-weight:600;min-width:5.2rem}
+  .log{max-height:230px;overflow:auto;font-family:var(--mono);font-size:11px;line-height:1.7;
+    background:var(--surface-3);border:1px solid var(--line);border-radius:var(--r-md);padding:10px 12px}
+  .log div{padding:.1rem 0;border-bottom:1px solid var(--rule)}
+  .log div:last-child{border:0}
+  /* Red means violated. The passing state is a quiet note, not a green banner:
+     a second semantic colour for "all clear" trains a reader to skim past the
+     states that matter. */
+  .viol{background:var(--danger-soft);border:1px solid var(--danger);
+    border-radius:var(--r-md);padding:10px 12px;font-size:12px;line-height:1.6;margin:8px 0;color:var(--danger)}
+  .ok{background:var(--surface-3);border:1px solid var(--line);
+    border-radius:var(--r-md);padding:10px 12px;font-size:12px;line-height:1.6;margin:8px 0;color:var(--text-3)}
+  .sig{display:inline-block;font:700 10.5px/1.4 var(--mono);letter-spacing:.03em;
+    padding:.1rem .32rem;border:1px solid currentColor;vertical-align:.08em}
+  table{width:100%;border-collapse:collapse;font:400 12px/1.6 var(--mono)}
+  th,td{text-align:left;padding:.32rem .4rem;border-bottom:1px solid var(--rule);vertical-align:top}
+  th{color:var(--muted);font-size:11px;letter-spacing:.05em;font-weight:600}
+  .note{font-size:12px;color:var(--muted);margin:.5rem 0 0;line-height:1.6}
+  .def{font-size:12.5px;line-height:1.6;margin:.35rem 0}
+  details{margin:.5rem 0}
+  summary{cursor:pointer;font:500 12px/1.5 var(--mono);color:var(--muted)}
+  a{color:var(--link)}
+  .src{font:400 11.5px/1.7 var(--mono);color:var(--muted);margin-top:1.4rem;
+    border-top:1px solid var(--rule-strong);padding-top:.8rem;max-width:100ch}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>签名证据实验室 <span style="font-weight:400;color:var(--muted)">Signed-evidence lab</span></h1>
+  <p class="sub">
+    本页演示 <code>packs/healthcare/his-emr</code> 的核心决策（ADR-0002）：
+    <strong>一份已签名的临床文书是证据，不是一个可以改的文本</strong>。更正以
+    <strong>追加</strong>进入记录（BR-07），撤回<strong>保留原件可见</strong>（BR-08），
+    临床记录<strong>绝不为了迁就计费或别的系统而被编辑</strong>（BR-12）。
+    需要这个 demo 的理由：<strong>在计费或审计压力下，把「诊断写错了」就地改掉，
+    是所有人都觉得理所当然的那一步。</strong>
+  </p>
+</header>
+<div class="grid">
+
+<section class="panel">
+  <h2>文书 · the document</h2>
+  <div id="doc"></div>
+  <h3>原件（不可变）</h3>
+  <p class="def" id="original"></p>
+  <h3>当前生效</h3>
+  <div id="current"></div>
+</section>
+
+<section class="panel">
+  <h2>你可以做什么 · what you may do</h2>
+  <div id="acts"></div>
+  <h3>编码事实 · coded facts</h3>
+  <div id="coded"></div>
+</section>
+
+<section class="panel">
+  <h2>零容忍不变量</h2>
+  <div id="violations"></div>
+  <p class="note">
+    本包 13 个不可交易不变量中的 5 个。它们不是流程偏好：任何一个非零，
+    <strong>病历就不再是病历，而是一份关于病历的说法</strong>——而它同时还是
+    一份法律证据、一份计费依据、和一条可以被别人依赖的临床事实。
+  </p>
+  <table>
+    <thead><tr><th>ID</th><th>要求</th><th>状态</th></tr></thead>
+    <tbody id="invTable"></tbody>
+  </table>
+</section>
+
+</div>
+
+<section class="panel">
+  <h2>记录轨迹 · append-only</h2>
+  <div class="log" id="log"></div>
+  <p class="note">
+    更正与撤回都<strong>增加</strong>记录，从不删除或覆盖。
+    「原件」与「当前生效」这两栏会一直并列显示——<strong>它们一旦不同，
+    差异本身就是需要被发现的东西</strong>。
+  </p>
+</section>
+<p class="src">内容来源：<code>01-business/business-rules.md</code>（BR-07/08/11/12）、<code>04-architecture/adr/0002-*.md</code>（已签名文书是证据）、<code>05-data/logical-data-model.md</code>（约束 3/6/7）。本页为手写演示：它编码本包的语义，不声称符合任何 profile。本包不声称符合 HIPAA 或任何法域的合规要求——那些是<b>指称</b>，不是本页的结论。<code>verification: unverified</code>。</p>
+</div>
+<script>
+(function(){
+"use strict";
+/* ---- shared plumbing (assembled; the semantics below are this pack's) ---- */
+var INVARIANTS = [{"id": "BR-07", "what": "已签名的文书由追加更正，永不就地编辑"}, {"id": "BR-08", "what": "撤回保留原件可见，而不是让它消失"}, {"id": "BR-11", "what": "每个编码事实记录其编码系统与版本；映射变更新建版本，不改写事实"}, {"id": "BR-12", "what": "临床记录绝不为了迁就另一个系统而被编辑"}, {"id": "ADR-0002", "what": "签名是与作者分离的实体；已签名文书没有 UPDATE 权限"}];
+function el(id){ return document.getElementById(id); }
+function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function bt(label, action, field){
+  var b = document.createElement("button");
+  b.type = "button"; b.textContent = label;
+  b.setAttribute("data-action", action);
+  if (field) b.setAttribute("data-field", field);
+  return b;
+}
+var EVENT_LOG = [];
+function paint(){
+  render();
+  var inv = checkInvariants();
+  var box = el("violations"); box.innerHTML = "";
+  var broken = INVARIANTS.filter(function(i){ return inv[i.id]; });
+  if (!broken.length) {
+    var ok = document.createElement("div");
+    ok.className = "ok";
+    ok.textContent = "\u2713 当前配置未违反任何零容忍不变量";
+    box.appendChild(ok);
+  } else {
+    broken.forEach(function(i){
+      var d = document.createElement("div");
+      d.className = "viol";
+      d.innerHTML = '<span class="sig">sev-1</span> <code>' + i.id + "</code> "
+        + esc(i.what) + " \u2014 已记录。真实系统里这是一个会 <strong>失败构建</strong> 的缺陷。";
+      box.appendChild(d);
+    });
+  }
+  var tb = el("invTable"); tb.innerHTML = "";
+  INVARIANTS.forEach(function(i){
+    var tr = document.createElement("tr");
+    tr.innerHTML = "<td><code>" + i.id + "</code></td><td>" + esc(i.what) + "</td><td>"
+      + (inv[i.id] ? '<span class="sig" style="color:var(--danger)">violated</span>'
+                   : '<span class="sig" style="color:var(--muted)">held</span>') + "</td>";
+    tb.appendChild(tr);
+  });
+  var lg = el("log"); lg.innerHTML = "";
+  EVENT_LOG.slice().reverse().forEach(function(t){
+    var d = document.createElement("div"); d.textContent = t; lg.appendChild(d);
+  });
+}
+function logEvent(text){
+  EVENT_LOG.push(text);
+  if (EVENT_LOG.length > 80) EVENT_LOG.shift();
+  paint();
+}
+function render(){}
+function checkInvariants(){ return {}; }
+
+var ORIGINAL =
+  "\u4e3b\u8bc9\uff1a\u54bd\u75db 3 \u5929\u3002\u8bca\u65ad\uff1a"
+  + "\u6025\u6027\u4e0a\u547c\u5438\u9053\u611f\u67d3\uff08ICD-10 J06.9\uff09\u3002"
+  + "\u5904\u7406\uff1a\u5bf9\u75c7\u652f\u6301\uff0c\u4e09\u65e5\u540e\u5766\u67e5\u3002";
+
+var state = {
+  doc: {
+    id: "DOC-2026-0417", kind: "\u95e8\u8bca\u75c5\u5386", state: "signed",
+    author: "\u533b\u5e08 \u738b", signature: "SIG-8821", signed_at: "2026-10-12T09:41Z"
+  },
+  original: ORIGINAL,
+  current: ORIGINAL,          /* \u5f53\u524d\u751f\u6548\u7684\u6587\u672c */
+  addenda: [],                /* \u8ffd\u52a0\u66f4\u6b63 */
+  edited_in_place: false,     /* \u5c31\u5730\u7f16\u8f91\u5df2\u7b7e\u540d\u6587\u4e66 */
+  retracted: false,
+  deleted: false,             /* \u64a4\u56de\u65f6\u5220\u6389\u4e86\u539f\u4ef6 */
+  mapping: {system: "ICD-10", version: "2019", code: "J06.9", text: "\u6025\u6027\u4e0a\u5478\u9053\u611f\u67d3"},
+  mapping_versions: [{system: "ICD-10", version: "2019"}],
+  remapped_in_place: false,
+  billing_modified: false
+};
+
+function kv(label, value, warn){
+  var d = document.createElement("div");
+  d.className = "kv";
+  d.innerHTML = "<b>" + esc(label) + "</b><span"
+    + (warn ? ' style="color:var(--danger);font-weight:600"' : "") + ">"
+    + esc(String(value)) + "</span>";
+  return d;
+}
+
+function render(){
+  var d = state.doc;
+
+  var box = el("doc"); box.innerHTML = "";
+  box.appendChild(kv("\u6587\u4e66", d.id));
+  box.appendChild(kv("\u7c7b\u578b", d.kind));
+  box.appendChild(kv("\u72b6\u6001", d.state));
+  box.appendChild(kv("\u4f5c\u8005", d.author));
+  box.appendChild(kv("\u7b7e\u540d", d.signature + "  (" + d.signed_at + ")"));
+  box.appendChild(kv("\u64a4\u56de", state.retracted ? "\u5df2\u64a4\u56de\uff08\u539f\u4ef6\u4ecd\u53ef\u89c1\uff09" : "\u5426"));
+  if (state.deleted) box.appendChild(kv("\u539f\u4ef6", "\u5df2\u5220\u9664", true));
+
+  el("original").textContent = state.deleted ? "\uff08\u539f\u4ef6\u5df2\u88ab\u5220\u9664\uff09" : state.original;
+
+  var cur = el("current"); cur.innerHTML = "";
+  var p = document.createElement("p");
+  p.className = "def";
+  p.id = "currentText";
+  p.textContent = state.current;
+  cur.appendChild(p);
+  var note = document.createElement("div");
+  note.id = "currentNote";
+  if (state.edited_in_place) {
+    note.className = "viol";
+    note.innerHTML = '<span class="sig">sev-1</span> \u5f53\u524d\u751f\u6548\u5df2\u4e0e\u539f\u4ef6\u4e0d\u4e00\u81f4\uff0c'
+      + '\u800c\u6ca1\u6709\u4efb\u4f55\u4e00\u6761\u8ffd\u52a0\u8bb0\u5f55\u8bf4\u660e\u5b83\u4e3a\u4ec0\u4e48\u4e0d\u4e00\u81f4\u3002';
+  } else if (same()) {
+    note.className = "ok";
+    note.innerHTML = "\u2713 \u5f53\u524d\u751f\u6548\u7b49\u4e8e\u539f\u4ef6"
+      + (state.addenda.length ? "\uff0c\u53e0\u52a0 " + state.addenda.length + " \u6761\u8ffd\u52a0\u66f4\u6b63" : "");
+  } else {
+    note.className = "ok";
+    note.innerHTML = "\u2713 \u5f53\u524d\u751f\u6548 = \u539f\u4ef6 + "
+      + state.addenda.length + " \u6761\u8ffd\u52a0\u66f4\u6b63";
+  }
+  cur.appendChild(note);
+
+  var cd = el("coded"); cd.innerHTML = "";
+  var m = state.mapping;
+  cd.appendChild(kv("\u7f16\u7801\u7cfb\u7edf", m.system));
+  cd.appendChild(kv("\u7248\u672c", m.version, state.remapped_in_place));
+  cd.appendChild(kv("\u4ee3\u7801", m.code));
+  cd.appendChild(kv("\u5df2\u767b\u8bb0\u7248\u672c", state.mapping_versions
+    .map(function(v){ return v.system + " " + v.version; }).join("\u3001")));
+  if (state.remapped_in_place) {
+    var w = document.createElement("div");
+    w.className = "viol";
+    w.id = "mappingNote";
+    w.innerHTML = '<span class="sig">sev-1</span> \u6620\u5c04\u88ab\u5c31\u5730\u6539\u5199\uff1a'
+      + '\u5df2\u5b58\u50a8\u7684\u7f16\u7801\u4e8b\u5b9e\u73b0\u5728\u6307\u5411\u4e00\u4e2a\u5b83\u4e0b\u6e38\u8bfb\u8005\u4ece\u672a\u6279\u51c6\u8fc7\u7684\u7248\u672c\u3002';
+    cd.appendChild(w);
+  }
+
+  renderActs();
+}
+
+function same(){
+  if (state.edited_in_place) return false;
+  return state.current === state.original;
+}
+
+function renderActs(){
+  var box = el("acts"); box.innerHTML = "";
+  function add(label, action, handler){
+    var b = bt(label, action);
+    b.onclick = handler;
+    box.appendChild(b);
+  }
+
+  add("\u8ffd\u52a0\u66f4\u6b63\uff08addendum\uff09", "addendum", function(){
+    state.addenda.push({n: state.addenda.length + 1, reason: "\u8bca\u65ad\u66f4\u6b63",
+      text: "\u4e0a\u8ff0\u8bca\u65ad\u66f4\u6b63\u4e3a J02.9\uff0c\u4f9d\u636e\u54bd\u62ed\u5b50\u57f9\u517b\u7ed3\u679c\u3002"});
+    state.current = state.original + "\n\u3010\u8ffd\u52a0\u66f4\u6b63\u3011\u4e0a\u8ff0\u8bca\u65ad\u66f4\u6b63\u4e3a J02.9\u3002";
+    logEvent("ADDENDUM #" + state.addenda.length + " \u5f15\u7528\u539f\u4ef6\u800c\u4e0d\u66ff\u4ee3\u5b83");
+  });
+
+  add("\u5c31\u5730\u7f16\u8f91\u5df2\u7b7e\u540d\u6587\u4e66", "edit-inplace", function(){
+    state.current = state.original.replace("J06.9", "J02.9");
+    state.original = state.current;
+    state.edited_in_place = true;
+    logEvent("UPDATE document SET text = ... WHERE state = 'signed' \u2014 \u7b7e\u540d\u4e4b\u540e\u6ca1\u6709 UPDATE \u6743\u9650\uff08\u7ea6\u675f 3\uff09");
+  });
+
+  add("\u64a4\u56de\uff08\u4fdd\u7559\u539f\u4ef6\uff09", "retract", function(){
+    state.retracted = true;
+    state.doc.state = "retracted";
+    logEvent("RETRACT \u5df2\u8bb0\u5f55\uff0c\u539f\u4ef6\u4ecd\u53ef\u89c1\u5e76\u6807\u660e\u5df2\u64a4\u56de");
+  });
+
+  add("\u64a4\u56de\u5e76\u5220\u9664\u539f\u4ef6", "retract-delete", function(){
+    state.retracted = true;
+    state.deleted = true;
+    state.doc.state = "retracted";
+    logEvent("DELETE FROM document WHERE id = 'DOC-2026-0417' \u2014 \u539f\u4ef6\u4e0d\u518d\u53ef\u89c1\uff08BR-08 \u8fdd\u53cd\uff09");
+  });
+
+  add("\u672f\u8bed\u6620\u5c04\u5c31\u5730\u6539\u5199\u7248\u672c", "remap-inplace", function(){
+    state.mapping.version = "2026";
+    state.remapped_in_place = true;
+    logEvent("UPDATE coded_fact SET coded_system_version = '2026' \u2014 \u5df2\u5b58\u50a8\u4e8b\u5b9e\u88ab\u7f16\u8f91\uff08BR-11 / \u7ea6\u675f 6\uff09");
+  });
+
+  add("\u65b0\u5efa\u6620\u5c04\u7248\u672c", "new-mapping-version", function(){
+    state.mapping = {system: "ICD-10", version: "2026", code: "J06.9",
+      text: "\u6025\u6027\u4e0a\u5478\u9053\u611f\u67d3"};
+    state.mapping_versions.push({system: "ICD-10", version: "2026"});
+    state.remapped_in_place = false;
+    logEvent("MAPPING_VERSION 2026 \u65b0\u589e\uff1b\u5df2\u5b58\u50a8\u4e8b\u5b9e\u4ecd\u6307\u5411\u5b83\u4eec\u88ab\u8bb0\u4e0b\u65f6\u7684\u7248\u672c");
+  });
+
+  add("\u8ba1\u8d39\u5355\u636e\u8981\u6c42\u4fee\u6539\u4e34\u5e8a\u8bb0\u5f55", "bill-adjust", function(){
+    state.billing_modified = true;
+    logEvent("CHARGE \u2192 UPDATE document\uff1a\u4e3a\u4e86\u5bf9\u4e0a\u8d39\u7528\u800c\u6539\u4e34\u5e8a\u8bb0\u5f55\uff08BR-12 / \u7ea6\u675f 7\uff09");
+  });
+}
+
+function checkInvariants(){
+  var inv = {};
+  inv["BR-07"] = state.edited_in_place;
+  inv["BR-08"] = state.deleted;
+  inv["BR-11"] = state.remapped_in_place;
+  inv["BR-12"] = state.billing_modified;
+  inv["ADR-0002"] = state.edited_in_place || state.deleted;
+  return inv;
+}
+
+logEvent("DOC-2026-0417 \u5df2\u7b7e\u540d\uff1a state=signed, signature=SIG-8821");
+paint();
+})();
+</script>
+</body>
+</html>
