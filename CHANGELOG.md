@@ -4,6 +4,69 @@ All notable changes to Open Solution Atlas. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); versions are repository-wide
 releases (individual packs carry their own `version` in `manifest.yaml`).
 
+## [Unreleased]
+
+### Added — every pack has a demo: 17 of 17
+
+The demo layer is complete. Each one is hand-written for its pack — there is no
+shared engine — and each exists to make one rule's *failure mode* clickable rather
+than to display the pack.
+
+What they share is the point of them: **a violation path and the permitted repair,
+both asserted.** A demo whose failure path is decorative teaches the wrong thing,
+so `tools/demo-harness/demo_check.js` asserts that the invariant panel lights up on
+the action that breaks a rule *and clears* on the action that fixes it.
+
+The recurring shape is a person under pressure taking the step that looks like
+helping:
+
+| pack | the step the reader is invited to take |
+|---|---|
+| `wms` | "fix the quantity" — a wrong *fact* is reversed by a compensating event, a wrong *projection* is rebuilt from the stream; neither is an UPDATE |
+| `his-emr` | correcting a signed clinical document in place, under billing pressure |
+| `enterprise-bi` | declaring your own dashboard certified; an artifact silently following `latest` |
+| `iam-platform` | "grant it permanently", "override the conflict this once", a local password for an SSO user |
+| `mes` | skipping the predecessor, the inspection gate, the genealogy |
+| `tms` | "the truck leaves, the POD can follow" |
+| `telecom-bss` | "the rule changed last month, just recompute it" |
+| `power-marketing-cis` | "estimate a number and bill it", "cut the power now" |
+| `lakehouse-platform` | "just re-run it" |
+| `growth-analytics` | "looks good, ship it to everyone" |
+| `mlops-platform` | "hot-patch it" |
+| `itsm-helpdesk` | "close it and backfill later", "raise it as P1" |
+| `personal-blog` | renaming after publication, unpublishing as a 404 |
+| `omnichannel-commerce` | "just retry it", "roll this order back" |
+
+Fourteen were written in this cycle. Every demo is one self-contained file that
+opens from a `file://` URL, carries the byte-identical token block, and is
+light-only — a test enforces each of those.
+
+### Fixed — two defects in the demo harness, both of which made it too weak
+
+- The stub **minted a node for any id a demo asked for**, so a demo that wrote to
+  an undeclared `#log` passed here and threw on load in a real browser. It now
+  registers the ids the HTML declares and returns null for the rest.
+- **`clickAll` stopped at the first screen**, so "every button is clickable" was a
+  claim about the initial state of a progressive demo.
+
+### Changed — the demo kit's hardcode exemption is scoped, and colour is not in it
+
+`lint_hardcodes.py` reported 694 values across the demos, every one of them a px
+metric of the component kit — which each demo must carry verbatim, because a demo
+has to be a single file. The region is marked with the tool's own escape hatch and
+the reason is written into each file. A colour is **not** covered: a hex or an
+`rgba()` outside the token block is a second palette starting, so that is checked
+separately, per demo, by a test.
+
+### Deliberately not done
+
+- `practitioner-reviewed` and `field-proven` remain 0. Both need a named human.
+- The remaining packs' controls and capabilities stay structured at 13/17. The
+  structured view is what exposed the gap; filling it is content work.
+
+`verification` unchanged: a demo encodes the pack's design and proves nothing about
+the pack's correctness.
+
 ## [0.4.0] — 2026-10-14
 
 The catalog became EmbKit's shop window, and building it then found what the shop

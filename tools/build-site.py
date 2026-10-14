@@ -1305,7 +1305,8 @@ def render_catalog(
         '<span class="tail">for real enterprise systems</span></h1>'
         '<p class="hero-sub">MES &middot; WMS &middot; IAM &middot; BI &middot; '
         'workflow &middot; government services &mdash; every decision traced, every '
-        'identifier resolved, and a prompt assembled from the pack itself.</p>'
+        'identifier resolved, a prompt assembled from the pack itself, and an '
+        'interactive demo that shows the rule failing.</p>'
         '</section>'
     )
 
