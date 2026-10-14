@@ -255,16 +255,30 @@ def test_demos_use_the_contract_brand(light):
 # --------------------------------------------------------------------------- #
 
 def test_category_colours_stay_on_icons(css):
-    """§1.4: category colours appear on an icon's stroke and tint, nowhere else."""
+    """§1.4: category colours appear on an icon's stroke and tint, nowhere else.
+
+    The set is read from the token block rather than matched by the `--cat-`
+    prefix, because the prefix also catches `--cat-box` — the icon container's
+    *size*, a metric and not a colour. Matching by prefix reported the generated
+    listings' `.diricon` (which sizes a box the same way `.cat-icon` does) as a
+    leak of the category palette.
+    """
+    names = {
+        name
+        for name, value in re.findall(r"--(cat-[a-z0-9-]+):\s*([^;]+);", _root_block(css))
+        if re.fullmatch(r"#[0-9a-fA-F]{3,8}", value.strip())
+    }
+    assert {"cat-convert", "cat-convert-bg"} <= names, "no category colours found"
     rules = re.findall(r"([^{}]+)\{([^{}]*)\}", re.sub(r"/\*.*?\*/", "", css, flags=re.DOTALL))
     offenders = []
     for selector, body in rules:
-        if "var(--cat-" not in body:
+        used = sorted(n for n in names if f"var(--{n})" in body)
+        if not used:
             continue
         # a category colour may be used where an icon is styled
         if ".cat-icon" in selector:
             continue
-        offenders.append(selector.strip())
+        offenders.append(f"{selector.strip()} -> {used}")
     assert not offenders, f"category colours leaked outside .cat-icon: {offenders}"
 
 
@@ -479,3 +493,28 @@ def test_the_kit_exemption_is_marked_and_scoped(css):
         assert text.index("ds-allow-hardcode:start") < text.index("ds-allow-hardcode:end")
         assert text.index("ds-allow-hardcode:end") < text.index("</style>")
         assert "component kit" in text, f"{name}: the exemption gives no reason"
+
+
+def test_latin_faces_precede_the_cjk_faces(css):
+    """§2.1's rule, not its literal string: Latin and figures from a neutral
+    grotesque ("Latin/数字一律走 Inter").
+
+    CSS matches a font per *character*, and the contract's order puts four CJK
+    faces ahead of `-apple-system` and `Segoe UI`. On a machine with no Inter —
+    which is most of them — the first family owning a Latin glyph is then
+    `Microsoft YaHei`: measured in the browser, the apostrophe in "pack's"
+    advanced 11.64px against 2.77px with a Latin face first, and every Latin
+    glyph plus the cards' `tabular-nums` figures came from the CJK font too.
+    """
+    stack = re.search(r"--sans:\s*(.*?);", css, re.DOTALL).group(1)
+    families = [f.strip().strip("\"'") for f in stack.replace("\n", " ").split(",")]
+    latin = ("Inter", "-apple-system", "Segoe UI", "system-ui", "Helvetica Neue")
+    cjk = ("MiSans", "HarmonyOS Sans SC", "PingFang SC", "Microsoft YaHei",
+           "Noto Sans SC", "Source Han Sans SC")
+    li = [i for i, f in enumerate(families) if f in latin]
+    ci = [i for i, f in enumerate(families) if f in cjk]
+    assert li and ci, f"--sans lost a face: {families}"
+    assert max(li) < min(ci), (
+        f"a CJK face precedes a Latin one in --sans: {families}. Latin text and "
+        "figures would be drawn by the CJK font wherever Inter is not installed."
+    )

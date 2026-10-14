@@ -110,10 +110,16 @@
   --empty-box: 40px;           /* §7.8 empty-state container */
   --titlebar-h: 40px;
   --sidebar-w: 220px;
-  --sticky-top: var(--sticky-top);
+  /* The titlebar is sticky at top: 0 and `--titlebar-h` tall, so this is
+     where a sticky sidebar or contents rail has to stop. It used to be
+     `var(--sticky-top)` — a self-reference, which is invalid at
+     computed-value time, so `top` resolved to `auto` and nothing stuck. */
+  --sticky-top: calc(var(--titlebar-h) + var(--sp-4));
   --content-max: 1180px;
   --prose-max: 76ch;
   --facet-min: 104px;
+  --tile-min: 240px;           /* the generated listings' card minimum */
+  --toc-w: 260px;              /* a chapter's contents column */
   --ctl-font: 13.5px;          /* §7.1 / §7.2 label size */
   --nav-h: 28px;               /* the titlebar's own nav rows */
   --dropdown-top: 44px;
@@ -127,8 +133,16 @@
   --sp-5: 20px; --sp-6: 24px; --sp-7: 28px; --sp-8: 32px;
 
   /* ---- type (contract §2) ---- */
-  --sans: "Inter", "MiSans", "HarmonyOS Sans SC", "PingFang SC",
-          "Microsoft YaHei", -apple-system, "Segoe UI", sans-serif;
+  /* §2.1's rule is that Latin and figures come from a neutral grotesque
+     ("Latin/数字一律走 Inter"). Its literal order puts four CJK faces ahead of
+     `-apple-system` and `Segoe UI`, and CSS matches a family per *character*, so
+     on a machine without Inter the first family owning U+2019 is
+     `Microsoft YaHei`. Measured in the browser: the apostrophe in "pack's"
+     advanced 11.64px from the contract's order and 2.77px with a Latin face
+     first — and every Latin glyph came from the CJK font. The same rule, in an
+     order that holds without Inter installed. */
+  --sans: "Inter", -apple-system, "Segoe UI", "MiSans", "HarmonyOS Sans SC",
+          "PingFang SC", "Microsoft YaHei", sans-serif;
   --mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
 
   --fs-display: 26px;
@@ -273,7 +287,9 @@ code {
 /* --------------------------------------------------------------------------
    Catalog — contract §9 for the marketing hero, §7.4 for the card grid
    -------------------------------------------------------------------------- */
-.wrap { max-width: var(--content-max); margin: 0 auto; padding: var(--sp-6) var(--sp-6) 0; }
+/* The page's gutter and measure. §4.3 gives the main area `24px 28px`, so the
+   sides are 28 and not the 24 the top is. */
+.wrap { max-width: var(--content-max); margin: 0 auto; padding: var(--sp-6) var(--sp-7) var(--sp-7); }
 
 .hero {
   /* §9: the marketing frame — a soft indigo wash, not a flat panel. */
@@ -479,11 +495,12 @@ code {
 /* --------------------------------------------------------------------------
    Shell — contract §4.2 sidebar (220px, three sections) + §4.3 main
    -------------------------------------------------------------------------- */
+/* No max-width, no margin, no padding: `.wrap` above is the container, and two
+   containers that both centre themselves is how the pack header ended up flush
+   against the viewport edge while the grid below it was inset. */
 .shell {
   display: grid; grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
   gap: var(--sp-6); align-items: start;
-  max-width: var(--content-max); margin: 0 auto;
-  padding: var(--sp-5) var(--sp-6) 0;
 }
 @media (max-width: 900px) { .shell { grid-template-columns: minmax(0, 1fr); } }
 
@@ -500,9 +517,22 @@ code {
   background: var(--surface); border: var(--hairline) solid var(--line);
   border-radius: var(--r-xl); padding: var(--sp-3) var(--sp-2);
   position: sticky; top: var(--sticky-top);
+  /* A three-chapter pack's nav is under a viewport; an L3 pack's is 1381px, so
+     a sticky sidebar without an inner scroll loses its last third off the
+     bottom of the screen. */
+  max-height: calc(100vh - var(--sticky-top) - var(--sp-4));
+  overflow-y: auto;
 }
 @media (max-width: 900px) { .sidebar { position: static; } }
 .side-head { display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-2) var(--sp-2) var(--sp-3); }
+@media (max-width: 900px) {
+  /* The head is the logo square, "Solution Atlas" and the domain — and on a
+     phone the titlebar states the first two and the breadcrumb the third, so it
+     is 76px of the first screen spent repeating what is already above it; the
+     nav starts the card instead. Stated here rather than in the `@media` block
+     that holds `.shell` thirty lines earlier: same specificity, later wins. */
+  .side-head { display: none; }
+}
 .side-logo {
   width: var(--logo); height: var(--logo); border-radius: var(--r-lg); flex: none;
   background: var(--primary); color: var(--on-primary);
@@ -520,11 +550,26 @@ code {
 
 .packnav { display: flex; flex-direction: column; gap: var(--sp-1); }
 .navgroup { margin-top: var(--sp-1); }
+/* The group label is a disclosure's summary on small screens — where the groups
+   are what keeps a 40-chapter nav from burying the article — and a plain label
+   on desktop, where the group is always open. */
 .navgroup-label {
-  display: block; padding: var(--sp-2) var(--sp-3) var(--sp-1);
+  display: list-item; cursor: pointer; padding: var(--sp-2) var(--sp-3) var(--sp-1);
   font-size: var(--fs-xs); font-weight: 500; color: var(--text-3);
 }
 .navgroup ul { list-style: none; margin: 0; padding: 0; }
+@media (min-width: 901px) {
+  /* Every group opens above 900px. A closed `<details>` keeps its contents out
+     of the box in the UA's own machinery — measured, the group collapses to its
+     30px summary — and that is not a `display` the author can override: the
+     `ul` already computes to `block` while taking no space. `::details-content`
+     is the one hook for it, and an author `content-visibility` beats the UA's.
+     Where the pseudo-element is unknown this rule is ignored and the reader
+     still has every group, one click away. */
+  .navgroup::details-content { content-visibility: visible; }
+  .navgroup-label { display: block; list-style: none; cursor: default; }
+  .navgroup-label::-webkit-details-marker { display: none; }
+}
 /* §7.1 nav item: h36 r8 padding 0 10 icon 18 gap 10 label 13.5/500;
    active = solid primary pill, no shadow */
 .navgroup a {
@@ -556,6 +601,13 @@ code {
    -------------------------------------------------------------------------- */
 .prose { min-width: 0; max-width: var(--prose-max); }
 .prose-wide { max-width: var(--prose-max); margin: 0 auto; }
+/* The article's title. It had no rule at all, so it fell through to the
+   browser's own 2em heading — 26px of unspaced, unletter-spaced default
+   heading, which is close to but not the contract's `--fs-display`. */
+.prose h1 {
+  font-size: var(--fs-display); font-weight: 700; line-height: 1.3;
+  letter-spacing: -0.02em; margin: 0 0 var(--sp-4);
+}
 .prose h2 {
   font-size: var(--fs-h1); font-weight: 600; line-height: 1.35;
   letter-spacing: -0.015em; margin: var(--sp-7) 0 var(--sp-3);
@@ -578,23 +630,113 @@ code {
 .prose th { font-size: var(--fs-xs); font-weight: 600; color: var(--text-3); }
 .prose hr { border: 0; border-top: var(--hairline) solid var(--line); margin: var(--sp-6) 0; }
 .prose img { max-width: 100%; border-radius: var(--r-lg); }
-/* axe-core's link-in-text-block: a link inside a paragraph has to be
-   distinguishable without colour, so it is underlined. Chrome and nav
-   links keep the colour-only treatment, where the position already
-   separates them. */
+/* The titlebar is sticky, so a heading scrolled to by a contents link or a
+   deep link lands underneath it. The margin is the titlebar plus a breath. */
+.prose :is(h1, h2, h3, h4) { scroll-margin-top: calc(var(--titlebar-h) + var(--sp-4)); }
+.spectab tr { scroll-margin-top: calc(var(--titlebar-h) + var(--sp-4)); }
+/* axe-core's link-in-text-block: a link inside a block of text has to be
+   distinguishable without colour, so it is underlined. Chrome and nav links
+   keep the colour-only treatment, where the position already separates them —
+   which is what this rule always meant, and what the two nav lists below now
+   actually get: `li a` was catching the pack sidebar and the contents rail and
+   underlining every row of both. */
 p a, li a, td a, blockquote a {
   text-decoration: underline;
   text-underline-offset: var(--stroke);
 }
+.navgroup a, .toc a { text-decoration: none; }
 
-.toc { position: sticky; top: var(--sticky-top); }
-.toc-label { font-size: var(--fs-xs); font-weight: 500; color: var(--text-3); margin-bottom: var(--sp-2); }
-.toc ol { list-style: none; margin: 0; padding: 0; }
-.toc li { font-size: var(--fs-sm); line-height: 1.6; padding-left: var(--sp-2); }
-.toc li.toc-h3 { padding-left: var(--sp-4); }
-.toc a { color: var(--text-3); }
-.toc a:hover { color: var(--primary); }
-.dirlist { font-size: var(--fs-body); line-height: 1.8; }
+/* A chapter's reading layout. `.view-doc` had no rule at all, so the rail was
+   a block occupying the main column's full width and its own height — 512px on
+   a chapter with a dozen headings — and pushed the article down by that much,
+   leaving the 579px prose column 300px short of the box it sat in. With a rail
+   it is a two-column grid; without one (a short chapter, or a pack overview) it
+   stays a plain block and the article keeps the full measure. */
+.view-doc { min-width: 0; }
+.view-doc.has-toc {
+  display: grid; gap: var(--sp-6); align-items: start;
+  grid-template-columns: var(--toc-w) minmax(0, 1fr);
+}
+
+/* The chapter's contents rail. Each link is a block at least 24px tall —
+   WCAG 2.2 AA's minimum target, and the rule axe-core was failing on every
+   chapter page — so the rail is a run of full-width hit targets rather than a
+   column of text-height links. The left rule marks the level, and turns primary
+   on the section being read once the script marks it. */
+.toc {
+  position: sticky; top: var(--sticky-top);
+  /* A long chapter's rail is taller than the viewport, so it scrolls inside
+     itself the way the pack sidebar does. */
+  max-height: calc(100vh - var(--sticky-top) - var(--sp-4));
+  overflow-y: auto;
+}
+.toc-label {
+  display: block; margin-bottom: var(--sp-2);
+  font-size: var(--fs-xs); font-weight: 500; color: var(--text-3);
+}
+.toc ul { list-style: none; margin: 0; padding: 0; }
+.toc ul ul { padding-left: var(--sp-4); }
+.toc a {
+  display: -webkit-box; -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden;
+  min-height: var(--sp-6);
+  padding: var(--sp-1) var(--sp-2) var(--sp-1) var(--sp-3);
+  border-left: var(--hairline) solid var(--line);
+  font-size: var(--fs-sm); line-height: 1.5; color: var(--text-3);
+  transition: color var(--t-btn) ease, border-color var(--t-btn) ease;
+}
+.toc a:hover { color: var(--primary-hover); border-left-color: var(--line-strong); }
+.toc a[aria-current] { color: var(--primary); border-left-color: var(--primary); font-weight: 500; }
+
+/* The rail's narrow variant, stated here rather than in the `@media` block that
+   holds `.shell`: same specificity, later wins, and a base rule stated after its
+   own media query silently keeps the two columns down to 390px — where the
+   forced 260px first column left the prose 50px wide and the page scrolled
+   sideways. */
+@media (max-width: 900px) {
+  /* One column. The rail is dropped rather than stacked: this chapter's outline
+     is 710px, so capped it becomes a 287px box that swallows the reader's first
+     upward swipe, and uncapped it pushes the article a screen and a half down.
+     On a phone the chapter is read in order, and the sidebar above already
+     carries chapter-level navigation. */
+  .view-doc.has-toc { grid-template-columns: minmax(0, 1fr); }
+  .toc { display: none; }
+}
+
+/* Generated directory listings. The build gives every output directory an index
+   so that a link to `…/docs/` resolves; these are those pages, and one of them
+   is what you land on when you open a design-system folder. */
+.listhead { margin-bottom: var(--sp-5); }
+.listhead h1 {
+  font-size: var(--fs-display); font-weight: 700; line-height: 1.3;
+  letter-spacing: -0.02em; margin: 0 0 var(--sp-2);
+}
+.listhead .path { margin: 0; font-family: var(--mono); font-size: var(--fs-sm); color: var(--text-3); }
+.dirgrid {
+  display: grid; gap: var(--sp-3);
+  grid-template-columns: repeat(auto-fill, minmax(var(--tile-min), 1fr));
+}
+.dircard {
+  display: flex; align-items: center; gap: var(--sp-3);
+  min-height: var(--ctl-h); padding: var(--sp-2) var(--sp-3);
+  background: var(--surface); border: var(--hairline) solid var(--line);
+  border-radius: var(--r-lg); color: var(--text);
+  font-size: var(--fs-body); font-weight: 500;
+  transition: border-color var(--t-btn) ease, box-shadow var(--t-btn) ease, color var(--t-btn) ease;
+}
+.dircard:hover { border-color: var(--line-strong); box-shadow: var(--shadow-card); color: var(--primary); }
+.diricon {
+  width: var(--cat-box); height: var(--cat-box); flex: none;
+  display: grid; place-items: center; border-radius: var(--r-md);
+  background: var(--primary-tint); color: var(--primary);
+}
+.diricon svg { width: var(--icon-cat); height: var(--icon-cat); }
+.dirname { min-width: 0; overflow-wrap: anywhere; }
+.dirnote {
+  margin-left: auto; flex: none;
+  font-family: var(--mono); font-size: var(--fs-xs); color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
 
 /* --------------------------------------------------------------------------
    View switch — §7.2 buttons, radio-driven so it survives without JavaScript

@@ -1,7 +1,9 @@
-/* Solution Atlas — catalog search & filtering.
-   Progressive enhancement: without JS the full card grid is already rendered.
-   Search uses Fuse.js over search-index.json (pack + per-document entries);
-   facets filter the server-rendered cards.
+/* Solution Atlas — the catalog's search and facets, and the chapter contents
+   rail.
+
+   Both modules are progressive enhancement. Without JS the catalog's card grid
+   is already rendered and every contents link still works; the rail only gains
+   a mark for the section being read.
 
    The search index (~800 KB) is NOT fetched on page load: it is loaded lazily
    on first search interaction, so visitors who only browse or use the facet
@@ -183,10 +185,10 @@
     });
     if (count) {
       count.textContent = visible === totalPacks
-        ? totalPacks + " solutions"
-        : visible + " of " + totalPacks + " solutions";
+        ? totalPacks + " packs"
+        : visible + " of " + totalPacks + " packs";
     }
-    toggleEmpty(cards, visible === 0, "No solutions match those filters.");
+    toggleEmpty(cards, visible === 0, "No pack matches those filters.");
   }
 
   function showHits(query) {
@@ -273,4 +275,66 @@
   }
 
   render();
+})();
+
+/* The contents rail. Reading position is the last heading that has passed
+   under the sticky titlebar, which is the section a reader is in; the mark is
+   `aria-current="location"`, the token ARIA defines for a position within a
+   page. Recalculated on scroll, coalesced into one frame. */
+(function () {
+  "use strict";
+
+  var toc = document.querySelector(".toc");
+  if (!toc) return;
+  var links = Array.prototype.slice.call(toc.querySelectorAll('a[href^="#"]'));
+  if (!links.length) return;
+
+  var items = [];
+  links.forEach(function (a) {
+    var id = a.getAttribute("href").slice(1);
+    var el = document.getElementById(id);
+    if (el) items.push({ el: el, a: a });
+  });
+  if (!items.length) return;
+
+  var bar = document.querySelector(".titlebar");
+  var line = (bar ? bar.offsetHeight : 0) + 16;
+  var current = null;
+
+  function mark(a) {
+    if (a === current) return;
+    if (current) current.removeAttribute("aria-current");
+    if (a) a.setAttribute("aria-current", "location");
+    current = a;
+  }
+
+  function update() {
+    // The rail is `display: none` below 900px (the stylesheet owns that
+    // breakpoint), so ask the DOM rather than repeating the width here: nothing
+    // is marked when nothing is rendered, and a resize into the desktop layout
+    // starts working because the elements were never abandoned.
+    if (toc.offsetParent === null) return;
+    var pick = items[0];
+    for (var i = 0; i < items.length; i++) {
+      if (items[i].el.getBoundingClientRect().top <= line) pick = items[i];
+    }
+    // At the foot of the page the last heading may never reach the line, so the
+    // end of the scroll means the end of the document, not silence.
+    var doc = document.documentElement;
+    if (window.innerHeight + window.scrollY >= doc.scrollHeight - 4) {
+      pick = items[items.length - 1];
+    }
+    mark(pick.a);
+  }
+
+  var queued = false;
+  function onScroll() {
+    if (queued) return;
+    queued = true;
+    window.requestAnimationFrame(function () { queued = false; update(); });
+  }
+
+  window.addEventListener("scroll", onScroll, { passive: true });
+  window.addEventListener("resize", onScroll);
+  update();
 })();

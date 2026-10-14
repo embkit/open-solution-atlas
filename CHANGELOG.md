@@ -6,6 +6,91 @@ releases (individual packs carry their own `version` in `manifest.yaml`).
 
 ## [Unreleased]
 
+### Fixed — the front end, page by page
+
+A pass over the built site that opened every page *type* and measured it, rather
+than reading the stylesheet. Eight defects were on every page of the site, and
+three of them were accessibility failures axe-core had been reporting all along:
+
+| defect | scope | how it showed |
+|---|---|---|
+| `--sticky-top: var(--sticky-top)` — a self-reference, invalid at computed-value time, so `top` fell back to `auto` | every page | neither the pack sidebar nor the contents rail ever stuck |
+| `.navmenu { display: none }` was the *desktop* default | every page | Catalog, Standard, Taxonomy and Roadmap were reachable on a phone and on no desktop, tablet or laptop at any width |
+| nothing ever set `aria-current="page"` | every page | the primary nav's active-pill rule was dead code |
+| the generated directory index: a raw slug as the `<h1>`, a flat `<ul>` of file names, no page gutter | ~300 pages | the page you land on when you open a design-system folder |
+| the article `<h1>` had no rule | every chapter and doc page | it fell through to the browser's own 2em heading |
+| no `scroll-margin` anywhere | every page | a contents link put its heading *under* the sticky titlebar |
+| `li a { text-decoration: underline }` was unscoped | every page | the pack sidebar and the contents rail were underlined like body copy, against the rule's own comment |
+| the catalog wrote "packs" in the server HTML and "solutions" in the script | the catalog | the count changed word on load |
+
+The chapter pages had their own two, both serious and both on all 590 of them:
+
+- **The contents rail was invalid markup.** `render_toc` emitted the nested
+  `<ul>` as a *sibling* of its parent `<li>`; a `<ul>` may contain `li`,
+  `script` or `template` and nothing else, so axe reported `list`.
+- **Its links were 16px tall**, under WCAG 2.2 AA's 24px minimum target
+  (`target-size`, 14 nodes per page). They are 26px blocks now.
+
+Four more were layout, and each had a cause worth naming:
+
+- **A chapter's rail was a block above the article.** `.view-doc` had no rule at
+  all, so the rail took the main column's full width *and* its own height — 512px
+  on a chapter with a dozen headings — pushing the text down by that much and
+  leaving the 579px prose column 300px short of the 880px box it sat in. It is a
+  two-column reading layout now, and below 900px the rail is dropped rather than
+  stacked, because capped it becomes a 287px box that swallows the reader's first
+  upward swipe above the article.
+- **The pack sidebar had no inner scroll**, so an L3 pack's 1381px nav lost its
+  last third off the bottom of the screen.
+- **`nav_tree` was not the disclosure its docstring described.** The comment
+  claimed the groups "render as `<details>` … below 760px the same markup becomes
+  collapsible"; it emitted `<div>`s, and on a phone the 40-chapter sidebar filled
+  the viewport before the `<h1>`. The groups are `<details>` now, with the current
+  one `open`, and desktop reveals them all through `::details-content` — a closed
+  `<details>` keeps its contents out of the box in the UA's own machinery, which
+  an author `display` cannot override.
+- **`404.html`'s hero sat outside `.wrap`**, so its panel was the full viewport
+  width while the catalog's identical panel was 1180px.
+
+**The generated directory pages are a designed surface now** — the build gives
+every output directory an index so that a link to `…/docs/` resolves, and there
+are roughly three hundred of them. Each gets the page's own gutter and measure, a
+breadcrumb back through the path, the raw path as a subtitle, and one card per
+entry in the catalog's card language, with the entry count taken from the
+directory rather than asserted.
+
+**One more was not layout at all.** §2.1's rule is that Latin and figures come
+from a neutral grotesque, but its literal order puts four CJK faces ahead of
+`-apple-system` and `Segoe UI` — and CSS matches a family per *character*, so on a
+machine without Inter the first family owning U+2019 is `Microsoft YaHei`. Measured
+in the browser: the apostrophe in `pack's` advanced 11.64px that way and 2.77px
+with a Latin face first, and every Latin glyph and the cards' `tabular-nums`
+figures came from the CJK font too. The same rule, in an order that holds without
+Inter installed; Inter stays first, so a machine that has it is unaffected.
+
+Also fixed: the pack and plain pages had no `.wrap` (so the breadcrumb and pack
+header sat flush against the viewport edge while the grid below them was inset);
+the overview rendered the title and its metadata twice; a duplicate mermaid
+`<script>` on overview pages with a diagram; and `app.js` was not loaded on
+chapter pages at all, which is why the rail could not mark the section being read.
+
+### Added — the contents rail marks where you are
+
+The rail now sets `aria-current="location"` on the section the reader is in — the
+last heading that has passed under the sticky titlebar — recalculated on scroll
+and coalesced into one frame. It is progressive enhancement: without the script
+every link still works, and the rail is absent below 900px, where the CSS is
+asked rather than a duplicated breakpoint.
+
+### Added — a guard for the font rule
+
+`test_latin_faces_precede_the_cjk_faces` asserts §2.1's *rule* (a Latin face
+precedes every CJK face in `--sans`) rather than its literal string, so a future
+font swap cannot quietly reintroduce the fallback above. The category-colour
+guard is now read from the token block instead of a `--cat-` prefix match, which
+had been calling `.diricon`'s use of `--cat-box` — the icon container's *size*,
+not a colour — a leak of the category palette.
+
 ### Added — every pack has a demo: 17 of 17
 
 The demo layer is complete. Each one is hand-written for its pack — there is no
