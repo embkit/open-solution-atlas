@@ -97,6 +97,38 @@ VENDOR_EXPECTED = {
     "mermaid.min.js": "sha384-rbtjAdnIQE/aQJGEgXrVUlMibdfTSa4PQju4HDhN3sR2PmaKFzhEafuePsl9H/9I",
 }
 
+# The four primary-nav destinations. `nav_current` is matched against these
+# keys; the attribute is set only where the link *is* the page, because
+# `aria-current="page"` says exactly that and a section highlight would need a
+# different token.
+NAV_ITEMS = (
+    ("catalog", "index.html", "grid", "Catalog"),
+    ("standard", "docs/pack-standard.v1.html", "book", "Standard"),
+    ("taxonomy", "docs/taxonomy.html", "network", "Taxonomy"),
+    ("roadmap", "docs/roadmap.html", "route", "Roadmap"),
+)
+
+# URL -> the nav key whose link is that page.
+NAV_PAGE = {url: key for key, url, _glyph, _label in NAV_ITEMS if url != "index.html"}
+NAV_PAGE["index.html"] = "catalog"
+
+
+def primary_nav(prefix: str, current: str = "") -> str:
+    """The primary navigation as one `<nav>`.
+
+    Rendered twice per page — once inline in the titlebar, once inside the
+    `<details>` that replaces it below 820px — because a closed `<details>`
+    hides its contents in the UA stylesheet, so a single copy inside the
+    disclosure is invisible on desktop. Only one copy is ever displayed, so only
+    one reaches the accessibility tree.
+    """
+    links = []
+    for key, url, glyph, label in NAV_ITEMS:
+        cur = ' aria-current="page"' if current == key else ""
+        links.append(f'<a href="{prefix}{url}"{cur}>{icon_glyph(glyph)}{label}</a>')
+    return f'<nav class="topnav" aria-label="Primary">{"".join(links)}</nav>'
+
+
 MATURITY_LABEL = {
     "L1": ("L1 · Brief", "m1"),
     "L2": ("L2 · Blueprint", "m2"),
@@ -417,14 +449,10 @@ HEAD = """<!doctype html>
 <a class="skip" href="#main">Skip to content</a>
 <header class="titlebar">
   <a class="brand" href="{prefix}index.html"><span class="brand-mark">{brand_icon}</span> Solution&nbsp;Atlas</a>
+  {nav_inline}
   <details class="navmenu">
     <summary aria-label="Toggle navigation"><span class="navmenu-icon">{menu_icon}</span>Menu</summary>
-    <nav class="topnav" aria-label="Primary">
-      <a href="{prefix}index.html">{nav_catalog}</a>
-      <a href="{prefix}docs/pack-standard.v1.html">{nav_standard}</a>
-      <a href="{prefix}docs/taxonomy.html">{nav_taxonomy}</a>
-      <a href="{prefix}docs/roadmap.html">{nav_roadmap}</a>
-    </nav>
+    {nav_menu}
   </details>
 </header>
 <main id="main">
@@ -455,17 +483,17 @@ def page_shell(
     scripts: str = "",
     lang: str = "en",
     canonical: str = "",
+    nav_current: str = "",
 ) -> str:
+    nav = primary_nav(prefix, nav_current)
     head = HEAD.format(
         title=html.escape(title), description=html.escape(description),
         prefix=prefix, body_class=body_class, icon=icon,
         lang=lang, canonical=canonical,
         brand_icon=icon_glyph("grid"),
         menu_icon=icon_glyph("menu"),
-        nav_catalog=icon_glyph("grid") + "Catalog",
-        nav_standard=icon_glyph("book") + "Standard",
-        nav_taxonomy=icon_glyph("network") + "Taxonomy",
-        nav_roadmap=icon_glyph("route") + "Roadmap",
+        nav_inline=nav,
+        nav_menu=nav,
     )
     # og:url and a canonical link are only meaningful once the site's public
     # origin is known; without it, drop the elements entirely rather than emit
@@ -559,23 +587,37 @@ def nav_tree(pack: Pack, current_url: str, prefix: str) -> str:
     out = ['<nav class="packnav" aria-label="Pack chapters">']
     for group in sorted(groups):
         label = group or "overview"
-        out.append(
-            '<div class="navgroup">'
-            f'<span class="navgroup-label">{html.escape(label)}</span><ul>'
-        )
-        for doc in sorted(groups[group], key=lambda d: d.rel):
+        docs = sorted(groups[group], key=lambda d: d.rel)
+        # The open group is the one holding the page you are on, so a reader on a
+        # phone sees their own chapter without opening anything.
+        opened = " open" if any(d.url == current_url for d in docs) else ""
+        items = []
+        for doc in docs:
             rel_inside = Path(doc.rel).relative_to(pack.rel_dir).as_posix()
             name = Path(rel_inside).name
             name = "overview" if name == "README.md" else name[:-3]
             active = ' class="active" aria-current="page"' if doc.url == current_url else ""
             href = prefix + doc.url
-            out.append(f'<li><a{active} href="{href}">{html.escape(name)}</a></li>')
-        out.append("</ul></div>")
+            items.append(f'<li><a{active} href="{href}">{html.escape(name)}</a></li>')
+        out.append(
+            f'<details class="navgroup"{opened}>'
+            f'<summary class="navgroup-label">{html.escape(label)}</summary>'
+            f'<ul>{"".join(items)}</ul></details>'
+        )
     out.append("</nav>")
     return "".join(out)
 
 
 def render_toc(toc_tokens: list) -> str:
+    """The chapter's "on this page" rail.
+
+    A sub-list nests *inside* its parent ``<li>``. Emitting it as the ``<li>``'s
+    next sibling is the shape that is easy to write and invalid to ship: a
+    ``<ul>`` may contain ``<li>``, ``<script>`` or ``<template>`` and nothing
+    else, so axe-core reported a serious ``list`` violation on every chapter
+    page. The rail carries no other structure, so fixing the nesting was the
+    whole of it.
+    """
     if not toc_tokens:
         return ""
 
@@ -584,14 +626,22 @@ def render_toc(toc_tokens: list) -> str:
             return ""
         items = []
         for tok in tokens:
+            children = walk(tok.get("children", []), level + 1)
             items.append(
-                f'<li><a href="#{html.escape(tok["id"])}">{html.escape(tok["name"])}</a></li>'
+                "<li>"
+                f'<a href="#{html.escape(tok["id"])}">{html.escape(tok["name"])}</a>'
+                f"{children}"
+                "</li>"
             )
-            items.append(walk(tok.get("children", []), level + 1))
         inner = "".join(items)
-        return f'<ul>{inner}</ul>' if inner else ""
+        return f"<ul>{inner}</ul>" if inner else ""
 
-    return f'<aside class="toc" aria-label="On this page"><span class="toc-label">On this page</span>{walk(toc_tokens)}</aside>'
+    return (
+        '<aside class="toc" aria-label="On this page">'
+        '<span class="toc-label">On this page</span>'
+        f"{walk(toc_tokens)}"
+        "</aside>"
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -1200,28 +1250,53 @@ def render_doc_page(
     # radio switch next to `.shell` reaches them with `~`; replacing the whole
     # shell instead would have hidden the navigation exactly when the reader is
     # deepest in the material.
+    article_html = doc.html
+    if is_overview:
+        # `.packhead` above already states the title, and the README repeats it as
+        # the article's own H1 with its metadata table. The table carries facts the
+        # pills do not (stack stance, regulatory context) so it stays; the duplicate
+        # heading goes, and with it the two empty `<th>` cells that only existed to
+        # make the markdown table legal.
+        article_html = re.sub(
+            r"^\s*<h1[^>]*>.*?</h1>\s*", "", article_html, count=1, flags=re.DOTALL)
+        article_html = re.sub(
+            r"<thead>\s*<tr>\s*<th[^>]*>\s*</th>\s*<th[^>]*>\s*</th>\s*</tr>\s*</thead>\s*",
+            "", article_html, count=1)
+    # `.wrap` is the page's gutter and measure, so the breadcrumb, the pack header
+    # and the view switch line up with the sidebar and the article below them.
+    # The view switch still reaches `.shell` with `~`: they remain siblings here.
+    # The rail is computed first because the reading layout depends on whether
+    # there is one: `.view-doc` is a two-column grid only when it holds a rail.
+    rail = render_toc(doc.toc) if not is_overview else ""
     body = (
-        breadcrumb(prefix, pack)
+        '<div class="wrap">'
+        + breadcrumb(prefix, pack)
         + header
         + render_view_switch(spec_entry if is_overview else None)
         + '<div class="shell">'
         + render_sidebar(pack, doc, prefix)
         + '<div class="main">'
-        + '<div class="view-doc">'
-        + (render_toc(doc.toc) if not is_overview else "")
-        + f'<article class="prose">{annotate_lang(doc.html)}</article>'
+        + f'<div class="view-doc{" has-toc" if rail else ""}">'
+        + rail
+        + f'<article class="prose">{annotate_lang(article_html)}</article>'
         + "</div>"
         + spec
         + "</div>"
         + "</div>"
+        + "</div>"
     )
     scripts = ""
+    # `app.js` carries the contents rail, which is the only thing it does on a
+    # chapter page — so it is loaded where a rail exists and nowhere else. It was
+    # never loaded here at all, which is why the rail could not mark the section
+    # being read.
+    if rail:
+        scripts += f'<script src="{prefix}assets/app.js" defer></script>'
     if "class=\"mermaid\"" in doc.html:
-        scripts = mermaid_script(prefix)
+        scripts += mermaid_script(prefix)
     if is_overview and spec_entry:
         # The copy buttons are an enhancement; the prompts themselves are real
         # .md files, so without JS the action is still a working link.
-        scripts += mermaid_script(prefix) if "class=\"mermaid\"" in doc.html else ""
         scripts += '<script src="' + prefix + 'assets/prompt-copy.js" defer></script>'
     return page_shell(
         title=f"{pack.title} · {doc.title}",
@@ -1232,12 +1307,17 @@ def render_doc_page(
 
 
 def render_plain_page(doc: Doc, prefix: str, site_url: str = "", lang: str = "en") -> str:
-    body = f'<article class="prose prose-wide">{annotate_lang(doc.html)}</article>'
+    body = (
+        '<div class="wrap">'
+        f'<article class="prose prose-wide">{annotate_lang(doc.html)}</article>'
+        "</div>"
+    )
     scripts = mermaid_script(prefix) if 'class="mermaid"' in doc.html else ""
     return page_shell(
         title=doc.title, description=doc.title,
         prefix=prefix, body=body, body_class="doc", scripts=scripts,
         lang=lang, canonical=abs_url(site_url, doc.url),
+        nav_current=NAV_PAGE.get(doc.url, ""),
     )
 
 
@@ -1342,6 +1422,7 @@ def render_catalog(
                     "systems, each with traced identifiers, integrity constraints "
                     "and prompts assembled from the pack itself.",
         prefix="", body=body, body_class="catalog", icon="\u25c8",
+        nav_current="catalog",
         # SRI on the vendored library: the hash is pinned in VENDOR_EXPECTED
         # and the build already fails if the file's bytes change, so the
         # attribute is the browser-side half of the same check.
@@ -1503,11 +1584,60 @@ def copy_linked_files(out: Path) -> int:
     return copied
 
 
+def _entry_label(name: str) -> tuple[str, str]:
+    """(human label, extension) for a file or directory name.
+
+    `warm-editorial/` reads as "Warm Editorial" and `DESIGN.html` as "DESIGN"
+    with `.html` handed back so the card can name the kind. Nothing is invented:
+    the label is the name with its separators resolved, and the raw path stays on
+    the page as the subtitle, so a reader who came for the exact filename still
+    has it.
+    """
+    stem, dot, ext = name.rpartition(".")
+    if not dot:
+        stem, ext = name, ""
+    words = [w for w in re.split(r"[-_]+", stem) if w]
+    if not words:
+        return name, ext
+    head = words[0]
+    if head.islower():
+        head = head[:1].upper() + head[1:]
+    return " ".join([head, *words[1:]]), ext
+
+
+def _path_crumbs(parts, prefix: str) -> str:
+    """A breadcrumb for a generated listing page, from the catalog inward.
+
+    `/design-systems/library/stripe/` says `Catalog › design-systems › library ›
+    stripe` rather than opening on a slug with no context, which is what these
+    pages did before.
+    """
+    if not parts:
+        return ""
+    chev = icon("chevron")
+    out = ['<nav class="crumbs">', f'<a href="{prefix}index.html">Catalog</a>', chev]
+    last = len(parts) - 1
+    for i, part in enumerate(parts):
+        if i == last:
+            out.append(f'<span class="crumb-cur">{html.escape(part)}</span>')
+        else:
+            up = "../" * (last - i)
+            out.append(f'<a href="{up}index.html">{html.escape(part)}</a>{chev}')
+    out.append("</nav>")
+    return "".join(out)
+
+
 def generate_missing_indexes(out: Path) -> int:
     """Give every output directory a listing page if it lacks index.html.
 
     Links to a directory (``…/docs/``, ``…/packs/``) are rewritten to
     ``index.html`` during rendering; this makes those targets real.
+
+    These pages were the site's worst surface: a raw slug as the heading, a flat
+    ``<ul>`` of file names, no page gutter, and roughly three hundred of them.
+    They are a designed surface now — the page's own measure, a breadcrumb back
+    through the path, and one card per entry in the catalog's card language,
+    with the entry count taken from the directory rather than asserted.
     """
     created = 0
     # Every output directory — including ones that hold only subdirectories —
@@ -1527,24 +1657,48 @@ def generate_missing_indexes(out: Path) -> int:
             entries = sorted(d.iterdir())
         except OSError:
             continue
-        items = []
+        cards = []
         for entry in entries:
             if entry.name == "index.html":
                 continue
-            if entry.is_dir():
-                items.append(
-                    f'<li><a href="{entry.name}/index.html">{html.escape(entry.name)}/</a></li>'
-                )
-            else:
-                items.append(f'<li><a href="{entry.name}">{html.escape(entry.name)}</a></li>')
-        if not items:
+            is_dir = entry.is_dir()
+            href = f"{entry.name}/index.html" if is_dir else entry.name
+            label, ext = _entry_label(entry.name)
+            note = ""
+            if is_dir:
+                try:
+                    n = sum(1 for c in entry.iterdir() if c.name != "index.html")
+                except OSError:
+                    n = 0
+                note = f'<span class="dirnote">{n} item{"s" if n != 1 else ""}</span>'
+            elif ext:
+                note = f'<span class="dirnote">.{html.escape(ext)}</span>'
+            cards.append(
+                f'<a class="dircard" href="{html.escape(href)}">'
+                f'<span class="diricon">{icon("grid" if is_dir else "book")}</span>'
+                f'<span class="dirname">{html.escape(label)}</span>'
+                f"{note}</a>"
+            )
+        if not cards:
             continue
+        parts = d.relative_to(out).parts
         rel = d.relative_to(out).as_posix()
-        title = rel if rel != "." else "Open Solution Atlas"
-        prefix = "../" * len(d.relative_to(out).parts)
-        body = f'<h1>{html.escape(title)}</h1><ul class="dirlist">{"".join(items)}</ul>'
+        prefix = "../" * len(parts)
+        title = _entry_label(parts[-1])[0]
+        body = (
+            '<div class="wrap">'
+            + _path_crumbs(parts, prefix)
+            + '<header class="listhead">'
+            + f"<h1>{html.escape(title)}</h1>"
+            + f'<p class="path">{html.escape(rel)}/</p>'
+            + "</header>"
+            + f'<div class="dirgrid">{"".join(cards)}</div>'
+            + "</div>"
+        )
         write(index, page_shell(
-            title=title, description=title, prefix=prefix, body=body, body_class="doc",
+            title=f"{title} — Open Solution Atlas",
+            description=f"Contents of {rel}/ in Open Solution Atlas.",
+            prefix=prefix, body=body, body_class="doc",
         ))
         created += 1
     return created
@@ -1595,13 +1749,18 @@ def write_robots(out: Path, site_url: str) -> None:
 
 def write_404(out: Path, site_url: str = "", lang: str = "en") -> None:
     """Emit a branded ``404.html`` (GitHub Pages serves it on unknown paths)."""
+    # `.wrap` carries the gutter and the measure. The catalog's hero — the same
+    # panel — sits inside it; this one did not, so its left edge was the viewport
+    # edge and the panel spanned the whole window instead of 1180px.
     body = (
+        '<div class="wrap">'
         '<section class="hero"><h1>Page not found</h1>'
         '<p class="hero-sub">That page does not exist — it may have been renamed '
         "when a pack was promoted. The catalog is searchable.</p>"
         '<div class="searchwrap">'
         '<a class="clear" href="index.html">← Back to the catalog</a></div>'
         "</section>"
+        "</div>"
     )
     write(
         out / "404.html",
