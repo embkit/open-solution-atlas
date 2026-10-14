@@ -1599,10 +1599,13 @@ def _entry_label(name: str) -> tuple[str, str]:
     words = [w for w in re.split(r"[-_]+", stem) if w]
     if not words:
         return name, ext
-    head = words[0]
-    if head.islower():
-        head = head[:1].upper() + head[1:]
-    return " ".join([head, *words[1:]]), ext
+    # Title case, but only when the whole segment is lower case: a slug like
+    # `data-ai` is shown as "Data Ai" and `energy-utilities` as "Energy
+    # Utilities", while `DESIGN`, `AGENTS` and `README.zh-CN` are already in the
+    # form their authors chose and capitalising them would give "Readme".
+    if stem.islower():
+        words = [w[:1].upper() + w[1:] for w in words]
+    return " ".join(words), ext
 
 
 def _path_crumbs(parts, prefix: str) -> str:
