@@ -54,3 +54,8 @@ def prompts() -> ModuleType:
 @pytest.fixture(scope="session")
 def build_site() -> ModuleType:
     return _load("build-site")
+
+
+@pytest.fixture(scope="session")
+def i18n() -> ModuleType:
+    return _load("i18n")
