@@ -51,7 +51,8 @@ def test_unknown_key_and_missing_translation_raise(i18n):
 def test_t_fills_placeholders(i18n):
     assert i18n.t("spec.head", "en", total=72) == "Spec panel · 72 identifiers"
     assert i18n.t("spec.head", "zh", total=72) == "规格面板 · 72 条已识别标识"
-    assert i18n.t("catalog.count.all", "zh", n=17) == "17 个方案包"
+    assert i18n.t("view.spec.count", "zh", n=72) == " · 72 条标识"
+    assert i18n.t("prompt.ctx.blurb", "en", n="99,730").startswith("99,730 characters")
 
 
 def test_strings_carry_no_markup(i18n):
@@ -167,7 +168,32 @@ def test_the_runtime_asset_is_emitted_and_parses(i18n_site):
     assert data["nav.catalog"]["zh"] == "目录"
 
 
-def test_the_switch_marks_exactly_one_language_pressed(i18n_site):
+def test_every_key_is_referenced_somewhere(i18n_site, i18n, build_site):
+    """A key nothing references is dead vocabulary.
+
+    The catalog is the site's glossary, and an entry nobody reads is a claim
+    the site does not make — it will be wrong the day someone trusts it. A key
+    may be referenced by the markup (`data-i18n`, server-rendered) or by a
+    runtime asset (`app.js`, `prompt-copy.js`), which writes strings the
+    server never sees.
+    """
+    referenced: set[str] = set()
+    for page in _pages(i18n_site):
+        referenced |= set(I18N_MARKERS.findall(page.read_text(encoding="utf-8")))
+    assets = Path(__file__).resolve().parent.parent / "tools" / "site-assets"
+    for name in ("app.js", "prompt-copy.js"):
+        text = (assets / name).read_text(encoding="utf-8")
+        referenced |= set(re.findall(r'"([a-z][a-z0-9._]*)"', text))
+    # The enum tables reference their keys by construction: an L4 pack cannot
+    # exist today, but the pill must not fall back to a raw "L4" when one is
+    # promoted, so the vocabulary is complete even though the markup is not.
+    for table in (build_site.MATURITY_LABEL, build_site.VERIFICATION_LABEL):
+        referenced |= {key for key, _kind in table.values()}
+    dead = sorted(k for k in i18n.STRINGS if k not in referenced)
+    assert dead == [], f"catalog keys nothing references: {dead}"
+
+
+def test_the_switch_marks_exactly_one_language_pressed(i18n_site, build_site):
     for page in [i18n_site / "index.html", i18n_site / "404.html"]:
         text = page.read_text(encoding="utf-8")
         pressed = re.findall(r'data-locale="(\w+)"[^>]*aria-pressed="(\w+)"', text)

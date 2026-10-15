@@ -114,8 +114,8 @@ STRINGS: dict[str, dict[str, str]] = {
     "facet.domain": {"en": "domain", "zh": "领域"},
     "facet.maturity": {"en": "maturity", "zh": "成熟度"},
     "facet.verification": {"en": "verification", "zh": "验证状态"},
-    "catalog.count.all": {"en": "{n} packs", "zh": "{n} 个方案包"},
-    "catalog.count.some": {"en": "{n} of {total} packs", "zh": "共 {total} 个中的 {n} 个"},
+    "catalog.count.some": {
+        "en": "{n} of {total} packs", "zh": "共 {total} 个中的 {n} 个"},
     "catalog.empty.title": {
         "en": "No pack matches those filters",
         "zh": "没有方案包符合当前筛选",
@@ -148,7 +148,6 @@ STRINGS: dict[str, dict[str, str]] = {
     "word.result": {"en": "results", "zh": "条结果"},
     "word.result.one": {"en": "result", "zh": "条结果"},
     "word.pack": {"en": "packs", "zh": "个方案包"},
-    "word.pack.one": {"en": "pack", "zh": "个方案包"},
     "catalog.hits.count": {"en": "{n} {word} for “{q}”", "zh": "“{q}”：{n} {word}"},
     "catalog.hits.empty": {
         "en": "Nothing matched “{q}”. Try a tag like “warehouse” or “OEE”.",
@@ -175,7 +174,6 @@ STRINGS: dict[str, dict[str, str]] = {
     # ---- pack chrome ----------------------------------------------------- #
     "side.overview": {"en": "overview", "zh": "概览"},
     "side.standard": {"en": "pack standard", "zh": "方案包规范"},
-    "side.product": {"en": "Solution Atlas", "zh": "Solution Atlas"},
     "view.doc": {"en": "Document view", "zh": "文档视图"},
     "view.spec": {"en": "Structured view", "zh": "结构视图"},
     "view.spec.count": {"en": " · {n} IDs", "zh": " · {n} 条标识"},
@@ -322,6 +320,8 @@ STRINGS: dict[str, dict[str, str]] = {
     },
 
     # ---- enum labels ----------------------------------------------------- #
+    # L1 and L4 are in the table although no pack sits there today: the trust
+    # ladder is a ladder, so a pack reaching L4 must not render a raw "L4."
     "maturity.L1": {"en": "L1 · Brief", "zh": "L1 · 简报"},
     "maturity.L2": {"en": "L2 · Blueprint", "zh": "L2 · 蓝图"},
     "maturity.L3": {"en": "L3 · Agent-ready", "zh": "L3 · 智能体就绪"},
