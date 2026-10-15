@@ -272,10 +272,27 @@ def test_verify_internal_links_accepts_fragments_and_schemes(build_site, tmp_pat
 
 
 def test_pack_pills_and_labels(build_site):
-    label, kind = build_site.MATURITY_LABEL["L3"]
-    assert label == "L3 · Agent-ready" and kind == "m3"
-    vlabel, vkind = build_site.VERIFICATION_LABEL["source-checked"]
-    assert vlabel == "source-checked" and vkind == "v1"
+    """Maturity and verification are chrome: the record maps to a string key,
+    and the catalog renders it. The kind still carries the pill's colour class."""
+    key, kind = build_site.MATURITY_LABEL["L3"]
+    assert key == "maturity.L3" and kind == "m3"
+    vkey, vkind = build_site.VERIFICATION_LABEL["source-checked"]
+    assert vkey == "verify.source-checked" and vkind == "v1"
+
+
+def test_pack_pills_render_localized_and_tagged(build_site, i18n):
+    """A pill is chrome: the record's state in the reader's language, with the
+    `data-i18n` key the client needs to re-render it."""
+    class Pack:
+        maturity = "L3"
+        verification = "source-checked"
+
+    en = build_site.pack_pills(Pack(), "en")
+    assert 'data-i18n="maturity.L3"' in en
+    assert i18n.t("maturity.L3", "en") in en
+    assert i18n.t("verify.source-checked", "en") in en
+    zh = build_site.pack_pills(Pack(), "zh")
+    assert "L3 · 智能体就绪" in zh and "已核对来源" in zh
 
 
 # --------------------------------------------------------------------------- #

@@ -79,6 +79,29 @@ except ImportError:  # loaded via importlib without tools/ on sys.path
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from site_icons import category_for, icon, icon_for
 
+# The chrome's vocabulary. A page renders one language at build time (--lang)
+# and the reader may switch to the other at runtime; both come from here, so
+# they cannot drift apart.
+try:
+    from i18n import (
+        DEFAULT_LOCALE,
+        HTML_LANG,
+        LOCALES,
+        has,
+        render_i18n_js,
+        t,
+    )
+except ImportError:  # loaded via importlib without tools/ on sys.path
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from i18n import (
+        DEFAULT_LOCALE,
+        HTML_LANG,
+        LOCALES,
+        has,
+        render_i18n_js,
+        t,
+    )
+
 ROOT = Path(__file__).resolve().parent.parent
 PACKS_DIR = ROOT / "packs"
 DOCS_DIR = ROOT / "docs"
@@ -101,11 +124,14 @@ VENDOR_EXPECTED = {
 # keys; the attribute is set only where the link *is* the page, because
 # `aria-current="page"` says exactly that and a section highlight would need a
 # different token.
+#
+# The fourth field is a key into `i18n.STRINGS`, not a literal label: the nav is
+# chrome, so the reader's language decides what it says.
 NAV_ITEMS = (
-    ("catalog", "index.html", "grid", "Catalog"),
-    ("standard", "docs/pack-standard.v1.html", "book", "Standard"),
-    ("taxonomy", "docs/taxonomy.html", "network", "Taxonomy"),
-    ("roadmap", "docs/roadmap.html", "route", "Roadmap"),
+    ("catalog", "index.html", "grid", "nav.catalog"),
+    ("standard", "docs/pack-standard.v1.html", "book", "nav.standard"),
+    ("taxonomy", "docs/taxonomy.html", "network", "nav.taxonomy"),
+    ("roadmap", "docs/roadmap.html", "route", "nav.roadmap"),
 )
 
 # URL -> the nav key whose link is that page.
@@ -113,7 +139,7 @@ NAV_PAGE = {url: key for key, url, _glyph, _label in NAV_ITEMS if url != "index.
 NAV_PAGE["index.html"] = "catalog"
 
 
-def primary_nav(prefix: str, current: str = "") -> str:
+def primary_nav(prefix: str, current: str = "", lang: str = DEFAULT_LOCALE) -> str:
     """The primary navigation as one `<nav>`.
 
     Rendered twice per page — once inline in the titlebar, once inside the
@@ -123,23 +149,29 @@ def primary_nav(prefix: str, current: str = "") -> str:
     one reaches the accessibility tree.
     """
     links = []
-    for key, url, glyph, label in NAV_ITEMS:
+    for key, url, glyph, i18n_key in NAV_ITEMS:
         cur = ' aria-current="page"' if current == key else ""
-        links.append(f'<a href="{prefix}{url}"{cur}>{icon_glyph(glyph)}{label}</a>')
+        links.append(
+            f'<a href="{prefix}{url}"{cur}{_ia(i18n_key)}>'
+            f'{icon_glyph(glyph)}{_t(i18n_key, lang)}</a>'
+        )
     return f'<nav class="topnav" aria-label="Primary">{"".join(links)}</nav>'
 
 
+# The maturity and verification vocabularies. Values are keys into
+# `i18n.STRINGS` because they are chrome: a pack's state shown in the reader's
+# language, not the raw record.
 MATURITY_LABEL = {
-    "L1": ("L1 · Brief", "m1"),
-    "L2": ("L2 · Blueprint", "m2"),
-    "L3": ("L3 · Agent-ready", "m3"),
-    "L4": ("L4 · Proven", "m4"),
+    "L1": ("maturity.L1", "m1"),
+    "L2": ("maturity.L2", "m2"),
+    "L3": ("maturity.L3", "m3"),
+    "L4": ("maturity.L4", "m4"),
 }
 VERIFICATION_LABEL = {
-    "unverified": ("unverified", "v0"),
-    "source-checked": ("source-checked", "v1"),
-    "practitioner-reviewed": ("practitioner-reviewed", "v2"),
-    "field-proven": ("field-proven", "v3"),
+    "unverified": ("verify.unverified", "v0"),
+    "source-checked": ("verify.source-checked", "v1"),
+    "practitioner-reviewed": ("verify.practitioner-reviewed", "v2"),
+    "field-proven": ("verify.field-proven", "v3"),
 }
 
 # Big search bodies are truncated so the index stays a reasonable download.
@@ -446,30 +478,114 @@ HEAD = """<!doctype html>
 <link rel="stylesheet" href="{prefix}assets/style.css">
 </head>
 <body class="{body_class}">
-<a class="skip" href="#main">Skip to content</a>
+<a class="skip" href="#main" data-i18n="skip">Skip to content</a>
 <header class="titlebar">
   <a class="brand" href="{prefix}index.html"><span class="brand-mark">{brand_icon}</span> Solution&nbsp;Atlas</a>
   {nav_inline}
+  {langswitch}
   <details class="navmenu">
-    <summary aria-label="Toggle navigation"><span class="navmenu-icon">{menu_icon}</span>Menu</summary>
+    <summary data-i18n-aria-label="nav.menu.label"><span class="navmenu-icon">{menu_icon}</span><span data-i18n="nav.menu">Menu</span></summary>
     {nav_menu}
   </details>
 </header>
 <main id="main">
 """
 
-FOOT = """</main>
+# The page's fixed furniture. Everything a reader can read here is chrome, so
+# the literals are placeholders the shell fills from the catalog — a page built
+# with `--lang zh` must not say "Skip to content".
+HEAD = """<!doctype html>
+<html lang="{lang}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="{description}">
+<title>{title}</title>
+<link rel="canonical" href="">
+<meta name="robots" content="index, follow">
+<meta property="og:type" content="website">
+<meta property="og:title" content="{title}">
+<meta property="og:description" content="{description}">
+<meta property="og:site_name" content="Open Solution Atlas">
+<meta name="twitter:card" content="summary">
+<!-- The browser's own chrome on mobile: the contract's page ground, so the
+     address bar matches the sheet rather than keeping a palette alive outside
+     the stylesheet. One value, because the site has one theme. -->
+<meta name="theme-color" content="#f6f9fc">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='24' font-size='24'>{icon}</text></svg>">
+<link rel="stylesheet" href="{prefix}assets/style.css">
+</head>
+<body class="{body_class}">
+<a class="skip" href="#main" data-i18n="skip">{skip_text}</a>
+<header class="titlebar">
+  <a class="brand" href="{prefix}index.html"><span class="brand-mark">{brand_icon}</span> Solution&nbsp;Atlas</a>
+  {nav_inline}
+  {langswitch}
+  <details class="navmenu">
+    <summary data-i18n-aria-label="nav.menu.label"><span class="navmenu-icon">{menu_icon}</span><span data-i18n="nav.menu">{menu_text}</span></summary>
+    {nav_menu}
+  </details>
+</header>
+<main id="main">
+"""
+
+# Same rule as `HEAD`: the defaults are placeholders. `str.format` cannot name
+# a field with a dot in it, so the shell replaces the markers directly.
+FOOT_MARKERS = {
+    "footer.lead": "— blueprints for real enterprise systems.",
+    "footer.content": "Content ",
+    "footer.comma": ", ",
+    "footer.code": "code ",
+    "footer.end": ".",
+    "footer.draft": "Every pack is ",
+    "footer.and": " and ",
+    "footer.not_verified": "not field-verified",
+    "footer.trust.lead": "— read its ",
+    "footer.trust.tail": ".",
+}
+FOOT_TEMPLATE = """</main>
 <footer class="sitefoot">
-  <p><strong>Open Solution Atlas</strong> — blueprints for real enterprise systems.
-     Content <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>,
-     code <a href="https://opensource.org/license/mit">MIT</a>.
-     Every pack is <code>llm-drafted</code> and <strong>not field-verified</strong> —
-     read its <code>SOURCES.md</code> before trusting a specific claim.</p>
+  <p><strong>Open Solution Atlas</strong> <span data-i18n="footer.lead">@footer.lead@</span>
+     <span data-i18n="footer.content">@footer.content@</span> <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a><span data-i18n="footer.comma">@footer.comma@</span><span data-i18n="footer.code">@footer.code@</span> <a href="https://opensource.org/license/mit">MIT</a><span data-i18n="footer.end">@footer.end@</span>
+     <span data-i18n="footer.draft">@footer.draft@</span> <code>llm-drafted</code><span data-i18n="footer.and">@footer.and@</span><strong data-i18n="footer.not_verified">@footer.not_verified@</strong>
+     <span data-i18n="footer.trust.lead">@footer.trust.lead@</span> <code>SOURCES.md</code><span data-i18n="footer.trust.tail">@footer.trust.tail@</span></p>
 </footer>
-{scripts}
+@scripts@
 </body>
 </html>
 """
+
+
+def foot(lang: str = DEFAULT_LOCALE) -> str:
+    """The page's closing furniture, in `lang`."""
+    out = FOOT_TEMPLATE
+    for key in FOOT_MARKERS:
+        out = out.replace(f"@{key}@", _t(key, lang))
+    return out.replace("@scripts@", "{scripts}")
+
+
+def langswitch(lang: str = DEFAULT_LOCALE) -> str:
+    """The language control: two states, exactly one pressed.
+
+    It is chrome that has to live in the titlebar, so it lives there — once.
+    On the narrow layout the nav folds into the `<details>`, but the switch is
+    small enough to stay beside the brand, which is where a reader looks for it
+    either way. The labels are the languages' own names, so they never change.
+    """
+    return (
+        '<div class="langswitch" role="group"'
+        + _iaa("aria-label", "lang.switch")
+        + ">"
+        + '<button type="button" data-locale="en" lang="en"'
+        + (' aria-pressed="true"' if lang == "en" else ' aria-pressed="false"')
+        + _ia("lang.en")
+        + f">{_t('lang.en', lang)}</button>"
+        + '<button type="button" data-locale="zh" lang="zh-CN"'
+        + (' aria-pressed="true"' if lang == "zh" else ' aria-pressed="false"')
+        + _ia("lang.zh")
+        + f">{_t('lang.zh', lang)}</button>"
+        + "</div>"
+    )
 
 
 def page_shell(
@@ -481,19 +597,24 @@ def page_shell(
     body_class: str = "doc",
     icon: str = "◈",
     scripts: str = "",
-    lang: str = "en",
+    lang: str = DEFAULT_LOCALE,
     canonical: str = "",
     nav_current: str = "",
 ) -> str:
-    nav = primary_nav(prefix, nav_current)
+    nav = primary_nav(prefix, nav_current, lang)
     head = HEAD.format(
         title=html.escape(title), description=html.escape(description),
         prefix=prefix, body_class=body_class, icon=icon,
-        lang=lang, canonical=canonical,
+        # `<html lang>` takes a *language tag*, not the catalog's locale
+        # key: `--lang zh` is the switch's value, `zh-CN` is what a document
+        # declares.
+        lang=HTML_LANG.get(lang, lang), canonical=canonical,
         brand_icon=icon_glyph("grid"),
         menu_icon=icon_glyph("menu"),
+        skip_text=_t("skip", lang), menu_text=_t("nav.menu", lang),
         nav_inline=nav,
         nav_menu=nav,
+        langswitch=langswitch(lang),
     )
     # og:url and a canonical link are only meaningful once the site's public
     # origin is known; without it, drop the elements entirely rather than emit
@@ -506,10 +627,15 @@ def page_shell(
         )
     else:
         head = head.replace('<link rel="canonical" href="">\n', "")
+    # The language runtime is the one script every page needs — it is what makes
+    # the titlebar's switch work — so it is loaded here rather than by each
+    # caller, and it goes first: `defer` preserves document order, and the
+    # page-specific modules read `window.OSA_I18N` when they run.
+    scripts = f'<script src="{prefix}assets/i18n.js" defer></script>' + scripts
     return (
         head
         + body
-        + FOOT.format(scripts=scripts)
+        + foot(lang).replace("{scripts}", scripts)
     )
 
 
@@ -519,7 +645,7 @@ def breadcrumb(prefix: str, pack: Pack | None) -> str:
     chev = icon("chevron")
     return (
         '<nav class="crumbs">'
-        f'<a href="{prefix}index.html">Catalog</a>{chev}'
+        f'<a href="{prefix}index.html"{_ia("crumb.catalog")}>{_t("crumb.catalog")}</a>{chev}'
         f'<span>{html.escape(pack.domain)}</span>{chev}'
         f'<span class="crumb-cur">{html.escape(pack.slug)}</span>'
         "</nav>"
@@ -531,17 +657,25 @@ def icon_glyph(name: str) -> str:
     return icon(name)
 
 
-def pill(label: str, kind: str) -> str:
-    return f'<span class="pill {kind}">{html.escape(label)}</span>'
+def pill(label: str, kind: str, attrs: str = "") -> str:
+    return f'<span class="pill {kind}"{attrs}>{html.escape(label)}</span>'
 
 
-def pack_pills(pack: Pack) -> str:
-    m_label, m_kind = MATURITY_LABEL.get(pack.maturity, (pack.maturity, "m1"))
-    v_label, v_kind = VERIFICATION_LABEL.get(pack.verification, (pack.verification, "v0"))
-    return pill(m_label, m_kind) + pill(v_label, v_kind)
+def pack_pills(pack: Pack, lang: str = DEFAULT_LOCALE) -> str:
+    """Maturity and verification, as chrome: the record's state in the
+    reader's language, with the raw value kept in the data attributes the
+    catalog's facets filter on."""
+    m_key, m_kind = MATURITY_LABEL.get(pack.maturity, (None, "m1"))
+    v_key, v_kind = VERIFICATION_LABEL.get(pack.verification, (None, "v0"))
+    m_label = _t(m_key, lang) if m_key else _esc(pack.maturity)
+    v_label = _t(v_key, lang) if v_key else _esc(pack.verification)
+    return (
+        pill(m_label, m_kind, _ia(m_key) if m_key else "")
+        + pill(v_label, v_kind, _ia(v_key) if v_key else "")
+    )
 
 
-def render_sidebar(pack: Pack, doc: Doc, prefix: str) -> str:
+def render_sidebar(pack: Pack, doc: Doc, prefix: str, lang: str = DEFAULT_LOCALE) -> str:
     """The pack's sidebar: contract §4.2's three parts.
 
     Head (logo square, product name, subtitle), navigation, and a footer that
@@ -549,10 +683,13 @@ def render_sidebar(pack: Pack, doc: Doc, prefix: str) -> str:
     the contract calls that lightness difference the key to the page's
     left/right layering, so it is not flattened.
     """
+    v_key, _kind = VERIFICATION_LABEL.get(pack.verification, (None, "v0"))
+    state = _t(v_key, lang) if v_key else _esc(pack.verification)
     foot = (
         '<div class="side-foot">'
-        f'<p>{icon("shield")} {html.escape(pack.verification)}</p>'
-        f'<p>{icon("mail")} <a href="{prefix}docs/pack-standard.v1.html">pack standard</a></p>'
+        f'<p{_ia(v_key) if v_key else ""}>{icon("shield")} {state}</p>'
+        f'<p>{icon("mail")} <a href="{prefix}docs/pack-standard.v1.html"{_ia("side.standard")}>'
+        f'{_t("side.standard", lang)}</a></p>'
         "</div>"
     )
     return (
@@ -562,13 +699,14 @@ def render_sidebar(pack: Pack, doc: Doc, prefix: str) -> str:
         '<span><span class="side-name">Solution Atlas</span><br>'
         f'<span class="side-sub">{html.escape(pack.domain)}</span></span>'
         "</div>"
-        + nav_tree(pack, doc.url, prefix)
+        + nav_tree(pack, doc.url, prefix, lang)
         + foot
         + "</aside>"
     )
 
 
-def nav_tree(pack: Pack, current_url: str, prefix: str) -> str:
+def nav_tree(pack: Pack, current_url: str, prefix: str,
+             lang: str = DEFAULT_LOCALE) -> str:
     """Sidebar: the pack's files grouped by their chapter directory.
 
     Groups render as ``<details>``: on desktop CSS keeps them open (they are
@@ -586,7 +724,12 @@ def nav_tree(pack: Pack, current_url: str, prefix: str) -> str:
     # solid primary pill rather than a tint.
     out = ['<nav class="packnav" aria-label="Pack chapters">']
     for group in sorted(groups):
-        label = group or "overview"
+        # The group's own name is a file path, so it is data; only the synthesised
+        # "overview" group is chrome.
+        if not group:
+            label, label_key = _t("side.overview", lang), "side.overview"
+        else:
+            label, label_key = group, None
         docs = sorted(groups[group], key=lambda d: d.rel)
         # The open group is the one holding the page you are on, so a reader on a
         # phone sees their own chapter without opening anything.
@@ -595,13 +738,14 @@ def nav_tree(pack: Pack, current_url: str, prefix: str) -> str:
         for doc in docs:
             rel_inside = Path(doc.rel).relative_to(pack.rel_dir).as_posix()
             name = Path(rel_inside).name
-            name = "overview" if name == "README.md" else name[:-3]
+            name = _t("side.overview", lang) if name == "README.md" else name[:-3]
             active = ' class="active" aria-current="page"' if doc.url == current_url else ""
             href = prefix + doc.url
             items.append(f'<li><a{active} href="{href}">{html.escape(name)}</a></li>')
         out.append(
             f'<details class="navgroup"{opened}>'
-            f'<summary class="navgroup-label">{html.escape(label)}</summary>'
+            f'<summary class="navgroup-label"{_ia(label_key) if label_key else ""}>'
+            f'{html.escape(label)}</summary>'
             f'<ul>{"".join(items)}</ul></details>'
         )
     out.append("</nav>")
@@ -648,7 +792,11 @@ def render_toc(toc_tokens: list) -> str:
 # Build
 # --------------------------------------------------------------------------- #
 
-def build(out: Path, base_url: str, site_url: str = "", lang: str = "en") -> int:
+def build(out: Path, base_url: str, site_url: str = "",
+          lang: str = DEFAULT_LOCALE) -> int:
+    if lang not in LOCALES:
+        print(f"ERROR: unknown --lang {lang!r}", file=sys.stderr)
+        return 1
     summaries = load_summaries()
     packs = load_packs(summaries)
     if not packs:
@@ -778,6 +926,11 @@ def build(out: Path, base_url: str, site_url: str = "", lang: str = "en") -> int
         if not asset.is_file() or asset.suffix not in (".js", ".css"):
             continue
         shutil.copy2(asset, assets_out / asset.name)
+    # The language runtime is the one *generated* script: the dictionary lives in
+    # tools/i18n.py next to the Python side of the same strings, and this inlines
+    # it, so a build's chrome and its runtime can never disagree. Deterministic,
+    # because it is derived from the source and nothing else.
+    write(assets_out / "i18n.js", render_i18n_js())
     # The vendored directory is copied recursively; a missing or altered file
     # fails the build (supply-chain tripwire) rather than shipping a broken UI.
     vendor_out = assets_out / "vendor"
@@ -796,7 +949,7 @@ def build(out: Path, base_url: str, site_url: str = "", lang: str = "en") -> int
 
     # Any directory still lacking an index.html gets a generated listing, so
     # links to a directory (…/docs/, …/packs/) resolve.
-    generated = generate_missing_indexes(out)
+    generated = generate_missing_indexes(out, lang)
 
     # ---- crawler-facing artifacts -----------------------------------------
     write_sitemap(out, site_url)
@@ -865,6 +1018,43 @@ def _esc(text) -> str:
     return html.escape(str(text))
 
 
+def _t(key: str, lang: str = DEFAULT_LOCALE, **vars) -> str:
+    """One chrome string, rendered in `lang` and escaped for HTML.
+
+    The literal lives in `i18n.STRINGS`; the `data-i18n` attribute emitted
+    alongside it (`_ia`) is what lets the client render the same string in the
+    other language without a second build.
+    """
+    return _esc(t(key, lang, **vars))
+
+
+def _ia(key: str, **vars) -> str:
+    """`data-i18n` + optional `data-i18n-vars`, for a text node.
+
+    `vars` is a `key=value` list rather than JSON because these land inside
+    Python format strings, where braces are not free.
+    """
+    out = f' data-i18n="{key}"'
+    if vars:
+        out += ' data-i18n-vars="' + " ".join(f"{k}={v}" for k, v in vars.items()) + '"'
+    return out
+
+
+def _span(key: str, lang: str = DEFAULT_LOCALE, **vars) -> str:
+    """A chrome string as its own `<span>`, so the client replaces exactly it
+    and nothing around it."""
+    return f'<span{_ia(key, **vars)}>{_t(key, lang, **vars)}</span>'
+
+
+def _iaa(attr: str, key: str, **vars) -> str:
+    """The same, for a string that lives in an attribute (placeholder,
+    aria-label, title) instead of a text node."""
+    out = f' data-i18n-{attr}="{key}"'
+    if vars:
+        out += ' data-i18n-vars="' + " ".join(f"{k}={v}" for k, v in vars.items()) + '"'
+    return out
+
+
 def _id_chip(id_: str, kind: str, href: str | None = None) -> str:
     """An identifier that links to its own row, or stands alone if uncited."""
     if href:
@@ -872,14 +1062,13 @@ def _id_chip(id_: str, kind: str, href: str | None = None) -> str:
     return f'<span class="chip idchip" data-id="{_esc(id_)}">{_esc(id_)}</span>'
 
 
-def _spec_status_badges(entry: dict) -> str:
+def _spec_status_badges(entry: dict, lang: str = DEFAULT_LOCALE) -> str:
     """Per-section extraction quality — the honest part of the panel.
 
     A pack whose rules live in prose gets a visible `prose-only` badge rather
     than an empty table, so the gap is a fact a reader can act on instead of
     an impression the site quietly creates.
     """
-    label = {"structured": "可结构化", "prose-only": "仅散文", "absent": "缺失"}
     cells = []
     for key, _title, _cls in SPEC_SECTIONS:
         if key not in entry["sections"]:
@@ -887,7 +1076,8 @@ def _spec_status_badges(entry: dict) -> str:
         st = entry["sections"][key]["status"]
         n = entry["sections"][key]["count"]
         cells.append(
-            f'<span class="sq {st}" title="{_esc(key)}">{label[st]}'
+            f'<span class="sq {st}" title="{_esc(key)}"{_ia(f"spec.status.{st}")}>'
+            + _t(f"spec.status.{st}", lang)
             + (f' <b>{n}</b>' if n else "")
             + "</span>"
         )
@@ -927,7 +1117,7 @@ def _spec_row_chips(entry: dict, ids: list[str], kind: str) -> str:
     return "".join(_id_chip(i, kind, f"#spec-{i}") for i in ids)
 
 
-def render_spec_view(entry: dict, prefix: str) -> str:
+def render_spec_view(entry: dict, prefix: str, lang: str = DEFAULT_LOCALE) -> str:
     """The whole structured view for one pack.
 
     Server-rendered so the panel is complete with JavaScript disabled — the
@@ -940,22 +1130,24 @@ def render_spec_view(entry: dict, prefix: str) -> str:
     refs = _reverse_refs(entry)
 
     stats = [
-        ("rules", "Business rules", counts["rules"]),
-        ("requirements", "Requirements", counts["requirements"]),
-        ("nfrs", "NFR targets", counts["nfrs"]),
-        ("controls", "Controls", counts["controls"]),
-        ("adrs", "ADRs", counts["adrs"]),
-        ("constraints", "Integrity constraints", counts["constraints"]),
-        ("store_constraints", "of which store-enforced", counts["store_constraints"]),
-        ("policy_nfrs", "policy-assumed targets", counts["policy_nfrs"]),
+        ("rules", "spec.stat.rules", counts["rules"]),
+        ("requirements", "spec.stat.requirements", counts["requirements"]),
+        ("nfrs", "spec.stat.nfrs", counts["nfrs"]),
+        ("controls", "spec.stat.controls", counts["controls"]),
+        ("adrs", "spec.stat.adrs", counts["adrs"]),
+        ("constraints", "spec.stat.constraints", counts["constraints"]),
+        ("store_constraints", "spec.stat.store", counts["store_constraints"]),
+        ("policy_nfrs", "spec.stat.policy", counts["policy_nfrs"]),
     ]
     tiles = "".join(
-        f'<a class="stat" href="#sec-{k}"><b>{v}</b><span>{_esc(lbl)}</span></a>'
-        for k, lbl, v in stats if v
+        f'<a class="stat" href="#sec-{k}"{_ia(i18n_key)}><b>{v}</b>'
+        f'<span>{_esc(t(i18n_key, lang))}</span></a>'
+        for k, i18n_key, v in stats if v
     )
 
     jump = "".join(
-        f'<a class="jump" href="#sec-{key}">{_esc(title)} · {counts.get(key, len(entry.get(key, [])))}</a>'
+        f'<a class="jump" href="#sec-{key}"{_ia(f"spec.sec.{key}")}>'
+        f'{_t(f"spec.sec.{key}", lang)} · {counts.get(key, len(entry.get(key, [])))}</a>'
         for key, title, _ in SPEC_SECTIONS if counts.get(key, len(entry.get(key, [])))
     )
 
@@ -967,12 +1159,14 @@ def render_spec_view(entry: dict, prefix: str) -> str:
             f'<tr id="spec-{_esc(a["id"])}"><th><code>{_esc(a["id"])}</code></th>'
             f'<td><b>{_esc(a["name"])}</b>'
             + (f'<p class="dec">{_esc(a["decision"])}</p>' if a["decision"] else "")
-            + f'<p class="refs">被引用：{_spec_row_chips(entry, refs.get(a["id"], []), "ref")}</p></td></tr>'
+            + f'<p class="refs"{_ia("spec.refs.cited")}>{_t("spec.refs.cited", lang)}'
+            + _spec_row_chips(entry, refs.get(a["id"], []), "ref") + "</p></td></tr>"
             for a in entry["adrs"]
         )
         sections.append(
             f'<details class="spec-sec" id="sec-adr" open><summary>'
-            f'Architecture decisions · {len(entry["adrs"])}</summary>'
+            f'<span{_ia("spec.sec.adrs")}>{_t("spec.sec.adrs", lang)}</span> · '
+            f'{len(entry["adrs"])}</summary>'
             f'<table class="spectab"><tbody>{rows}</tbody></table></details>'
         )
 
@@ -982,12 +1176,14 @@ def render_spec_view(entry: dict, prefix: str) -> str:
             f'<tr id="spec-{_esc(r["id"])}"><th><code>{_esc(r["id"])}</code></th>'
             f'<td><b>{_esc(r["name"])}</b>'
             + (f'<p class="prop">{_esc(r["proposition"])}</p>' if r["proposition"] else "")
-            + f'<p class="refs">强制：{_spec_row_chips(entry, r["enforced_by"] + r["trace_adrs"], "ref")}</p></td></tr>'
+            + f'<p class="refs"{_ia("spec.refs.enforced")}>{_t("spec.refs.enforced", lang)}'
+            + _spec_row_chips(entry, r["enforced_by"] + r["trace_adrs"], "ref") + "</p></td></tr>"
             for r in entry["rules"]
         )
         sections.append(
             f'<details class="spec-sec" id="sec-rule" open><summary>'
-            f'Business rules · {len(entry["rules"])}</summary>'
+            f'<span{_ia("spec.sec.rules")}>{_t("spec.sec.rules", lang)}</span> · '
+            f'{len(entry["rules"])}</summary>'
             f'<table class="spectab"><tbody>{rows}</tbody></table></details>'
         )
 
@@ -999,12 +1195,14 @@ def render_spec_view(entry: dict, prefix: str) -> str:
             + (f'<p class="ears"><span class="ears-k">WHEN</span> {_esc(q["when"])}</p>' if q["when"] else "")
             + (f'<p class="ears"><span class="ears-k">SHALL</span> {_esc(q["shall"])}</p>' if q["shall"] else "")
             + (f'<p class="ears not"><span class="ears-k">SHALL NOT</span> {_esc(q["shall_not"])}</p>' if q["shall_not"] else "")
-            + f'<p class="refs">追溯：{_spec_row_chips(entry, q["traces"], "ref")}</p></td></tr>'
+            + f'<p class="refs"{_ia("spec.refs.traces")}>{_t("spec.refs.traces", lang)}'
+            + _spec_row_chips(entry, q["traces"], "ref") + "</p></td></tr>"
             for q in entry["requirements"]
         )
         sections.append(
             f'<details class="spec-sec" id="sec-req" open><summary>'
-            f'Functional requirements · {len(entry["requirements"])}</summary>'
+            f'<span{_ia("spec.sec.requirements")}>{_t("spec.sec.requirements", lang)}</span> · '
+            f'{len(entry["requirements"])}</summary>'
             f'<table class="spectab"><tbody>{rows}</tbody></table></details>'
         )
 
@@ -1021,7 +1219,8 @@ def render_spec_view(entry: dict, prefix: str) -> str:
         )
         sections.append(
             f'<details class="spec-sec" id="sec-nfr"><summary>'
-            f'Non-functional targets · {len(entry["nfrs"])}</summary>'
+            f'<span{_ia("spec.sec.nfrs")}>{_t("spec.sec.nfrs", lang)}</span> · '
+            f'{len(entry["nfrs"])}</summary>'
             f'<table class="spectab"><tbody>{rows}</tbody></table></details>'
         )
 
@@ -1031,12 +1230,14 @@ def render_spec_view(entry: dict, prefix: str) -> str:
             f'<tr id="spec-{_esc(c["id"])}"><th><code>{_esc(c["id"])}</code></th>'
             f'<td><b>{_esc(c["name"])}</b>'
             + (f'<p class="inst">{_esc(c["instrument_names"])}</p>' if c["instrument_names"] else "")
-            + f'<p class="refs">追溯：{_spec_row_chips(entry, c["requirements"] + c["rules"] + c["capabilities"], "ref")}</p></td></tr>'
+            + f'<p class="refs"{_ia("spec.refs.traces")}>{_t("spec.refs.traces", lang)}'
+            + _spec_row_chips(entry, c["requirements"] + c["rules"] + c["capabilities"], "ref") + "</p></td></tr>"
             for c in entry["controls"]
         )
         sections.append(
             f'<details class="spec-sec" id="sec-ctl"><summary>'
-            f'Compliance controls · {len(entry["controls"])}</summary>'
+            f'<span{_ia("spec.sec.controls")}>{_t("spec.sec.controls", lang)}</span> · '
+            f'{len(entry["controls"])}</summary>'
             f'<table class="spectab"><tbody>{rows}</tbody></table></details>'
         )
 
@@ -1045,15 +1246,18 @@ def render_spec_view(entry: dict, prefix: str) -> str:
         rows = "".join(
             f'<tr id="spec-con-{c["n"]}"><th><code>{c["n"]}</code></th>'
             f'<td>{_esc(c["text"])}'
-            + (' <span class="sq structured" title="the data model claims this is enforced in the store">store</span>'
+            + (' <span class="sq structured"' + _iaa("title", "spec.store.tooltip") + '>store</span>'
                if c["store"] else "")
-            + f'<p class="refs">强制：{_spec_row_chips(entry, c["enforces"], "ref")}</p></td></tr>'
+            + f'<p class="refs"{_ia("spec.refs.enforced")}>{_t("spec.refs.enforced", lang)}'
+            + _spec_row_chips(entry, c["enforces"], "ref") + "</p></td></tr>"
             for c in entry["constraints"]
         )
         sections.append(
             f'<details class="spec-sec" id="sec-con"><summary>'
-            f'Integrity constraints · {len(entry["constraints"])} '
-            f'(<b>{counts["store_constraints"]}</b> store-enforced)</summary>'
+            f'<span{_ia("spec.sec.constraints")}>{_t("spec.sec.constraints", lang)}</span> · '
+            f'{len(entry["constraints"])} '
+            f'(<b>{counts["store_constraints"]}</b>'
+            f'<span{_ia("spec.store.tail")}>{_t("spec.store.tail", lang)}</span>)</summary>'
             f'<table class="spectab"><tbody>{rows}</tbody></table></details>'
         )
 
@@ -1068,7 +1272,8 @@ def render_spec_view(entry: dict, prefix: str) -> str:
         )
         sections.append(
             f'<details class="spec-sec" id="sec-cap"><summary>'
-            f'Capabilities · {len(entry["capabilities"])}</summary>'
+            f'<span{_ia("spec.sec.capabilities")}>{_t("spec.sec.capabilities", lang)}</span> · '
+            f'{len(entry["capabilities"])}</summary>'
             f'<table class="spectab"><tbody>{rows}</tbody></table></details>'
         )
 
@@ -1083,7 +1288,8 @@ def render_spec_view(entry: dict, prefix: str) -> str:
         )
         sections.append(
             f'<details class="spec-sec" id="sec-ctx"><summary>'
-            f'Bounded contexts · {len(entry["contexts"])}</summary>'
+            f'<span{_ia("spec.sec.contexts")}>{_t("spec.sec.contexts", lang)}</span> · '
+            f'{len(entry["contexts"])}</summary>'
             f'<table class="spectab"><tbody>{rows}</tbody></table></details>'
         )
 
@@ -1091,29 +1297,32 @@ def render_spec_view(entry: dict, prefix: str) -> str:
     if entry.get("demo"):
         demo = (
             '<a class="demobtn" href="' + _esc(prefix + entry["demo"]["url"]) + '">'
-            '<b>打开交互 demo</b><span>' + _esc(entry["demo"].get("title") or entry["slug"]) + "</span></a>"
+            '<b data-i18n="spec.demo">' + _t("spec.demo", lang) + "</b><span>"
+            + _esc(entry["demo"].get("title") or entry["slug"]) + "</span></a>"
         )
 
     return f"""
 <section class="spec" id="spec">
   <div class="spec-head">
     <div>
-      <h2>规格面板 · {total_ids} 条已识别标识</h2>
-      <p class="spec-note">由 <code>tools/pack_index.py</code> 从本包 Markdown
-        <b>抽取</b>而成，不是手写页面：下列数字随包内容变化，与散文同源同版本。</p>
-    </div>
+      <h2{_ia("spec.head", total=total_ids)}>{_t("spec.head", lang, total=total_ids)}</h2>
+      <p class="spec-note"><span{_ia("spec.note.by")}>{_t("spec.note.by", lang)}</span>
+        <code>tools/pack_index.py</code> <span{_ia("spec.note.from")}>{_t("spec.note.from", lang)}</span>
+        <b{_ia("spec.note.verb")}>{_t("spec.note.verb", lang)}</b><span{_ia("spec.note.tail")}>{_t("spec.note.tail", lang)}</span></p>    </div>
     {demo}
   </div>
   <div class="spec-stats">{tiles}</div>
-  <div class="spec-qlabel">机器可读性 <span>(标记为「仅散文」的章节含标识但无法结构化，是内容待办而非解析上限)</span></div>
-  {_spec_status_badges(entry)}
+  <div class="spec-qlabel"><span{_ia("spec.reuse.label")}>{_t("spec.reuse.label", lang)}</span>
+    <span{_ia("spec.reuse.hint")}>{_t("spec.reuse.hint", lang)}</span></div>
+  {_spec_status_badges(entry, lang)}
   <nav class="spec-jump">{jump}</nav>
   <div class="spec-secs">{''.join(sections)}</div>
 </section>
 """
 
 
-def render_prompt_section(entry: dict, prefix: str, pack_dir: Path) -> str:
+def render_prompt_section(entry: dict, prefix: str, pack_dir: Path,
+                          lang: str = DEFAULT_LOCALE) -> str:
     """Copyable prompts assembled from this pack at build time.
 
     The text is generated by ``tools/prompts.py`` from the pack's own records,
@@ -1132,13 +1341,19 @@ def render_prompt_section(entry: dict, prefix: str, pack_dir: Path) -> str:
     inline = bundles["inline"]["implement"]
     inline_html = (
         '<div class="prm-actions">'
-        '<button type="button" class="copybtn" data-copy="prm-implement">复制提示词</button>'
-        '<a class="prm-dl" href="' + _esc(prefix + base + "implement.md") + '" download>下载 .md</a>'
-        '</div>'
-        '<textarea class="prm-text" id="prm-implement" readonly spellcheck="false" '
-        'aria-label="Prompt: implement this pack" '
-        'aria-describedby="prm-implement-hint">'
-        + '<span id="prm-implement-hint" hidden>Generated from this pack by tools/prompts.py</span>'
+        '<button type="button" class="copybtn" data-copy="prm-implement"'
+        + _ia("prompt.copy") + ">"
+        + _t("prompt.copy", lang) + "</button>"
+        '<a class="prm-dl" href="' + _esc(prefix + base + "implement.md") + '" download'
+        + _ia("prompt.download") + ">"
+        + _t("prompt.download", lang) + "</a>"
+        "</div>"
+        '<textarea class="prm-text" id="prm-implement" readonly spellcheck="false"'
+        + " "
+        + _iaa("aria-label", "prompt.aria.inline")
+        + ' aria-describedby="prm-implement-hint">'
+        + '<span id="prm-implement-hint" hidden data-i18n="prompt.hint.inline">'
+        + _t("prompt.hint.inline", lang) + "</span>"
         + _esc(inline) + "</textarea>"
     )
 
@@ -1153,48 +1368,51 @@ def render_prompt_section(entry: dict, prefix: str, pack_dir: Path) -> str:
                 + f"<code>{_esc(item['id'])}</code> <b>{_esc(item['label'])}</b>"
                 + '<span class="prm-acts">'
                 + '<button type="button" class="copybtn small" data-copy-url="'
-                + _esc(prefix + base + fname) + '">复制</button>'
+                + _esc(prefix + base + fname) + '"' + _ia("prompt.copy_one") + ">"
+                + _t("prompt.copy_one", lang) + "</button>"
                 + '<a class="prm-dl" href="' + _esc(prefix + base + fname) + '" download>.md</a>'
                 + "</span></li>"
             )
         return '<ul class="prm-list">' + "".join(rows) + "</ul>"
 
     context_size = len(bundles["files"]["context.md"])
+    ctx_n = f"{context_size:,}"
     return f"""
 <section class="prompts" id="prompts">
-  <h3>提示词 · 由本包内容拼装</h3>
+  <h3{_ia("prompts.heading")}>{_t("prompts.heading", lang)}</h3>
   <p class="prompts-note">
-    这些不是模板占位。每条都由 <code>tools/prompts.py</code> 在构建期从<i>本包</i>的
-    规则、已决决策、强制约束与可测目标拼装而成：带上 <code>BR-05</code> 的语义、
-    <code>ADR-0004</code> 的决策和存储级约束，生成的东西才可能具备已定义的保证——
-    只说「做一个带审批的工作流引擎」不会，而且再润色也不会。
-    每条都写明诚实条件（<code>verification: unverified</code>、不主张符合性、
-    <code>(A)</code> 是策略而非测量），因为省略它们的提示词，会让实现方悄悄把那些东西发明出来。
+    <span{_ia("prompts.note.1")}>{_t("prompts.note.1", lang)}</span>
+    <code>tools/prompts.py</code>
+    <span{_ia("prompts.note.2")}>{_t("prompts.note.2", lang)}</span>
+    <i{_ia("prompts.note.pack")}>{_t("prompts.note.pack", lang)}</i><span{_ia("prompts.note.3")}>{_t("prompts.note.3", lang)}</span>
+    <code>BR-05</code><span{_ia("prompts.note.3b")}>{_t("prompts.note.3b", lang)}</span><code>ADR-0004</code><span{_ia("prompts.note.4")}>{_t("prompts.note.4", lang)}</span>
+    <code>verification: unverified</code><span{_ia("prompts.note.5")}>{_t("prompts.note.5", lang)}</span>
+    <code>(A)</code><span{_ia("prompts.note.6")}>{_t("prompts.note.6", lang)}</span>
   </p>
   <details class="prm" open>
-    <summary><b>按规格实现原型</b><span class="prm-blurb">能力 · 规则 · 已决决策 · 强制约束 · 可测目标</span></summary>
+    <summary><b{_ia("prompt.impl.title")}>{_t("prompt.impl.title", lang)}</b><span class="prm-blurb"{_ia("prompt.impl.blurb")}>{_t("prompt.impl.blurb", lang)}</span></summary>
     {inline_html}
   </details>
   <details class="prm">
-    <summary><b>实现一条 ADR 的决策</b><span class="prm-blurb">{len(bundles['inline']['adr'])} 条：决策 + 依赖它的需求 + 被否备选项所在文件</span></summary>
+    <summary><b{_ia("prompt.adr.title")}>{_t("prompt.adr.title", lang)}</b><span class="prm-blurb"{_ia("prompt.adr.blurb", n=len(bundles["inline"]["adr"]))}>{_t("prompt.adr.blurb", lang, n=len(bundles["inline"]["adr"]))}</span></summary>
     {_list(bundles['inline']['adr'], 'adr')}
   </details>
   <details class="prm">
-    <summary><b>为一条规则生成测试</b><span class="prm-blurb">{len(bundles['inline']['test'])} 条：命题 + 强制它的需求 + 测量它的公式</span></summary>
+    <summary><b{_ia("prompt.test.title")}>{_t("prompt.test.title", lang)}</b><span class="prm-blurb"{_ia("prompt.test.blurb", n=len(bundles["inline"]["test"]))}>{_t("prompt.test.blurb", lang, n=len(bundles["inline"]["test"]))}</span></summary>
     {_list(bundles['inline']['test'], 'test')}
   </details>
   <details class="prm">
-    <summary><b>导出整包上下文</b><span class="prm-blurb">{context_size:,} 字符 · 各章节原文，供需要原文而非摘要的模型</span></summary>
+    <summary><b{_ia("prompt.ctx.title")}>{_t("prompt.ctx.title", lang)}</b><span class="prm-blurb"{_ia("prompt.ctx.blurb", n=ctx_n)}>{_t("prompt.ctx.blurb", lang, n=ctx_n)}</span></summary>
     <div class="prm-actions">
-      <button type="button" class="copybtn" data-copy-url="{_esc(prefix + base + 'context.md')}">复制整包</button>
-      <a class="prm-dl" href="{_esc(prefix + base + 'context.md')}" download>下载 context.md</a>
+      <button type="button" class="copybtn" data-copy-url="{_esc(prefix + base + 'context.md')}"{_ia("prompt.copy_all")}>{_t("prompt.copy_all", lang)}</button>
+      <a class="prm-dl" href="{_esc(prefix + base + 'context.md')}" download{_ia("prompt.download_ctx")}>{_t("prompt.download_ctx", lang)}</a>
     </div>
   </details>
 </section>
 """
 
 
-def render_view_switch(entry: dict | None) -> str:
+def render_view_switch(entry: dict | None, lang: str = DEFAULT_LOCALE) -> str:
     """Radio-based view toggle: no JavaScript, keyboard-operable.
 
     The inputs must be *siblings* of the two views for the CSS `~` selector to
@@ -1206,10 +1424,14 @@ def render_view_switch(entry: dict | None) -> str:
     n = counts["rules"] + counts["requirements"] + counts["nfrs"] + counts["controls"] + counts["adrs"] + counts["constraints"]
     return (
         '<input class="vs-in" type="radio" name="vs" id="vs-doc" checked>'
-        '<label class="vs-lab" for="vs-doc">文档视图</label>'
+        '<label class="vs-lab" for="vs-doc"' + _ia("view.doc") + ">"
+        + _t("view.doc", lang) + "</label>"
         '<input class="vs-in" type="radio" name="vs" id="vs-spec">'
-        '<label class="vs-lab" for="vs-spec">结构视图'
-        + (f" · {n} IDs" if n else "") + "</label>"
+        '<label class="vs-lab" for="vs-spec"' + _ia("view.spec") + ">"
+        + _t("view.spec", lang)
+        + (f'<span{_ia("view.spec.count", n=n)}>'
+           + _esc(t("view.spec.count", lang, n=n)) + "</span>" if n else "")
+        + "</label>"
     )
 
 
@@ -1218,7 +1440,7 @@ def render_doc_page(
     doc: Doc,
     prefix: str,
     site_url: str = "",
-    lang: str = "en",
+    lang: str = DEFAULT_LOCALE,
     spec_entry: dict | None = None,
 ) -> str:
     rel_inside = Path(doc.rel).relative_to(pack.rel_dir).as_posix()
@@ -1230,8 +1452,8 @@ def render_doc_page(
     extra = ""
     if is_overview and spec_entry:
         extra = (
-            render_spec_view(spec_entry, prefix)
-            + render_prompt_section(spec_entry, prefix, pack_dir)
+            render_spec_view(spec_entry, prefix, lang)
+            + render_prompt_section(spec_entry, prefix, pack_dir, lang)
         )
     spec = extra
     header = ""
@@ -1241,7 +1463,7 @@ def render_doc_page(
             f'<div class="packhead-titles"><h1>{html.escape(pack.title)}</h1>'
             + (f'<p class="zh" lang="zh-CN">{html.escape(pack.title_zh)}</p>' if pack.title_zh else "")
             + "</div>"
-            f'<div class="packhead-meta">{pack_pills(pack)}'
+            f'<div class="packhead-meta">{pack_pills(pack, lang)}'
             f'<span class="meta-plain">{html.escape(pack.domain)} / {html.escape(pack.subdomain)}</span>'
             f'<span class="meta-plain">v{html.escape(str(pack.manifest.get("version", "")))}</span>'
             "</div></div>"
@@ -1272,9 +1494,9 @@ def render_doc_page(
         '<div class="wrap">'
         + breadcrumb(prefix, pack)
         + header
-        + render_view_switch(spec_entry if is_overview else None)
+        + render_view_switch(spec_entry if is_overview else None, lang)
         + '<div class="shell">'
-        + render_sidebar(pack, doc, prefix)
+        + render_sidebar(pack, doc, prefix, lang)
         + '<div class="main">'
         + f'<div class="view-doc{" has-toc" if rail else ""}">'
         + rail
@@ -1306,7 +1528,8 @@ def render_doc_page(
     )
 
 
-def render_plain_page(doc: Doc, prefix: str, site_url: str = "", lang: str = "en") -> str:
+def render_plain_page(doc: Doc, prefix: str, site_url: str = "",
+                      lang: str = DEFAULT_LOCALE) -> str:
     body = (
         '<div class="wrap">'
         f'<article class="prose prose-wide">{annotate_lang(doc.html)}</article>'
@@ -1331,7 +1554,8 @@ def mermaid_script(prefix: str = "") -> str:
 
 
 def render_catalog(
-    packs: list[Pack], base_url: str, site_url: str = "", lang: str = "en",
+    packs: list[Pack], base_url: str, site_url: str = "",
+    lang: str = DEFAULT_LOCALE,
     spec_entries: dict | None = None,
 ) -> str:
     """The register of packs.
@@ -1346,48 +1570,54 @@ def render_catalog(
     verifications = [v for v in ("unverified", "source-checked",
                                  "practitioner-reviewed", "field-proven")]
 
-    def facet(field: str, values, label: str) -> str:
+    def facet(field: str, values) -> str:
+        """One filter group. The value on the chip is chrome where the catalog
+        knows a translation for it (`verify.*`, `maturity.*`) and data
+        otherwise (a domain slug), because the `data-value` the filter reads is
+        always the raw record and must not change with the language."""
         chips = []
         for value in values:
             n = sum(1 for p in packs if getattr(p, field) == value)
+            key = f"{'maturity' if field == 'maturity' else 'verify'}.{value}"
+            text = _t(key, lang) if has(key) else _esc(value)
             chips.append(
                 f'<button class="chip" data-facet="{field}" data-value="{html.escape(value)}">'
-                f'{html.escape(value)}<span class="chip-n">{n}</span></button>'
+                + (f'<span{_ia(key)}>{text}</span>' if has(key) else f"{text}")
+                + f'<span class="chip-n">{n}</span></button>'
             )
-        return (f'<div class="facet"><span class="facet-label">{html.escape(label)}</span>'
+        return ('<div class="facet"><span class="facet-label"'
+                + _ia(f"facet.{field}") + ">"
+                + _t(f"facet.{field}", lang) + "</span>"
                 + "".join(chips) + "</div>")
 
     facets = (
         '<div class="facets">'
-        + facet("domain", domains, "domain")
-        + facet("maturity", maturities, "maturity")
-        + facet("verification", verifications, "verification")
+        + facet("domain", domains)
+        + facet("maturity", maturities)
+        + facet("verification", verifications)
         + "</div>"
     )
-    cards = "".join(render_card(p, spec_entries.get(p.slug)) for p in packs)
+    cards = "".join(render_card(p, spec_entries.get(p.slug), lang) for p in packs)
     # §7.8: an empty result is a moment for direction — icon, title, what
     # happened, and a way out. Never a bare "no data".
     empty = (
         '<div class="empty" id="empty" hidden>'
         f'<span class="empty-icon">{icon("empty")}</span>'
-        '<h3>No pack matches those filters</h3>'
-        '<p>Seventeen packs are on the shelf. Clear the filters to see all of them, '
-        'or search for a capability rather than a pack name.</p>'
+        f'<h3{_ia("catalog.empty.title")}>{_t("catalog.empty.title", lang)}</h3>'
+        f'<p{_ia("catalog.empty.body")}>{_t("catalog.empty.body", lang)}</p>'
         '<div class="empty-actions">'
-        '<button class="clear" id="empty-clear" type="button">Clear filters</button>'
-        '</div></div>'
+        f'<button class="clear" id="empty-clear" type="button"{_ia("catalog.search.clear")}>'
+        f'{_t("catalog.search.clear", lang)}</button>'
+        "</div></div>"
     )
 
     hero = (
         '<section class="hero">'
         f'<p class="eyebrow">{icon("grid")}Open Solution Atlas</p>'
-        '<h1>Production-grade blueprints '
-        '<span class="tail">for real enterprise systems</span></h1>'
-        '<p class="hero-sub">MES &middot; WMS &middot; IAM &middot; BI &middot; '
-        'workflow &middot; government services &mdash; every decision traced, every '
-        'identifier resolved, a prompt assembled from the pack itself, and an '
-        'interactive demo that shows the rule failing.</p>'
-        '</section>'
+        f'<h1{_ia("catalog.hero.title1")}>{_t("catalog.hero.title1", lang)} '
+        f'<span class="tail"{_ia("catalog.hero.title2")}>{_t("catalog.hero.title2", lang)}</span></h1>'
+        f'<p class="hero-sub"{_ia("catalog.hero.sub")}>{_t("catalog.hero.sub", lang)}</p>'
+        "</section>"
     )
 
     body = (
@@ -1397,24 +1627,29 @@ def render_catalog(
         # x=0 — the panels' own padding made them *look* inset.
         '<div class="wrap">'
         + hero
-        + '<p class="trustnote">Every pack is <code>llm-drafted</code>; none has been '
-          '<strong>field-verified</strong>. Maturity measures completeness, not '
-          'correctness &mdash; check each pack&rsquo;s <code>SOURCES.md</code>.</p>'
-        + '<div class="searchwrap">'
-          '<input id="q" type="search" autocomplete="off" spellcheck="false" '
-          'placeholder="Search 17 packs &mdash; try &ldquo;warehouse&rdquo;, '
-          '&ldquo;会签&rdquo;, &ldquo;federated login&rdquo;, &ldquo;FEFO&rdquo;&hellip;">'
-          '<button id="clear" class="clear" hidden>Clear filters</button>'
-          '</div>'
+        + '<p class="trustnote">'
+        + _span("catalog.trust.draft", lang) + " <code>llm-drafted</code>"
+        + _span("catalog.trust.none", lang)
+        + f'<strong{_ia("catalog.trust.verified")}>{_t("catalog.trust.verified", lang)}</strong>'
+        + _span("catalog.trust.maturity", lang) + _span("catalog.trust.check", lang)
+        + "<code>SOURCES.md</code>"
+        + _span("catalog.trust.tail", lang)
+        + "</p>"        + '<div class="searchwrap">'
+        + '<input id="q" type="search" autocomplete="off" spellcheck="false"'
+        + _iaa("placeholder", "catalog.search.placeholder", n=len(packs))
+        + f' placeholder="{_t("catalog.search.placeholder", lang, n=len(packs))}">'
+        + f'<button id="clear" class="clear" hidden{_ia("catalog.search.clear")}>'
+        + _t("catalog.search.clear", lang) + "</button>"
+        + "</div>"
         + '<p class="index-status" id="index-status" hidden></p>'
         + facets
         + '<div class="controls">'
-          f'<span class="count" id="count"><b>{len(packs)}</b> packs</span>'
-          '<span id="hits"></span></div>'
+        + f'<span class="count" id="count"><b>{len(packs)}</b>'
+        + f' <span data-i18n="word.pack">{_t("word.pack", lang)}</span></span>'
+        + '<span id="hits"></span></div>'
         + f'<div class="cards" id="cards">{cards}{empty}</div>'
-        + '<p class="hint">Search is loaded on first use, so browsing never pays for '
-          'the index.</p>'
-        + '</div>'
+        + f'<p class="hint"{_ia("catalog.hint")}>{_t("catalog.hint", lang)}</p>'
+        + "</div>"
     )
     return page_shell(
         title="Open Solution Atlas — blueprints for real enterprise systems",
@@ -1436,7 +1671,8 @@ def render_catalog(
     )
 
 
-def render_card(pack: Pack, entry: dict | None = None) -> str:
+def render_card(pack: Pack, entry: dict | None = None,
+                lang: str = DEFAULT_LOCALE) -> str:
     """One pack as a contract §7.4 category card.
 
     The reference's most characteristic block is a grid of cards whose first
@@ -1472,7 +1708,7 @@ def render_card(pack: Pack, entry: dict | None = None) -> str:
         f'<a class="card-link" href="{pack.index_url}">'
         f'<h3>{html.escape(pack.title)}</h3></a>{zh}'
         f'<p class="card-sum">{html.escape(summary)}</p>'
-        f'<div class="card-meta">{pack_pills(pack)}'
+        f'<div class="card-meta">{pack_pills(pack, lang)}'
         f'<span class="meta-plain">{html.escape(pack.domain)}</span></div>'
         f'<div class="tags">{tags}</div>'
         "</article>"
@@ -1608,7 +1844,7 @@ def _entry_label(name: str) -> tuple[str, str]:
     return " ".join(words), ext
 
 
-def _path_crumbs(parts, prefix: str) -> str:
+def _path_crumbs(parts, prefix: str, lang: str = DEFAULT_LOCALE) -> str:
     """A breadcrumb for a generated listing page, from the catalog inward.
 
     `/design-systems/library/stripe/` says `Catalog › design-systems › library ›
@@ -1618,7 +1854,9 @@ def _path_crumbs(parts, prefix: str) -> str:
     if not parts:
         return ""
     chev = icon("chevron")
-    out = ['<nav class="crumbs">', f'<a href="{prefix}index.html">Catalog</a>', chev]
+    out = ['<nav class="crumbs">',
+           f'<a href="{prefix}index.html"{_ia("crumb.catalog")}>'
+           f'{_t("crumb.catalog", lang)}</a>', chev]
     last = len(parts) - 1
     for i, part in enumerate(parts):
         if i == last:
@@ -1630,7 +1868,7 @@ def _path_crumbs(parts, prefix: str) -> str:
     return "".join(out)
 
 
-def generate_missing_indexes(out: Path) -> int:
+def generate_missing_indexes(out: Path, lang: str = DEFAULT_LOCALE) -> int:
     """Give every output directory a listing page if it lacks index.html.
 
     Links to a directory (``…/docs/``, ``…/packs/``) are rewritten to
@@ -1673,7 +1911,7 @@ def generate_missing_indexes(out: Path) -> int:
                     n = sum(1 for c in entry.iterdir() if c.name != "index.html")
                 except OSError:
                     n = 0
-                note = f'<span class="dirnote">{n} item{"s" if n != 1 else ""}</span>'
+                note = f'<span class="dirnote"{_ia("dir.items" if n != 1 else "dir.items.one", n=n)}>{_t("dir.items" if n != 1 else "dir.items.one", lang, n=n)}</span>'
             elif ext:
                 note = f'<span class="dirnote">.{html.escape(ext)}</span>'
             cards.append(
@@ -1690,7 +1928,7 @@ def generate_missing_indexes(out: Path) -> int:
         title = _entry_label(parts[-1])[0]
         body = (
             '<div class="wrap">'
-            + _path_crumbs(parts, prefix)
+            + _path_crumbs(parts, prefix, lang)
             + '<header class="listhead">'
             + f"<h1>{html.escape(title)}</h1>"
             + f'<p class="path">{html.escape(rel)}/</p>'
@@ -1702,6 +1940,7 @@ def generate_missing_indexes(out: Path) -> int:
             title=f"{title} — Open Solution Atlas",
             description=f"Contents of {rel}/ in Open Solution Atlas.",
             prefix=prefix, body=body, body_class="doc",
+            lang=lang,
         ))
         created += 1
     return created
@@ -1750,25 +1989,25 @@ def write_robots(out: Path, site_url: str) -> None:
     write(out / "robots.txt", "\n".join(lines) + "\n")
 
 
-def write_404(out: Path, site_url: str = "", lang: str = "en") -> None:
+def write_404(out: Path, site_url: str = "", lang: str = DEFAULT_LOCALE) -> None:
     """Emit a branded ``404.html`` (GitHub Pages serves it on unknown paths)."""
     # `.wrap` carries the gutter and the measure. The catalog's hero — the same
     # panel — sits inside it; this one did not, so its left edge was the viewport
     # edge and the panel spanned the whole window instead of 1180px.
     body = (
         '<div class="wrap">'
-        '<section class="hero"><h1>Page not found</h1>'
-        '<p class="hero-sub">That page does not exist — it may have been renamed '
-        "when a pack was promoted. The catalog is searchable.</p>"
+        f'<section class="hero"><h1{_ia("notfound.title")}>{_t("notfound.title", lang)}</h1>'
+        f'<p class="hero-sub"{_ia("notfound.body")}>{_t("notfound.body", lang)}</p>'
         '<div class="searchwrap">'
-        '<a class="clear" href="index.html">← Back to the catalog</a></div>'
+        f'<a class="clear" href="index.html"{_ia("notfound.back")}>'
+        f'{_t("notfound.back", lang)}</a></div>'
         "</section>"
         "</div>"
     )
     write(
         out / "404.html",
         page_shell(
-            title="Page not found — Solution Atlas",
+            title=f'{_t("notfound.title", lang)} — Solution Atlas',
             description="404 — the requested page does not exist.",
             prefix="", body=body, body_class="catalog",
             lang=lang, canonical=abs_url(site_url, "404.html"),
@@ -1812,11 +2051,14 @@ def main() -> int:
              "crawler artifacts (default: the deployed GitHub Pages origin)",
     )
     parser.add_argument(
-        "--lang", default="en",
-        help="value of the <html lang> attribute for the site chrome "
-             "(default: en); pack prose is language-tagged separately",
+        "--lang", default=DEFAULT_LOCALE,
+        help="language of the site chrome: en or zh (default: en). The reader "
+             "may switch language at runtime; pack prose is language-tagged "
+             "separately",
     )
     args = parser.parse_args()
+    if args.lang not in LOCALES:
+        parser.error(f"--lang must be one of {', '.join(LOCALES)}")
     return build(ROOT / args.out, args.base_url, args.site_url, args.lang)
 
 

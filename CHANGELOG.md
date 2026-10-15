@@ -143,6 +143,41 @@ the reason is written into each file. A colour is **not** covered: a hex or an
 `rgba()` outside the token block is a second palette starting, so that is checked
 separately, per demo, by a test.
 
+### Added — the site speaks both languages, and a reader can choose
+
+The chrome was half English and half Chinese *in the same header*: an English
+nav above a Chinese spec panel, "复制提示词" beside "Requirement". Not a
+translation gap — a missing layer. There is one now.
+
+`tools/i18n.py` is the vocabulary: ~130 keys, each with an `en` and a `zh`
+value, covering nav, buttons, panel labels, empty states, copy feedback. The
+build renders one of them (the new `--lang en|zh` reaches every template, not
+only `<html lang>`), and `assets/i18n.js` — generated from the same catalog, so
+the two halves cannot drift — renders the other when the reader clicks the
+switch in the titlebar. The choice is stored and the browser's language decides
+it on a first visit; `<html lang>` follows, down to `zh-CN`.
+
+What is *not* translated is pack prose, and that is deliberate: a pack's
+regulatory landscape is authored content, and half of it is bilingual on purpose
+(《网络安全法》, 会签). Content already carries its own `lang` attribute. The
+switch changes chrome; the demos stay in their pack's domain, because a demo of
+a Chinese one-stop service hall *is* a Chinese page.
+
+Every string is split around the markup it sits next to — a key holds plain
+text, never a `<code>` element — and each language carries its own punctuation
+and spacing, so an English comma does not become a space before a Chinese one.
+Three tests hold the invariants: no key may be half-translated, no markup may
+hide inside a value, and the English build must contain no Chinese chrome at
+all.
+
+### Fixed — the view switch was welded to the panel below it
+
+`.vs-lab` is an inline-flex box, and its bottom margin never reached the line
+box it was drawn in: the label's bottom edge and `.shell`'s top edge were the
+same coordinate, so "文档视图 / 结构视图" sat flush against the sidebar card
+with nothing between them. The margin belongs on the label, and it is there now
+— 16px, measured.
+
 ### Deliberately not done
 
 - `practitioner-reviewed` and `field-proven` remain 0. Both need a named human.

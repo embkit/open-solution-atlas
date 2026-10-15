@@ -256,6 +256,27 @@ code {
 .topnav a[aria-current="page"] { background: var(--primary); color: var(--on-primary); }
 .topnav svg { width: var(--icon-btn); height: var(--icon-btn); }
 
+/* The language control. Two buttons, one pressed: the same idiom the view
+   switch and the facets use, so a reader who has learned one has learned both.
+   It sits after the nav and stays put on the narrow layout, where the nav folds
+   into the <details> — the switch is the smaller of the two. */
+.langswitch { display: inline-flex; gap: var(--sp-1); flex: none; }
+.langswitch button {
+  display: inline-flex; align-items: center;
+  height: var(--ctl-h-xs); padding: 0 var(--sp-2);
+  font-size: var(--fs-xs); font-weight: 600;
+  color: var(--text-2); background: var(--surface);
+  border: var(--hairline) solid var(--line); border-radius: var(--r-md);
+  cursor: pointer;
+  transition: background-color var(--t-btn) ease, color var(--t-btn) ease,
+              border-color var(--t-btn) ease;
+}
+.langswitch button:hover { background: var(--surface-3); color: var(--text); }
+.langswitch button[aria-pressed="true"] {
+  background: var(--primary); color: var(--on-primary); border-color: var(--primary);
+}
+.langswitch button:focus-visible { outline: var(--stroke) solid var(--primary); outline-offset: var(--sp-1); }
+
 .navmenu { display: none; }
 .navmenu summary {
   display: flex; align-items: center; gap: var(--sp-2);
@@ -745,6 +766,11 @@ p a, li a, td a, blockquote a {
 .vs-lab {
   display: inline-flex; align-items: center; gap: var(--sp-1);
   height: var(--ctl-h-xs); padding: 0 var(--sp-3);
+  /* An atomic inline-level box's margin box *does* size the line box, so this
+     is what keeps the switch off the sidebar card below it. Without it the
+     label's bottom edge and `.shell`'s top edge were the same coordinate —
+     the button sat welded to the panel. */
+  margin-bottom: var(--sp-4);
   font-size: var(--fs-sm); font-weight: 600;
   background: var(--surface); color: var(--text-2);
   border: var(--hairline) solid var(--line); border-radius: var(--r-md);

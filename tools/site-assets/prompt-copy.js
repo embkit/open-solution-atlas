@@ -6,10 +6,19 @@
    click, and it degrades to a message when the clipboard API is unavailable.
 
    Nothing is fetched at load time: the text is already in the page for the
-   inline prompt, and a `.md` sibling for the rest. */
+   inline prompt, and a `.md` sibling for the rest.
+
+   The transient feedback strings come from the site's string catalog through
+   `window.OSA_I18N` (assets/i18n.js), like every other string the page writes:
+   a reader who switches language must not get a Chinese toast on an English
+   page. */
 
 (function () {
   "use strict";
+
+  function tr(key) {
+    return window.OSA_I18N ? window.OSA_I18N.t(key) : key;
+  }
 
   function flash(button, message, ok) {
     var original = button.textContent;
@@ -25,8 +34,8 @@
   function copyText(text, button) {
     if (navigator.clipboard && window.isSecureContext !== false) {
       navigator.clipboard.writeText(text).then(
-        function () { flash(button, "已复制", true); },
-        function () { flash(button, "复制失败，请手动选择", false); }
+        function () { flash(button, tr("copy.ok"), true); },
+        function () { flash(button, tr("copy.fail"), false); }
       );
       return;
     }
@@ -42,7 +51,7 @@
     var ok = false;
     try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
     document.body.removeChild(area);
-    flash(button, ok ? "已复制" : "复制失败，请手动选择", ok);
+    flash(button, ok ? tr("copy.ok") : tr("copy.fail"), ok);
   }
 
   document.querySelectorAll("[data-copy]").forEach(function (button) {
@@ -59,7 +68,7 @@
         function (r) { return r.ok ? r.text() : Promise.reject(r.status); }
       ).then(
         function (text) { copyText(text, button); },
-        function () { flash(button, "读取失败，请打开文件手动复制", false); }
+        function () { flash(button, tr("copy.read_fail"), false); }
       );
     });
   });
