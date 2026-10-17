@@ -1,4 +1,4 @@
 # Runtime dependencies for the repository tooling (tools/*.py).
 # Pinned to a compatible range for reproducibility; CI installs from this file.
 PyYAML>=6.0.3,<7.0
-Markdown>=3.11,<4.0        # tools/build-site.py (static site generation)
+Markdown>=3.11.1,<4.0        # tools/build-site.py (static site generation)
