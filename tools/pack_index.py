@@ -329,15 +329,15 @@ def parse_nfrs(text: str) -> list[dict]:
         m = NFR_HEADING_RE.match("## " + block)
         if not m:
             continue
-        label = re.search(r"\*\*(?:Target|\u76ee\u6807)(\s*\(A\))?\*\*:?", block)
+        label = re.search(r"\*\*(?:Target|\u76ee\u6807(?:\u503c)?)(\s*\(A\))?\*\*:?", block)
         target = re.search(
-            r"\*\*(?:Target|\u76ee\u6807)(?:\s*\(A\))?\*\*:?\s*(.+?)(?=\n\s*-\s*\*\*|\n\n|\Z)",
+            r"\*\*(?:Target|\u76ee\u6807(?:\u503c)?)(?:\s*\(A\))?\*\*:?\s*(.+?)(?=\n\s*-\s*\*\*|\n\n|\Z)",
             block, re.DOTALL)
         formula = re.search(
             r"\*\*(?:Formula|\u516c\u5f0f)\*\*:?\s*(.+?)(?=\n\s*-\s*\*\*|\n\n|\Z)",
             block, re.DOTALL)
         rationale = re.search(
-            r"\*\*(?:Rationale|\u4f9d\u636e)\*\*:?\s*(.+?)(?=\n\s*-\s*\*\*|\n\n|\Z)",
+            r"\*\*(?:Rationale|\u4f9d\u636e|\u7406\u7531)\*\*:?\s*(.+?)(?=\n\s*-\s*\*\*|\n\n|\Z)",
             block, re.DOTALL)
         target_text = _clean(target.group(1)) if target else ""
         out.append({

@@ -171,6 +171,84 @@ CONTENT_LOCALE = {"en": None, "zh": "zh-CN"}
 LOCALE_TAG_RE = re.compile(r"^(?P<base>.+)\.(?P<locale>[a-z]{2}(?:-[A-Z]{2})?)$")
 
 
+#: Where each language's tree lives inside a bilingual build. The English tree
+#: is the site root; the Chinese tree is a directory beside it. Both trees
+#: share one URL space - a translation is a sibling file, not a parallel tree
+#: of pages - so the counterpart of a page is the same relative path under the
+#: other prefix. Switching language is therefore a path change, not a repaint:
+#: the reader lands on a page whose prose is in the language they asked for.
+LOCALE_TREE = {"en": "", "zh": "zh/"}
+
+
+def tree_href(rel: str, tree_prefix: str, alt_prefix: str) -> str:
+    """The path from a page to its counterpart in the other language's tree.
+
+    `rel` is the page's path inside its own tree (`packs/mes/README.html`).
+    The counterpart is the same path under the other tree's prefix, reached
+    from the page's own directory - so the number of `..` is the depth of the
+    page inside the *output* directory, which is one deeper for a tree that is
+    itself a directory.
+    """
+    depth = rel.count("/") + tree_prefix.count("/")
+    return "../" * depth + alt_prefix + rel
+
+
+BODY_TAG_RE = re.compile(r'<body class="([^"]*)">')
+CANONICAL_RE = re.compile(r'<link rel="canonical" href="([^"]*)">')
+
+
+def inject_language_links(tree_dir: Path, lang: str, tree_prefix: str,
+                           alt_prefix: str, site_url: str = "") -> int:
+    """Teach every page in a tree where its counterpart lives.
+
+    The switch in the titlebar is chrome, so the shell renders it; but *where*
+    the other language's page is depends on the page, and only the page knows
+    its own path. This pass writes that answer into the page: `data-alt-en` and
+    `data-alt-zh` on the body, the canonical link and the `hreflang`
+    alternates in the head.
+
+    Without it the switch can only repaint the chrome, which is how a Chinese
+    reader ends up with Chinese navigation over English prose - a page in two
+    languages at once, which is worse than a page in one.
+    """
+    alt_lang = "zh" if lang == "en" else "en"
+    touched = 0
+    for page in sorted(tree_dir.rglob("*.html")):
+        rel = page.relative_to(tree_dir).as_posix()
+        counterpart = tree_href(rel, tree_prefix, alt_prefix)
+        alts = {"en": "", "zh": ""}
+        alts[alt_lang] = counterpart
+        text = page.read_text(encoding="utf-8")
+
+        def body_sub(match: re.Match, alts: dict = alts) -> str:
+            attrs = " ".join(
+                f'data-alt-{code}="{html.escape(value, quote=True)}"'
+                for code, value in alts.items()
+            )
+            return (f'<body class="{match.group(1)}" data-build-lang="{lang}" '
+                    f"{attrs}>")
+
+        new = BODY_TAG_RE.sub(body_sub, text, count=1)
+        if site_url:
+            canonical = abs_url(site_url, tree_prefix + rel)
+            new = CANONICAL_RE.sub(
+                lambda m, url=canonical: f'<link rel="canonical" href="{url}">',
+                new, count=1,
+            )
+            alternates = "".join(
+                f'<link rel="alternate" hreflang="{HTML_LANG[code]}" '
+                f'href="{abs_url(site_url, LOCALE_TREE[code] + rel)}">\n'
+                for code in ("en", "zh")
+            )
+            new = new.replace(
+                '<link rel="canonical"', alternates + '<link rel="canonical"', 1
+            )
+        if new != text:
+            page.write_text(new, encoding="utf-8", newline="")
+            touched += 1
+    return touched
+
+
 def locale_of(path: Path) -> str | None:
     """The locale a source file is written in, or None for an original."""
     if path.suffix != ".md":
@@ -982,7 +1060,7 @@ def build(out: Path, base_url: str, site_url: str = "",
         entry = spec_entries.get(pack.slug)
         if not entry:
             continue
-        bundles = build_bundles(entry, ROOT / pack.rel_dir)
+        bundles = build_bundles(entry, ROOT / pack.rel_dir, lang, locale)
         for fname, text in bundles["files"].items():
             write(out / pack.rel_dir / "prompts" / fname, text)
             prompts_written += 1
@@ -1427,7 +1505,9 @@ def render_prompt_section(entry: dict, prefix: str, pack_dir: Path,
     and per-rule variants are emitted as real files and linked, so a page does
     not carry every prompt's full text in order to copy one of them.
     """
-    bundles = build_bundles(entry, pack_dir)
+    # The locale follows the build's language: a Chinese tree carries the
+    # Chinese chapters in the context bundle.
+    bundles = build_bundles(entry, pack_dir, lang, CONTENT_LOCALE.get(lang))
     base = f"{pack_dir.relative_to(ROOT).as_posix()}/prompts/"
 
     inline = bundles["inline"]["implement"]
@@ -2151,6 +2231,53 @@ def verify_internal_links(out: Path) -> list[str]:
     return broken
 
 
+def build_bilingual(out: Path, base_url: str = "/", site_url: str = "") -> int:
+    """Build both language trees into one output directory.
+
+    The English tree is the site root and the Chinese tree lives under `zh/`.
+    Each tree is a complete site in its own language - chrome and prose agree
+    - and the switch between them is a link, because a translation is a
+    sibling file and the URL space never changes.
+    """
+    if build(out, base_url, site_url, "en"):
+        return 1
+    # The English tree is annotated before the Chinese tree exists: the pass
+    # walks the whole output directory, and the two trees must not annotate
+    # each other.
+    inject_language_links(out, "en", LOCALE_TREE["en"], LOCALE_TREE["zh"], site_url)
+    zh_out = out / LOCALE_TREE["zh"].rstrip("/")
+    if build(zh_out, base_url, site_url, "zh"):
+        return 1
+    # The Chinese tree's own crawler artifacts would point at the wrong
+    # origin: its pages live under /zh/, and the one sitemap that matters is
+    # the root one.
+    for artifact in ("robots.txt", "sitemap.xml"):
+        (zh_out / artifact).unlink(missing_ok=True)
+    inject_language_links(
+        zh_out, "zh", LOCALE_TREE["zh"], LOCALE_TREE["en"], site_url
+    )
+    # The root sitemap was written by the English build, before the Chinese
+    # tree existed; rewrite it so it lists both.
+    write_sitemap(out, site_url)
+    broken = verify_internal_links(out)
+    if broken:
+        print(f"[ERROR] {len(broken)} broken internal link(s):")
+        for path in broken[:20]:
+            print(f"  {path}")
+        return 1
+    pages = sum(1 for _ in out.rglob("*.html"))
+    try:
+        where = out.relative_to(ROOT).as_posix()
+    except ValueError:
+        where = out.as_posix()
+    print(
+        f"built bilingual site: {pages} pages -> {where}/ "
+        f"(en at /, zh at /{LOCALE_TREE['zh'].rstrip('/')}/)"
+    )
+    print("internal links: all resolve")
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Build the static site")
     parser.add_argument("--out", default="_site", help="output directory")
@@ -2166,14 +2293,17 @@ def main() -> int:
              "crawler artifacts (default: the deployed GitHub Pages origin)",
     )
     parser.add_argument(
-        "--lang", default=DEFAULT_LOCALE,
-        help="language of the site chrome: en or zh (default: en). The reader "
-             "may switch language at runtime; pack prose is language-tagged "
-             "separately",
+        "--lang", default="both",
+        help="language(s) to build: 'en', 'zh' or 'both' (default: both). "
+             "'both' builds the English site at the output root and the Chinese "
+             "site under zh/, each complete in its own language, with a switch "
+             "between them that changes the prose and not only the chrome",
     )
     args = parser.parse_args()
-    if args.lang not in LOCALES:
-        parser.error(f"--lang must be one of {', '.join(LOCALES)}")
+    if args.lang not in LOCALES and args.lang != "both":
+        parser.error(f"--lang must be one of {', '.join(LOCALES)} or both")
+    if args.lang == "both":
+        return build_bilingual(ROOT / args.out, args.base_url, args.site_url)
     return build(ROOT / args.out, args.base_url, args.site_url, args.lang)
 
 
