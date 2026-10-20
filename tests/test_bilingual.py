@@ -1,4 +1,3 @@
-﻿# -*- coding: utf-8 -*-
 """Tests for the bilingual build: two trees, one switch.
 
 A site that offers two languages has to answer a question the single-language

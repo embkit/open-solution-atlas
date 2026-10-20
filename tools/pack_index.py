@@ -105,6 +105,32 @@ def _clean(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
+def _list_items(text: str) -> list[str]:
+    """Every list item, with its continuation lines joined into one statement.
+
+    A bullet that wraps over several lines is still one statement, and a
+    parser that reads only its first line sees different text depending on
+    where the line happens to break. That is how the same requirement ends up
+    counted as a policy assumption in one language and not in the other: the
+    `(A)` marker lands on the first line only sometimes.
+    """
+    items: list[str] = []
+    current: list[str] = []
+    for line in text.splitlines():
+        if re.match(r"^\s*([-*+]|\d+\.)\s+", line):
+            if current:
+                items.append(" ".join(current))
+            current = [line.strip()]
+        elif current and line[:1] in (" ", "\t") and line.strip():
+            current.append(line.strip())
+        elif current:
+            items.append(" ".join(current))
+            current = []
+    if current:
+        items.append(" ".join(current))
+    return items
+
+
 def _row_cells(line: str) -> list[str]:
     """Unwrap a Markdown table row into its cells, never the outer pipes."""
     stripped = line.strip()
@@ -303,7 +329,7 @@ def parse_requirements(text: str) -> list[dict]:
     if parsed:
         return sorted(parsed.values(), key=lambda r: int(r["id"][3:].rstrip("a-z") or 0))
     # Convention 2: nothing heading-shaped, so look for the inline bullets.
-    for line in text.splitlines():
+    for line in _list_items(text):
         m = REQ_INLINE_RE.match(line)
         if not m:
             continue
@@ -354,7 +380,7 @@ def parse_nfrs(text: str) -> list[dict]:
     if out:
         return sorted(out, key=lambda n: int(n["id"][4:].rstrip("a-z") or 0))
     # Convention 2: `- **NFR-001 (Topic)** statement`.
-    for line in text.splitlines():
+    for line in _list_items(text):
         m = NFR_INLINE_RE.match(line)
         if not m:
             continue
@@ -452,15 +478,26 @@ def parse_store_claimed(text: str) -> set[int]:
     """
     flat = _flat(text)
     m = re.search(
-        r"(?:Constraints?\s*(\d[^.;:]*?)\s+(?:are|is)\s+enforced\s+in\s+the\s+store"
-        r"|\u7ea6\u675f\s*(\d[^.;:\uff1b]*?)\s*(?:\u7531|\u5728)?\s*"
-        r"\u5b58\u50a8(?:\u5c42)?(?:\u4e2d)?\s*\u5f3a\u5236\u6267\u884c)",
+        r"Constraints?\s*(\d[^.;:]*?)\s+(?:are|is)\s+enforced\s+in\s+the\s+store",
         flat,
     )
-    if not m:
-        return set()
-    numbers = m.group(1) or m.group(2) or ""
-    return {int(n) for n in re.findall(r"\d+", numbers)}
+    if m:
+        return {int(n) for n in re.findall(r"\d+", m.group(1))}
+    # The Chinese claim reads like `约束 1、5、7 和 13 是在**存储层**而非应用程序
+    # 代码中**强制执行**的`: the emphasis markers, and the words between the
+    # subject and the verb, are part of the sentence. So the verb phrase is
+    # found first, and the enumeration is read from the clause in front of it.
+    for hit in re.finditer(
+        r"\u5b58\u50a8(?:\u5c42)?[^.;:\uff1b]{0,40}?\u5f3a\u5236\u6267\u884c", flat
+    ):
+        head = flat.rfind("\u7ea6\u675f", max(0, hit.start() - 160), hit.start())
+        if head < 0:
+            continue
+        clause = flat[head + 2:hit.start()]
+        numbers = re.findall(r"\d+", clause)
+        if numbers:
+            return {int(n) for n in numbers}
+    return set()
 
 
 def parse_constraints(text: str) -> list[dict]:

@@ -6,6 +6,34 @@ releases (individual packs carry their own `version` in `manifest.yaml`).
 
 ## [Unreleased]
 
+### Added — the Chinese edition, end to end
+
+Every pack now carries a Chinese sibling for every chapter, and the site has a
+Chinese tree of its own. A translation here is not a summary and not a machine
+dump: each file is a *sibling* of the file it translates
+(`01-business/business-rules.zh-CN.md`), with the same shape — the same
+identifiers, the same tables, the same code blocks — so both languages share
+one URL space and a reader who switches lands on the same page in the other
+language.
+
+- **All 17 packs translated**, chapter by chapter: 466 files, plus the pack
+  index, the pack standard, the taxonomy, the roadmap, the UI contract, the
+  citation audit and the changelog itself.
+- **A bilingual build.** `tools/build-site.py` emits the English site at the
+  output root and the Chinese site under `zh/`. The language switch is a link
+  between the two trees, so the prose changes together with the chrome. The
+  previous runtime could only repaint the navigation, which is how a page
+  ended up wearing Chinese labels over English prose — a page in two
+  languages at once, which reads as neither.
+- **A completeness checker.** `tools/check-translations.py` compares each
+  translation with its original — heading levels, table rows, list items, code
+  fences, identifier sets — and reports any line left in English. A pack that
+  declares `translations: [zh-CN]` without every file translated is refused by
+  `tools/validate-packs.py`.
+- **The standard learned the convention.** `docs/pack-standard.v1.md` §5 now
+  says what a translation is (a sibling, not a parallel tree) and what
+  declaring a locale claims (the whole pack, not a sample).
+
 ### Fixed — the front end, page by page
 
 A pass over the built site that opened every page *type* and measured it, rather

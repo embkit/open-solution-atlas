@@ -75,6 +75,14 @@ be L3 and `unverified` at the same time — say so.
 - Stable IDs (`FR-*`, `NFR-*`, `CTL-*`, `ADR-*`); never renumber.
 - English is the repository's primary language; Chinese (zh-CN) is a
   first-class translation. Bilingual packs are encouraged.
+- A translation is a **sibling** of the file it translates
+  (`01-business/business-rules.zh-CN.md`), never a parallel tree: both files
+  share one URL space, so a relative link resolves to the page the reader
+  wants in either language. Keep the shape — the same identifiers, the same
+  tables, the same code blocks — and translate the prose around them.
+  `python tools/check-translations.py` compares every translation with its
+  original and reports what drifted; `tools/validate-packs.py` refuses a pack
+  that claims `translations: [zh-CN]` without every file translated.
 - Mark uncertainty explicitly with `> ⚠️ ASSUMPTION:`.
 
 ## Developer Certificate of Origin (DCO)
@@ -154,4 +162,9 @@ CC BY-SA 4.0 for content, MIT for code/templates.
 - Markdown + YAML + 代码化图表（Mermaid/PlantUML）
 - 稳定编号（`FR-*`、`NFR-*`、`CTL-*`、`ADR-*`），不复用、不重排
 - 英文为主语言，中文（zh-CN）为一等翻译语言，鼓励双语方案
+- 翻译是原文的**同级兄弟文件**（`01-business/business-rules.zh-CN.md`），而不是另一套
+  并行目录：两份文件共用同一套 URL 空间，因此相对链接在任一语言下都指向读者
+  要的页面。结构保持不变——同样的编号、同样的表格、同样的代码块——只翻译
+  它们周围的文字。`python tools/check-translations.py` 会逐个比对译文与原文并报出偏离；
+  `tools/validate-packs.py` 会拒绝声称 `translations: [zh-CN]` 却没有把全包翻完的方案包。
 - 不确定处用 `> ⚠️ ASSUMPTION:` 显式标注

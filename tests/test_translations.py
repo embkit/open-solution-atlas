@@ -183,9 +183,56 @@ def test_a_translated_pack_renders_in_chinese(zh_site):
     assert re.search(r"[\u4e00-\u9fff]{4,}", page)
 
 
-def test_an_untranslated_pack_says_so(zh_site):
-    page = (zh_site / "packs/manufacturing/wms/index.html").read_text(encoding="utf-8")
-    assert "transnote" in page, "an untranslated chapter must announce itself"
+def _tracked_pages(zh_site, build_site) -> list[Path]:
+    """The site pages that come from tracked repository content.
+
+    A working checkout can carry directories that are not project content -
+    the ux-ui-agent-skills kit is one - and the build renders whatever
+    Markdown it finds on disk. Only the tracked files are the repository's
+    own pages, so only they are the repository's business.
+    """
+    out = subprocess.run(
+        ["git", "ls-files", "*.md"], cwd=ROOT,
+        capture_output=True, text=True, check=True,
+    )
+    pages = []
+    for rel in out.stdout.splitlines():
+        if rel.endswith(".zh-CN.md"):
+            continue  # a translation is rendered in place of its original
+        page = zh_site / build_site.url_for(ROOT / rel)
+        if page.is_file():
+            pages.append(page)
+    return pages
+
+
+def test_no_tracked_chapter_carries_the_fallback_banner(zh_site, build_site):
+    """The corpus is complete, so no page announces a missing translation.
+
+    The banner exists for a chapter that has no Chinese sibling yet. With
+    every chapter translated there is nothing to announce, and a banner left
+    behind would tell a Chinese reader that a page they are reading in
+    Chinese is not.
+    """
+    offenders = [
+        page.relative_to(zh_site).as_posix()
+        for page in _tracked_pages(zh_site, build_site)
+        if "transnote" in page.read_text(encoding="utf-8")
+    ]
+    assert offenders == [], f"pages still carrying the fallback banner: {offenders[:10]}"
+
+
+def test_the_fallback_banner_still_exists(build_site):
+    """A chapter without a translation must announce itself.
+
+    The corpus is complete today, so this cannot be checked against the
+    repository; the notice itself is what has to keep working, in the
+    reader's language.
+    """
+    note = build_site.translation_note("zh")
+    assert "transnote" in note
+    assert re.search(r"[\u4e00-\u9fff]{4,}", note), (
+        "the notice must be written in the language of the page"
+    )
 
 
 def test_the_catalogue_is_chinese(zh_site):

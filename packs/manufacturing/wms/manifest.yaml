@@ -40,7 +40,7 @@ regulatory:
   - id: mlps-2-0
     region: cn
 language: en
-translations: []                           # no full translation yet (key assets bilingual; see standard §5)
+translations: [zh-CN]        # full translation: every chapter has a .zh-CN.md sibling
 maintainers: []
 version: 0.3.0
 last_reviewed: 2026-10-08
