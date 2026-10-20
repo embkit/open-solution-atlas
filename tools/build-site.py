@@ -1844,10 +1844,8 @@ def render_catalog(
         + "</div>"
     )
     return page_shell(
-        title="Open Solution Atlas — blueprints for real enterprise systems",
-        description="Seventeen machine-readable blueprints for real enterprise "
-                    "systems, each with traced identifiers, integrity constraints "
-                    "and prompts assembled from the pack itself.",
+        title=_t("catalog.page.title", lang),
+        description=_t("catalog.page.desc", lang),
         prefix="", body=body, body_class="catalog", icon="\u25c8",
         nav_current="catalog",
         # SRI on the vendored library: the hash is pinned in VENDOR_EXPECTED
@@ -2133,7 +2131,7 @@ def generate_missing_indexes(out: Path, lang: str = DEFAULT_LOCALE) -> int:
         )
         write(index, page_shell(
             title=f"{title} — Open Solution Atlas",
-            description=f"Contents of {rel}/ in Open Solution Atlas.",
+            description=_t("dir.contents", lang, path=rel),
             prefix=prefix, body=body, body_class="doc",
             lang=lang,
         ))
@@ -2203,7 +2201,7 @@ def write_404(out: Path, site_url: str = "", lang: str = DEFAULT_LOCALE) -> None
         out / "404.html",
         page_shell(
             title=f'{_t("notfound.title", lang)} — Solution Atlas',
-            description="404 — the requested page does not exist.",
+            description=_t("notfound.body", lang),
             prefix="", body=body, body_class="catalog",
             lang=lang, canonical=abs_url(site_url, "404.html"),
         ),

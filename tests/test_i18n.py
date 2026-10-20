@@ -198,6 +198,15 @@ def test_every_key_is_referenced_somewhere(i18n_site, zh_i18n_site, i18n, build_
     for name in ("app.js", "prompt-copy.js"):
         text = (assets / name).read_text(encoding="utf-8")
         referenced |= set(re.findall(r'"([a-z][a-z0-9._]*)"', text))
+    # A key the server-rendered templates use is referenced too: the build
+    # writes it into the page directly - a <title>, a <meta description> -
+    # where there is no element to carry a `data-i18n` marker.
+    build = (Path(__file__).resolve().parent.parent / "tools" / "build-site.py")
+    source = build.read_text(encoding="utf-8")
+    referenced |= set(re.findall(r'_t\(\s*"([^"]+)"', source))
+    referenced |= set(re.findall(r'_ia\(\s*"([^"]+)"', source))
+    referenced |= set(re.findall(r'_span\(\s*"([^"]+)"', source))
+    referenced |= set(re.findall(r'_iaa\(\s*"[^"]+"\s*,\s*"([^"]+)"', source))
     # The enum tables reference their keys by construction: an L4 pack cannot
     # exist today, but the pill must not fall back to a raw "L4" when one is
     # promoted, so the vocabulary is complete even though the markup is not.

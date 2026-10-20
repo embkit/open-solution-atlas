@@ -90,6 +90,22 @@ STRINGS: dict[str, dict[str, str]] = {
     "footer.trust.tail": {"en": ".", "zh": "。"},
 
     # ---- catalog --------------------------------------------------------- #
+    "dir.contents": {
+        "en": "Contents of {path}/ in Open Solution Atlas.",
+        "zh": "Open Solution Atlas \u4e2d {path}/ \u7684\u76ee\u5f55\u5185\u5bb9\u3002",
+    },
+    "catalog.page.title": {
+        "en": "Open Solution Atlas \u2014 blueprints for real enterprise systems",
+        "zh": "Open Solution Atlas \u2014\u2014 \u9762\u5411\u771f\u5b9e\u4f01\u4e1a\u7cfb\u7edf\u7684\u84dd\u56fe\u5e93",
+    },
+    "catalog.page.desc": {
+        "en": "Seventeen machine-readable blueprints for real enterprise "
+              "systems, each with traced identifiers, integrity constraints "
+              "and prompts assembled from the pack itself.",
+        "zh": "\u5341\u4e03\u4e2a\u53ef\u673a\u5668\u8bfb\u53d6\u7684\u771f\u5b9e\u4f01\u4e1a\u7cfb\u7edf\u84dd\u56fe\uff0c"
+              "\u6bcf\u4e2a\u90fd\u5e26\u6709\u53ef\u8ffd\u6eaf\u7684\u7f16\u53f7\u3001\u5b8c\u6574\u6027\u7ea6\u675f\uff0c"
+              "\u4ee5\u53ca\u7531\u65b9\u6848\u5305\u81ea\u8eab\u62fc\u88c5\u7684\u63d0\u793a\u8bcd\u3002",
+    },
     "catalog.hero.title1": {
         "en": "Production-grade blueprints",
         "zh": "生产级蓝图",
