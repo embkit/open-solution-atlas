@@ -58,6 +58,16 @@ STRINGS: dict[str, dict[str, str]] = {
     "lang.en": {"en": "EN", "zh": "EN"},
     "lang.zh": {"en": "中文", "zh": "中文"},
 
+    # ---- translation status -------------------------------------------- #
+    # A Chinese build renders the translated chapter where one exists and the
+    # English original where one does not. The reader is told which: a page
+    # that quietly mixes two languages is worse than either one alone.
+    "trans.banner": {
+        "en": "No Chinese translation of this page yet; the English original "
+              "follows.",
+        "zh": "本页尚无中文译本，以下为英文原文。",
+    },
+
     # ---- footer ---------------------------------------------------------- #
     # Every value carries its own spacing: the template joins these pieces with
     # no whitespace of its own where the two languages need different spacing,

@@ -356,6 +356,17 @@ code {
 }
 .trustnote code { background: none; padding: 0; color: var(--text-2); }
 
+/* The notice on a page whose content has no translation yet. Deliberately
+   quieter than the trust note: it is a statement about this page, not about
+   the corpus, and it must not read as a warning about the pack's contents. */
+.transnote {
+  background: var(--surface-2); border: var(--hairline) solid var(--line);
+  border-left: var(--rail) solid var(--primary);
+  border-radius: var(--r-lg); padding: var(--sp-2) var(--sp-4);
+  font-size: var(--fs-sm); color: var(--text-2);
+  margin-bottom: var(--sp-5);
+}
+
 .searchwrap { display: flex; gap: var(--sp-2); margin-bottom: var(--sp-3); }
 #q {
   flex: 1; min-width: 0;

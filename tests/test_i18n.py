@@ -108,6 +108,19 @@ def i18n_site(build_site, tmp_path_factory) -> Path:
     return out
 
 
+@pytest.fixture(scope="module")
+def zh_i18n_site(build_site, tmp_path_factory) -> Path:
+    """The same repository built in Chinese.
+
+    A key that only the Chinese build renders (the translation-fallback
+    notice) is referenced by the site, not dead vocabulary ? so the scan for
+    dead keys has to look at both builds.
+    """
+    out = tmp_path_factory.mktemp("zh-i18n-site")
+    assert build_site.build(out, "/", "", "zh") == 0
+    return out
+
+
 I18N_MARKERS = re.compile(
     r'data-i18n(?:-(?:placeholder|aria-label|title))?="([^"]+)"'
 )
@@ -168,7 +181,7 @@ def test_the_runtime_asset_is_emitted_and_parses(i18n_site):
     assert data["nav.catalog"]["zh"] == "目录"
 
 
-def test_every_key_is_referenced_somewhere(i18n_site, i18n, build_site):
+def test_every_key_is_referenced_somewhere(i18n_site, zh_i18n_site, i18n, build_site):
     """A key nothing references is dead vocabulary.
 
     The catalog is the site's glossary, and an entry nobody reads is a claim
@@ -178,8 +191,9 @@ def test_every_key_is_referenced_somewhere(i18n_site, i18n, build_site):
     server never sees.
     """
     referenced: set[str] = set()
-    for page in _pages(i18n_site):
-        referenced |= set(I18N_MARKERS.findall(page.read_text(encoding="utf-8")))
+    for site in (i18n_site, zh_i18n_site):
+        for page in _pages(site):
+            referenced |= set(I18N_MARKERS.findall(page.read_text(encoding="utf-8")))
     assets = Path(__file__).resolve().parent.parent / "tools" / "site-assets"
     for name in ("app.js", "prompt-copy.js"):
         text = (assets / name).read_text(encoding="utf-8")
@@ -203,11 +217,10 @@ def test_the_switch_marks_exactly_one_language_pressed(i18n_site, build_site):
         )
 
 
-def test_chinese_build_renders_chinese_chrome(build_site, tmp_path, i18n_site):
+def test_chinese_build_renders_chinese_chrome(zh_i18n_site, i18n_site):
     """The other half of the switch: the build's own language argument must
     actually reach every template, not only `<html lang>`."""
-    out = tmp_path / "zh-site"
-    assert build_site.build(out, "/", "", "zh") == 0
+    out = zh_i18n_site
     index = (out / "index.html").read_text(encoding="utf-8")
     assert '<html lang="zh-CN">' in index
     assert "生产级蓝图" in index, "the catalog hero must follow --lang zh"

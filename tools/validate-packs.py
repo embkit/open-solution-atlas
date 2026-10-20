@@ -201,14 +201,33 @@ def validate_lifecycle(pack: str, data: dict, pack_dir: Path, rep: Report) -> No
         if n_adr < 3:
             rep.err(pack, f"{maturity} requires >=3 ADRs (L2 checklist), found {n_adr}")
 
-    # R3b — translations honesty (standard §5): a declared locale needs a file.
+    # R3b - translations honesty (standard 5): a declared locale means the
+    # whole pack is translated. A translation is a *sibling*
+    # (`business-rules.zh-CN.md` beside `business-rules.md`), so the claim is
+    # checked file by file: every translatable file needs its counterpart.
     for locale in data.get("translations") or []:
         candidates = [pack_dir / f"README.{locale}.md", pack_dir / "translations" / locale]
-        if not any(c.exists() for c in candidates):
+        if not any(c.exists() for c in candidates) and not any(
+            pack_dir.rglob(f"*.{locale}.md")
+        ):
             rep.err(
                 pack,
-                f"translations declares {locale!r} but no README.{locale}.md or "
-                f"translations/{locale}/ exists (standard §5)",
+                f"translations declares {locale!r} but no README.{locale}.md, "
+                f"translations/{locale}/ or *.{locale}.md file exists (standard 5)",
+            )
+        missing = []
+        for md in sorted(pack_dir.rglob("*.md")):
+            rel_inside = md.relative_to(pack_dir)
+            if md.name.endswith(f".{locale}.md") or "translations" in rel_inside.parts:
+                continue
+            if not md.with_name(md.stem + f".{locale}.md").exists():
+                missing.append(rel_inside.as_posix())
+        if missing:
+            shown = ", ".join(missing[:5]) + ("..." if len(missing) > 5 else "")
+            rep.err(
+                pack,
+                f"translations declares {locale!r} but {len(missing)} file(s) "
+                f"have no {locale} translation: {shown} (standard 5)",
             )
     if maturity == "L4" and verification != "field-proven":
         rep.err(pack, "L4 requires verification: field-proven (standard §6/§8)")

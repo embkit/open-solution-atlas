@@ -161,6 +161,62 @@ def primary_nav(prefix: str, current: str = "", lang: str = DEFAULT_LOCALE) -> s
 # The maturity and verification vocabularies. Values are keys into
 # `i18n.STRINGS` because they are chrome: a pack's state shown in the reader's
 # language, not the raw record.
+# The build language also chooses the *content* language. The chrome has a
+# vocabulary in `i18n.py`; the prose lives in the packs, and a Chinese build
+# reads the translated files where they exist.
+CONTENT_LOCALE = {"en": None, "zh": "zh-CN"}
+
+
+#: `business-rules.zh-CN.md` -> base `business-rules`, locale `zh-CN`.
+LOCALE_TAG_RE = re.compile(r"^(?P<base>.+)\.(?P<locale>[a-z]{2}(?:-[A-Z]{2})?)$")
+
+
+def locale_of(path: Path) -> str | None:
+    """The locale a source file is written in, or None for an original."""
+    if path.suffix != ".md":
+        return None
+    match = LOCALE_TAG_RE.match(path.stem)
+    return match.group("locale") if match else None
+
+
+def is_translation_source(path: Path) -> bool:
+    """True when the file is a translation rather than a page of its own.
+
+    A translation is never published as a separate page: it is rendered
+    *instead of* the original, at the original's URL.
+
+    The repository root's `README.<locale>.md` is the one exception, and it
+    is a deliberate one. Those two files are two *front doors* ? the English
+    README and the Chinese one, each linking to the other ? not one page
+    written twice. The English README links to `./README.zh-CN.md`, so that
+    file has to exist as a page in every build, or the link is a 404.
+    """
+    if "translations" in path.parts:
+        return True
+    if locale_of(path) is None:
+        return False
+    try:
+        rel = path.relative_to(ROOT)
+    except ValueError:
+        return True
+    return not (len(rel.parts) == 1 and rel.stem.startswith("README."))
+
+
+def content_source(src: Path, locale: str | None) -> tuple[Path, bool]:
+    """The file to read for `src` in `locale`, and whether it is a translation.
+
+    A translation is a *sibling*: `business-rules.zh-CN.md` beside
+    `business-rules.md`. The URL space is therefore identical in both
+    languages, so a relative link inside a translation points at the page a
+    Chinese reader wants without a single rewrite.
+    """
+    if locale and src.suffix == ".md":
+        alt = src.with_name(src.stem + "." + locale + ".md")
+        if alt.is_file():
+            return alt, True
+    return src, False
+
+
 MATURITY_LABEL = {
     "L1": ("maturity.L1", "m1"),
     "L2": ("maturity.L2", "m2"),
@@ -190,6 +246,10 @@ class Doc:
     html: str = ""
     text: str = ""
     toc: list = field(default_factory=list)
+    # True when the rendered body came from a translation. A Chinese build
+    # says so on the page, so a reader is never left guessing whether the
+    # English they are reading is a gap or a quote.
+    translated: bool = False
 
 
 @dataclass
@@ -208,6 +268,18 @@ class Pack:
     @property
     def title_zh(self) -> str:
         return str(self.manifest.get("title_zh", ""))
+
+    def display_title(self, lang: str = DEFAULT_LOCALE) -> str:
+        """The title in the reader's language.
+
+        The English build shows the English title with the Chinese beneath it,
+        because a bilingual key asset is the norm here. The Chinese build
+        shows the Chinese title alone: the two would otherwise say the same
+        thing twice, with the English first.
+        """
+        if lang == "zh" and self.title_zh:
+            return self.title_zh
+        return self.title
 
     @property
     def maturity(self) -> str:
@@ -361,9 +433,17 @@ INDEX_ROW_RE = re.compile(
 )
 
 
-def load_summaries() -> dict[str, str]:
-    """Parse packs/README.md's index table into {slug: summary}."""
+def load_summaries(locale: str | None = None) -> dict[str, str]:
+    """Parse packs/README.md's index table into {slug: summary}.
+
+    The Chinese build reads `packs/README.zh-CN.md`, whose table carries the
+    Chinese one-line summaries the cards show.
+    """
     index = PACKS_DIR / "README.md"
+    if locale:
+        translated = PACKS_DIR / f"README.{locale}.md"
+        if translated.is_file():
+            index = translated
     summaries: dict[str, str] = {}
     if not index.exists():
         return summaries
@@ -408,6 +488,11 @@ def discover_markdown() -> list[Path]:
         if "templates" in parts or "tests" in parts or "node_modules" in parts:
             continue
         if "site-assets" in parts:  # vendored third-party libs, not content
+            continue
+        if is_translation_source(path):
+            # A translation is rendered instead of its original, at the
+            # original's URL. Publishing it as well would give the site two
+            # pages per chapter and two sets of links to keep in step.
             continue
         files.append(path)
     return files
@@ -797,7 +882,8 @@ def build(out: Path, base_url: str, site_url: str = "",
     if lang not in LOCALES:
         print(f"ERROR: unknown --lang {lang!r}", file=sys.stderr)
         return 1
-    summaries = load_summaries()
+    locale = CONTENT_LOCALE.get(lang)
+    summaries = load_summaries(locale)
     packs = load_packs(summaries)
     if not packs:
         print("ERROR: no packs found", file=sys.stderr)
@@ -805,7 +891,7 @@ def build(out: Path, base_url: str, site_url: str = "",
 
     # The structured index is extracted once and shared by the renderer and
     # the emitted JSON, so a page and the data file can never disagree.
-    pack_index = build_pack_index()
+    pack_index = build_pack_index(locale)
     spec_entries = {p["slug"]: p for p in pack_index["packs"]}
 
     if out.exists():
@@ -816,7 +902,10 @@ def build(out: Path, base_url: str, site_url: str = "",
     for pack in packs:
         pack_dir = ROOT / pack.rel_dir
         for src in sorted(pack_dir.rglob("*.md")):
-            text = src.read_text(encoding="utf-8")
+            if is_translation_source(src):
+                continue
+            content, translated = content_source(src, locale)
+            text = content.read_text(encoding="utf-8")
             body_html, plain, toc = render_markdown(text)
             pack.docs.append(
                 Doc(
@@ -827,6 +916,7 @@ def build(out: Path, base_url: str, site_url: str = "",
                     html=body_html,
                     text=plain,
                     toc=toc,
+                    translated=translated,
                 )
             )
 
@@ -836,13 +926,15 @@ def build(out: Path, base_url: str, site_url: str = "",
         rel = src.relative_to(ROOT).as_posix()
         if rel.startswith("packs/") and rel != "packs/README.md":
             continue
-        text = src.read_text(encoding="utf-8")
+        content, translated = content_source(src, locale)
+        text = content.read_text(encoding="utf-8")
         body_html, plain, toc = render_markdown(text)
         other_docs.append(
             Doc(
                 src=src, rel=rel, url=url_for(src),
                 title=first_heading(text, Path(src).stem),
                 html=body_html, text=plain, toc=toc,
+                translated=translated,
             )
         )
 
@@ -1435,6 +1527,17 @@ def render_view_switch(entry: dict | None, lang: str = DEFAULT_LOCALE) -> str:
     )
 
 
+def translation_note(lang: str = DEFAULT_LOCALE) -> str:
+    """The notice on a page whose content has no translation yet.
+
+    It is a notice rather than a link: the English original *is* the page,
+    and saying so is more useful than offering a button to the same words.
+    """
+    return (
+        f'<p class="transnote"{_ia("trans.banner")}>{_t("trans.banner", lang)}</p>'
+    )
+
+
 def render_doc_page(
     pack: Pack,
     doc: Doc,
@@ -1460,8 +1563,11 @@ def render_doc_page(
     if is_overview:
         header = (
             '<div class="packhead">'
-            f'<div class="packhead-titles"><h1>{html.escape(pack.title)}</h1>'
-            + (f'<p class="zh" lang="zh-CN">{html.escape(pack.title_zh)}</p>' if pack.title_zh else "")
+            f'<div class="packhead-titles"><h1>{html.escape(pack.display_title(lang))}</h1>'
+            + (
+                f'<p class="zh" lang="zh-CN">{html.escape(pack.title_zh)}</p>'
+                if pack.title_zh and lang != "zh" else ""
+            )
             + "</div>"
             f'<div class="packhead-meta">{pack_pills(pack, lang)}'
             f'<span class="meta-plain">{html.escape(pack.domain)} / {html.escape(pack.subdomain)}</span>'
@@ -1490,10 +1596,14 @@ def render_doc_page(
     # The rail is computed first because the reading layout depends on whether
     # there is one: `.view-doc` is a two-column grid only when it holds a rail.
     rail = render_toc(doc.toc) if not is_overview else ""
+    # A Chinese build says so on the page when the body is the English
+    # original, rather than letting the reader assume the gap is theirs.
+    note = "" if (doc.translated or lang != "zh") else translation_note(lang)
     body = (
         '<div class="wrap">'
         + breadcrumb(prefix, pack)
         + header
+        + note
         + render_view_switch(spec_entry if is_overview else None, lang)
         + '<div class="shell">'
         + render_sidebar(pack, doc, prefix, lang)
@@ -1530,9 +1640,11 @@ def render_doc_page(
 
 def render_plain_page(doc: Doc, prefix: str, site_url: str = "",
                       lang: str = DEFAULT_LOCALE) -> str:
+    note = "" if (doc.translated or lang != "zh") else translation_note(lang)
     body = (
         '<div class="wrap">'
-        f'<article class="prose prose-wide">{annotate_lang(doc.html)}</article>'
+        + note
+        + f'<article class="prose prose-wide">{annotate_lang(doc.html)}</article>'
         "</div>"
     )
     scripts = mermaid_script(prefix) if 'class="mermaid"' in doc.html else ""
@@ -1694,7 +1806,10 @@ def render_card(pack: Pack, entry: dict | None = None,
         num = f'<span class="card-num">{total}</span>'
     tags = "".join(f'<span class="tag">{html.escape(t)}</span>' for t in pack.tags[:6])
     summary = str(pack.manifest.get("_summary", ""))
-    zh = f'<p class="zh" lang="zh-CN">{html.escape(pack.title_zh)}</p>' if pack.title_zh else ""
+    zh = (
+        f'<p class="zh" lang="zh-CN">{html.escape(pack.title_zh)}</p>'
+        if pack.title_zh and lang != "zh" else ""
+    )
     return (
         f'<article class="card" data-slug="{html.escape(slug)}"'
         f' data-domain="{html.escape(pack.domain)}"'
@@ -1706,7 +1821,7 @@ def render_card(pack: Pack, entry: dict | None = None,
         f'{num}'
         '</div>'
         f'<a class="card-link" href="{pack.index_url}">'
-        f'<h3>{html.escape(pack.title)}</h3></a>{zh}'
+        f'<h3>{html.escape(pack.display_title(lang))}</h3></a>{zh}'
         f'<p class="card-sum">{html.escape(summary)}</p>'
         f'<div class="card-meta">{pack_pills(pack, lang)}'
         f'<span class="meta-plain">{html.escape(pack.domain)}</span></div>'
