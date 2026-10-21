@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | 成熟度 | 🔵 L2 — 蓝图（目标 L3） |
-| 领域 | data-ai / growth-marketing-analytics |
+| 领域 | 数据与智能平台 / growth-marketing-analytics |
 | 技术栈立场 | 厂商中立 |
 | 法规环境 | PIPL/GDPR —— 行为事件与个人数据相邻；同意、最小化收集、数据驻留；广告法对消息内容的约束 |
 

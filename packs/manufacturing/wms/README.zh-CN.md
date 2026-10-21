@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | 成熟度 | 🟢 **L3 — 智能体就绪（Agent-ready）** |
-| 领域 | 制造业 / 物流仓储管理系统（同样适用于零售/第三方物流） |
+| 领域 | 制造工业 / logistics-wms |
 | 技术栈定位 | 厂商中立 |
 | 监管背景 | GS1 GTIN/SSCC 与 EPCIS；ISO 9001 可追溯性；ISO/IEC 27001；IEC 62443（IT/OT）；受监管变体：GDP/EU GMP Annex 11、FDA 21 CFR Part 11、冷链；等保2.0 (CN) |
 
@@ -11,7 +11,7 @@
 > **人员**：按编号顺序阅读章节，首先阅读
 > [`00-context/industry-brief.md`](./00-context/industry-brief.md)。
 
-> 📑 **Source-checked, not field-verified.** 来源性质：`llm-drafted` · 验证状态：`source-checked`。
+> 📑 **已核对来源 — 未经现场验证。** 来源性质：`llm-drafted` · 验证状态：`source-checked`。
 > 每项关键论断均追溯至公开来源，或明确标注为
 > 假设（见 [`SOURCES.md`](./SOURCES.md)）；该设计**尚未**在真实部署中
 > 得到验证。从业人员审查和部署证据仍待完成。

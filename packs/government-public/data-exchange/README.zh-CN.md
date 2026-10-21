@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | 成熟度 | 🔵 L2 — 蓝图（目标 L3） |
-| 领域 | government-public / data-exchange |
+| 领域 | 政务公共 / data-exchange |
 | 技术栈立场 | 厂商中立 |
 | 法规背景 | 等保2.0 (MLPS 2.0)；《数据安全法》与 PIPL (CN)；用于开放数据目录的 W3C DCAT |
 

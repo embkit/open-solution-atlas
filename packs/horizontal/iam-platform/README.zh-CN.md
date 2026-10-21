@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | 成熟度 | 🟢 **L3 — 智能体就绪**（目标 L4） |
-| 领域 | horizontal / identity-access |
+| 领域 | 通用能力 / identity-access |
 | 技术栈立场 | 厂商中立 |
 | 监管环境 | 标准：OIDC、OAuth 2.0、SAML 2.0、SCIM 2.0、WebAuthn/FIDO2、XACML；NIST SP 800-63-4；ISO/IEC 27001:2022；GDPR；等保2.0 (GB/T 22239-2019, CN) |
 
@@ -11,7 +11,7 @@
 > **人员**：按编号顺序阅读章节，首先阅读
 > [`00-context/industry-brief.md`](./00-context/industry-brief.md)。
 
-> 📑 **Source-checked, not field-verified.** 来源性质：`llm-drafted` · 验证状态：`source-checked`。
+> 📑 **已核对来源 — 未经现场验证。** 来源性质：`llm-drafted` · 验证状态：`source-checked`。
 > 每一项关键论断均可追溯至公开来源，或被明确标记为假设
 > （参见 [`SOURCES.md`](./SOURCES.md)）；该设计**尚未**在真实部署中得到验证。
 > 从业人员审阅和部署证据仍待完成。

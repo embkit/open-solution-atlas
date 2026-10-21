@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | 成熟度 | 🟢 **L3 — 智能体就绪**（目标 L4） |
-| 领域 | manufacturing / logistics-wms |
+| 领域 | 制造工业 / logistics-wms |
 | 技术栈立场 | 厂商中立 |
 | 法规环境 | GS1 EPCIS 2.0/CBV 2.0；ISO 28000:2022；Incoterms® 2020；危险品：ADR 2025、IMDG 2024 (A42-24)、IATA DGR 第 67 版、JT/T 617-2018 + GB 6944-2025；GDPR；等保2.0（中国） |
 

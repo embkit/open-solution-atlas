@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | 成熟度 | 🔵 L2 — 蓝图（目标 L3） |
-| 领域 | retail-commerce / commerce-platform |
+| 领域 | 零售电商 / commerce-platform |
 | 技术栈立场 | 厂商中立 |
 | 监管背景 | 电子商务法与 PIPL (CN)；凡接触卡数据之处均适用 PCI-DSS（默认设计：绝不接触卡数据——采用托管支付字段） |
 

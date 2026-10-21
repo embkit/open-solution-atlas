@@ -38,7 +38,7 @@ L3 代理就绪方案包。按此顺序加载；遵循所有可追溯性关联�
 
 - ID 不可变：实现 FR/NFR/CTL/ADR/BR/SM/P/BC 各项时，必须使用相同编号。
 - **每一项产出物（契约、验收标准、任务）都必须可追溯到一个或多个 FR/NFR/CTL/ADR/BR ID。** 无法追溯的产出物不算完成。
-- 验证状态为 `source-checked`，而不是 field-verified——应以 [`SOURCES.md`](./SOURCES.md) 为准，而非依赖记忆；数值目标均为假设（`(A)`），应替换为实测值，绝不可作为事实呈现。
+- 验证状态为 `source-checked`，而不是现场已验证——应以 [`SOURCES.md`](./SOURCES.md) 为准，而非依赖记忆；数值目标均为假设（`(A)`），应替换为实测值，绝不可作为事实呈现。
 
 ## 建议的 SDD 交接（Spec Kit / Kiro / BMAD）
 

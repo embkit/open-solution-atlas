@@ -802,14 +802,14 @@ def page_shell(
     )
 
 
-def breadcrumb(prefix: str, pack: Pack | None) -> str:
+def breadcrumb(prefix: str, pack: Pack | None, lang: str = DEFAULT_LOCALE) -> str:
     if not pack:
         return ""
     chev = icon("chevron")
     return (
         '<nav class="crumbs">'
-        f'<a href="{prefix}index.html"{_ia("crumb.catalog")}>{_t("crumb.catalog")}</a>{chev}'
-        f'<span>{html.escape(pack.domain)}</span>{chev}'
+        f'<a href="{prefix}index.html"{_ia("crumb.catalog")}>{_t("crumb.catalog", lang)}</a>{chev}'
+        f'<span>{html.escape(_domain_label(pack.domain, lang))}</span>{chev}'
         f'<span class="crumb-cur">{html.escape(pack.slug)}</span>'
         "</nav>"
     )
@@ -838,6 +838,75 @@ def pack_pills(pack: Pack, lang: str = DEFAULT_LOCALE) -> str:
     )
 
 
+#: The taxonomy's domains, named in the reader's language.
+#:
+#: The slug is the key the taxonomy, the filter and the index read; the name
+#: is what a reader needs. A Chinese reader looking at `government-public`
+#: has to guess what the shelf label means.
+DOMAIN_LABEL = {
+    "finance": "\u91d1\u878d",
+    "energy-utilities": "\u80fd\u6e90\u7535\u529b",
+    "government-public": "\u653f\u52a1\u516c\u5171",
+    "telecom": "\u901a\u4fe1",
+    "healthcare": "\u533b\u7597\u5065\u5eb7",
+    "manufacturing": "\u5236\u9020\u5de5\u4e1a",
+    "retail-commerce": "\u96f6\u552e\u7535\u5546",
+    "data-ai": "\u6570\u636e\u4e0e\u667a\u80fd\u5e73\u53f0",
+    "horizontal": "\u901a\u7528\u80fd\u529b",
+}
+
+
+def _domain_label(domain: str, lang: str = DEFAULT_LOCALE) -> str:
+    """The domain's name in the reader's language."""
+    if lang == "zh":
+        return DOMAIN_LABEL.get(domain, domain)
+    return domain
+
+
+#: The chapter directories, named in the reader's language.
+#:
+#: The directory is the file path, and the path is data - but a sidebar that
+#: says `03-domain` to a Chinese reader is the mixed state the Chinese tree
+#: exists to remove. The number stays, because it is the ordering the file
+#: paths use.
+CHAPTER_GROUP_LABEL = {
+    "00-context": "00 上下文",
+    "01-business": "01 业务",
+    "02-requirements": "02 需求",
+    "03-domain": "03 领域",
+    "04-architecture": "04 架构",
+    "05-data": "05 数据",
+    "06-contracts": "06 契约",
+    "07-experience": "07 体验",
+    "08-quality": "08 质量",
+    "09-delivery": "09 交付",
+}
+
+
+def _chapter_label(doc: Doc, fallback: str) -> str:
+    """A sidebar label for a chapter: its title, in the tree's language.
+
+    The file name is the path a reader types, and it stays available as the
+    link's tooltip; the label is what the chapter is about. `00-context /
+    行业简报` is `行业简报`, not `industry-brief`.
+    """
+    title = (doc.title or "").strip()
+    if not title:
+        return fallback
+    # `ADR-0001 — 守住 ISA-95 第三级边界`: the id is the scannable part, and
+    # the decision's title is on the page itself.
+    match = re.match(r"^(ADR-\d+[a-z]?)\s*[\u2014\u2013]", title)
+    if match:
+        return match.group(1)
+    # `00-context / 行业简报——一站式政务服务平台`: the chapter's own name, not
+    # the pack's subtitle that follows it.
+    title = re.sub(r"^\d\d(?:-[a-z]+)?\s*[\u00b7/]\s*", "", title)
+    title = re.split(r"\s*\u2014\u2014|\s+[\u2014\u2013]\s+", title)[0]
+    if title.endswith(".md"):
+        title = title[:-3]
+    return title.strip() or fallback
+
+
 def render_sidebar(pack: Pack, doc: Doc, prefix: str, lang: str = DEFAULT_LOCALE) -> str:
     """The pack's sidebar: contract §4.2's three parts.
 
@@ -860,7 +929,7 @@ def render_sidebar(pack: Pack, doc: Doc, prefix: str, lang: str = DEFAULT_LOCALE
         '<div class="side-head">'
         f'<span class="side-logo">{icon(icon_for(pack.domain, pack.slug))}</span>'
         '<span><span class="side-name">Solution Atlas</span><br>'
-        f'<span class="side-sub">{html.escape(pack.domain)}</span></span>'
+        f'<span class="side-sub">{html.escape(_domain_label(pack.domain, lang))}</span></span>'
         "</div>"
         + nav_tree(pack, doc.url, prefix, lang)
         + foot
@@ -891,6 +960,8 @@ def nav_tree(pack: Pack, current_url: str, prefix: str,
         # "overview" group is chrome.
         if not group:
             label, label_key = _t("side.overview", lang), "side.overview"
+        elif lang == "zh" and group in CHAPTER_GROUP_LABEL:
+            label, label_key = CHAPTER_GROUP_LABEL[group], None
         else:
             label, label_key = group, None
         docs = sorted(groups[group], key=lambda d: d.rel)
@@ -902,9 +973,19 @@ def nav_tree(pack: Pack, current_url: str, prefix: str,
             rel_inside = Path(doc.rel).relative_to(pack.rel_dir).as_posix()
             name = Path(rel_inside).name
             name = _t("side.overview", lang) if name == "README.md" else name[:-3]
+            if lang == "zh" and name != _t("side.overview", lang):
+                # The label is the chapter's title; the file name stays as the
+                # tooltip, because the file name is the path an agent types.
+                item_label, tip = _chapter_label(doc, name), name
+            else:
+                item_label, tip = name, ""
             active = ' class="active" aria-current="page"' if doc.url == current_url else ""
             href = prefix + doc.url
-            items.append(f'<li><a{active} href="{href}">{html.escape(name)}</a></li>')
+            title_attr = f' title="{html.escape(tip)}"' if tip else ""
+            items.append(
+                f'<li><a{active} href="{href}"{title_attr}>'
+                f"{html.escape(item_label)}</a></li>"
+            )
         out.append(
             f'<details class="navgroup"{opened}>'
             f'<summary class="navgroup-label"{_ia(label_key) if label_key else ""}>'
@@ -1650,7 +1731,8 @@ def render_doc_page(
             )
             + "</div>"
             f'<div class="packhead-meta">{pack_pills(pack, lang)}'
-            f'<span class="meta-plain">{html.escape(pack.domain)} / {html.escape(pack.subdomain)}</span>'
+            f'<span class="meta-plain">{html.escape(_domain_label(pack.domain, lang))}'
+    f' / {html.escape(pack.subdomain)}</span>'
             f'<span class="meta-plain">v{html.escape(str(pack.manifest.get("version", "")))}</span>'
             "</div></div>"
         )
@@ -1681,7 +1763,7 @@ def render_doc_page(
     note = "" if (doc.translated or lang != "zh") else translation_note(lang)
     body = (
         '<div class="wrap">'
-        + breadcrumb(prefix, pack)
+        + breadcrumb(prefix, pack, lang)
         + header
         + note
         + render_view_switch(spec_entry if is_overview else None, lang)
@@ -1771,7 +1853,14 @@ def render_catalog(
         for value in values:
             n = sum(1 for p in packs if getattr(p, field) == value)
             key = f"{'maturity' if field == 'maturity' else 'verify'}.{value}"
-            text = _t(key, lang) if has(key) else _esc(value)
+            if has(key):
+                text = _t(key, lang)
+            elif field == "domain":
+                # The chip's value stays the raw slug - the filter reads it -
+                # but its label is the domain's name in this language.
+                text = _esc(_domain_label(value, lang))
+            else:
+                text = _esc(value)
             chips.append(
                 f'<button class="chip" data-facet="{field}" data-value="{html.escape(value)}">'
                 + (f'<span{_ia(key)}>{text}</span>' if has(key) else f"{text}")
@@ -1902,7 +1991,7 @@ def render_card(pack: Pack, entry: dict | None = None,
         f'<h3>{html.escape(pack.display_title(lang))}</h3></a>{zh}'
         f'<p class="card-sum">{html.escape(summary)}</p>'
         f'<div class="card-meta">{pack_pills(pack, lang)}'
-        f'<span class="meta-plain">{html.escape(pack.domain)}</span></div>'
+        f'<span class="meta-plain">{html.escape(_domain_label(pack.domain, lang))}</span></div>'
         f'<div class="tags">{tags}</div>'
         "</article>"
     )

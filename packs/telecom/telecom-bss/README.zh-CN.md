@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | 成熟度 | 🔵 L2 — 蓝图（目标 L3） |
-| 领域 | telecom / bss-oss |
+| 领域 | 通信 / bss-oss |
 | 技术栈立场 | 厂商中立 |
 | 监管背景 | TM Forum ODA 与 Open APIs；ITU-T 建议；GDPR 级隐私（欧盟） |
 
