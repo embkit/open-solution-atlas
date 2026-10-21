@@ -6,6 +6,19 @@ releases (individual packs carry their own `version` in `manifest.yaml`).
 
 ## [Unreleased]
 
+### Added — design-systems/ is committed, and the boundary says so
+
+The design-system reference this site's token work maps against — the interop
+protocol plus the 138 brand crosswalks — moves from "local ignored tooling" to
+tracked source: `.gitignore` drops the rule, and `AGENTS.md` /
+`AGENTS.zh-CN.md` move it from the must-not-commit list into the boundary
+itself, marked
+*verbatim* English reference material outside the translated corpus (its
+Chinese-tree pages carry the untranslated-page banner by design, and the test
+that enforces corpus completeness exempts it for exactly that stated reason).
+One vendored link into the still-untracked kit became plain text: a document
+this repository carries must not link to files it does not contain.
+
 ### Added — the pack page became four tabs, the catalog became named shelves
 
 The pack overview was one 82 KB scroll serving four readers at once — the one

@@ -23,6 +23,11 @@ Only tracked repository content is project source. In particular:
 - `tools/` - Python validators/builders plus the registry site assets.
 - `tests/` - tests for the Python tooling and generated site.
 - `templates/` - reusable pack template and scaffolding instructions.
+- `design-systems/` - vendored design-system reference: the interop protocol
+  and the brand crosswalk library the site's token work maps against.
+  Committed *verbatim* in English: it is external reference material, not
+  part of the translated corpus, and its pages carry the untranslated-page
+  banner in the Chinese tree by design.
 - `.github/` - CI, Pages, CodeQL, and contribution workflow configuration.
 - Root `README*`, `CONTRIBUTING.md`, `CHANGELOG.md`, and license files.
 
@@ -30,8 +35,8 @@ The following top-level directories exist only as local ignored tooling or
 build output; they are not Open Solution Atlas content and must not be edited
 or committed as repository changes:
 
-- `accessibility/`, `components/`, `content/`, `design-systems/`,
-  `frameworks/`, `scripts/`, `taste/`, `tokens/`, `workflows/`, `.claude/`
+- `accessibility/`, `components/`, `content/`, `frameworks/`, `scripts/`,
+  `taste/`, `tokens/`, `workflows/`, `.claude/`
 - `_site/`, `_final2/`, `_v2/`, `_v3/`, `_v4/`, and every other `_*` directory
 - `package.json`, `package-lock.json`, `node_modules/`
 

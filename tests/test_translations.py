@@ -213,6 +213,12 @@ def _tracked_pages(zh_site, build_site) -> list[Path]:
     the ux-ui-agent-skills kit is one - and the build renders whatever
     Markdown it finds on disk. Only the tracked files are the repository's
     own pages, so only they are the repository's business.
+
+    One tracked directory is excluded on purpose: `design-systems/` is
+    committed *verbatim* as an external reference and is not part of the
+    translated corpus (AGENTS.md says so where it enters the boundary).
+    Its pages carry the banner by design - the banner is doing its exact
+    job there, telling a Chinese reader that this reference is English.
     """
     out = subprocess.run(
         ["git", "ls-files", "*.md"], cwd=ROOT,
@@ -222,6 +228,8 @@ def _tracked_pages(zh_site, build_site) -> list[Path]:
     for rel in out.stdout.splitlines():
         if rel.endswith(".zh-CN.md"):
             continue  # a translation is rendered in place of its original
+        if rel.startswith("design-systems/"):
+            continue  # vendored reference: English, verbatim, untranslated
         page = zh_site / build_site.url_for(ROOT / rel)
         if page.is_file():
             pages.append(page)
