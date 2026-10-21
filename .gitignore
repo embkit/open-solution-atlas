@@ -42,18 +42,17 @@ desktop.ini
 /_*/
 
 # --- The ux-ui-agent-skills kit (local tool install, not repository content) ---
-# 251 files of generic design doctrine, 140 of them crosswalks for other
-# products' design systems. The project's actual standard is the vendored
-# `docs/embkit-ui-contract.md`; the kit is the tooling the `redesign` /
-# `design-review` / `a11y-audit` skills read from, and EmbKit does not commit it
-# either. Install with:
+# 251 files of generic design doctrine. The project's actual standard is the
+# vendored `docs/embkit-ui-contract.md`; the kit is the tooling the `redesign` /
+# `design-review` / `a11y-audit` skills read from. One part of it IS committed:
+# `design-systems/`, the interop protocol and the brand crosswalks this site
+# maps its tokens against. Install the rest with:
 #     npx ux-ui-skills add tokens taste workflows scripts accessibility rules \
-#         components design-systems frameworks content agents
+#         components frameworks content agents
 # Leave `templates` out: this repository already has one at that path.
 /tokens/
 /taste/
 /components/
-/design-systems/
 /frameworks/
 /content/
 /workflows/
