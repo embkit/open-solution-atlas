@@ -6,6 +6,19 @@ releases (individual packs carry their own `version` in `manifest.yaml`).
 
 ## [Unreleased]
 
+### Changed — the reading body is 15px, and the ladder moved with it
+
+The contract's type scale was reverse-engineered from a reference image whose
+body was 13px. That number is faithful to the reference and hard on long-form
+CJK prose, where 13px hands the reader the work of resolving glyphs. The body
+step is now **15px**, and every step above it moved with it — display 28, h1
+22, h2 18, h3 16 — so the hierarchy still reads (body strictly under h3, h3
+under h2). `--fs-sm` and `--fs-xs` did not move: captions and footnotes are
+still meant to be small. Control labels did not move either: nav and button
+text stays at `--ctl-font: 13.5px` — a button is pressed, not read. The
+contract's §2.2 table carries the new values and marks the raise as the
+deliberate deviation from the reference that it is.
+
 ### Added — design-systems/ is committed, and the boundary says so
 
 The design-system reference this site's token work maps against — the interop
