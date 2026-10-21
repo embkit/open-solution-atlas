@@ -93,6 +93,11 @@ def test_generated_runtime_is_deterministic_and_complete(i18n):
     match = re.search(r"var STRINGS = (\{.*?\});\n", js, re.DOTALL)
     assert match, "the runtime must declare its dictionary"
     assert json.loads(match.group(1)) == i18n.dictionary()
+    # Both cross-language navigations carry the fragment. A deep link like
+    # #spec names a place on the page; a redirect that rebuilds the URL and
+    # drops it lands the reader on the right page in the wrong place.
+    assert "location.replace(target + window.location.hash)" in js
+    assert "location.href = target + window.location.hash" in js
 
 
 # --------------------------------------------------------------------------- #
@@ -237,7 +242,7 @@ def test_chinese_build_renders_chinese_chrome(zh_i18n_site, i18n_site):
 
     def spec_page(site):
         pages = [p for p in site.rglob("index.html")
-                 if 'class="spec"' in p.read_text(encoding="utf-8")]
+                 if 'class="spec tabp tabp-spec"' in p.read_text(encoding="utf-8")]
         assert pages, "a pack overview with a structured panel must exist"
         return pages[0].read_text(encoding="utf-8")
 
@@ -246,6 +251,14 @@ def test_chinese_build_renders_chinese_chrome(zh_i18n_site, i18n_site):
     assert "规格面板" in zh_spec, "the spec panel must follow --lang zh"
     assert "规格面板" not in en_spec, "the English build must not carry it"
     assert "被引用：" in zh_spec and "Referenced by:" in en_spec
+    # the tab bar and the demo panel are chrome, and they follow the build too
+    assert 'data-i18n="tab.overview">概览' in zh_spec
+    assert 'data-i18n="tab.overview">Overview' in en_spec
+    assert 'data-i18n="demo.head">交互演示' in zh_spec
+    assert 'data-i18n="demo.head">Interactive demo' in en_spec
+    # and the catalog's shelf headings are chrome as well
+    assert "数据与智能平台" in index
+    assert "Warehouses, lakes" not in index
 
 
 def test_unknown_language_fails_the_build(build_site, tmp_path):

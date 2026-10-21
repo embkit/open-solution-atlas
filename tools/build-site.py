@@ -842,25 +842,23 @@ def pack_pills(pack: Pack, lang: str = DEFAULT_LOCALE) -> str:
 #:
 #: The slug is the key the taxonomy, the filter and the index read; the name
 #: is what a reader needs. A Chinese reader looking at `government-public`
-#: has to guess what the shelf label means.
-DOMAIN_LABEL = {
-    "finance": "\u91d1\u878d",
-    "energy-utilities": "\u80fd\u6e90\u7535\u529b",
-    "government-public": "\u653f\u52a1\u516c\u5171",
-    "telecom": "\u901a\u4fe1",
-    "healthcare": "\u533b\u7597\u5065\u5eb7",
-    "manufacturing": "\u5236\u9020\u5de5\u4e1a",
-    "retail-commerce": "\u96f6\u552e\u7535\u5546",
-    "data-ai": "\u6570\u636e\u4e0e\u667a\u80fd\u5e73\u53f0",
-    "horizontal": "\u901a\u7528\u80fd\u529b",
-}
-
-
+#: has to guess what the shelf label means — and an English reader had the
+#: raw slug, because the name only existed in one language. Both now come
+#: from the string catalog, where every chrome string already lives.
 def _domain_label(domain: str, lang: str = DEFAULT_LOCALE) -> str:
     """The domain's name in the reader's language."""
-    if lang == "zh":
-        return DOMAIN_LABEL.get(domain, domain)
+    key = f"domain.{domain}"
+    if has(key):
+        return t(key, lang)
     return domain
+
+
+def _domain_desc(domain: str, lang: str = DEFAULT_LOCALE) -> str:
+    """One line saying what kind of system lives on this shelf."""
+    key = f"domain.{domain}.desc"
+    if has(key):
+        return t(key, lang)
+    return ""
 
 
 #: The chapter directories, named in the reader's language.
@@ -1368,7 +1366,7 @@ def _spec_row_chips(entry: dict, ids: list[str], kind: str) -> str:
     return "".join(_id_chip(i, kind, f"#spec-{i}") for i in ids)
 
 
-def render_spec_view(entry: dict, prefix: str, lang: str = DEFAULT_LOCALE) -> str:
+def render_spec_view(entry: dict, lang: str = DEFAULT_LOCALE) -> str:
     """The whole structured view for one pack.
 
     Server-rendered so the panel is complete with JavaScript disabled — the
@@ -1544,23 +1542,14 @@ def render_spec_view(entry: dict, prefix: str, lang: str = DEFAULT_LOCALE) -> st
             f'<table class="spectab"><tbody>{rows}</tbody></table></details>'
         )
 
-    demo = ""
-    if entry.get("demo"):
-        demo = (
-            '<a class="demobtn" href="' + _esc(prefix + entry["demo"]["url"]) + '">'
-            '<b data-i18n="spec.demo">' + _t("spec.demo", lang) + "</b><span>"
-            + _esc(entry["demo"].get("title") or entry["slug"]) + "</span></a>"
-        )
-
     return f"""
-<section class="spec" id="spec">
+<section class="spec tabp tabp-spec" id="spec">
   <div class="spec-head">
     <div>
       <h2{_ia("spec.head", total=total_ids)}>{_t("spec.head", lang, total=total_ids)}</h2>
       <p class="spec-note"><span{_ia("spec.note.by")}>{_t("spec.note.by", lang)}</span>
         <code>tools/pack_index.py</code> <span{_ia("spec.note.from")}>{_t("spec.note.from", lang)}</span>
         <b{_ia("spec.note.verb")}>{_t("spec.note.verb", lang)}</b><span{_ia("spec.note.tail")}>{_t("spec.note.tail", lang)}</span></p>    </div>
-    {demo}
   </div>
   <div class="spec-stats">{tiles}</div>
   <div class="spec-qlabel"><span{_ia("spec.reuse.label")}>{_t("spec.reuse.label", lang)}</span>
@@ -1568,6 +1557,46 @@ def render_spec_view(entry: dict, prefix: str, lang: str = DEFAULT_LOCALE) -> st
   {_spec_status_badges(entry, lang)}
   <nav class="spec-jump">{jump}</nav>
   <div class="spec-secs">{''.join(sections)}</div>
+</section>
+"""
+
+
+def render_demo_panel(entry: dict, prefix: str,
+                      lang: str = DEFAULT_LOCALE) -> str:
+    """The demo as a destination, not a button inside the spec header.
+
+    What it demonstrates is the demo manifest's own ``demonstrates`` list —
+    the same list ``check-ids.py`` validates against the pack — so this panel
+    cannot advertise a connection the pack does not have. The last line is the
+    repository's standing rule: a demo is presentation, and it raises no
+    pack's verification.
+    """
+    demo = entry.get("demo")
+    if not demo:
+        return ""
+    demonstrates = [str(i) for i in (demo.get("demonstrates") or [])]
+    shows = ""
+    if demonstrates:
+        codes = "".join(f"<code>{_esc(i)}</code>" for i in demonstrates)
+        shows = (
+            f'<p class="demo-shows"><span{_ia("demo.shows")}>'
+            f'{_t("demo.shows", lang)}</span> {codes}</p>'
+        )
+    title = _esc(demo.get("title") or entry["slug"])
+    href = _esc(prefix + str(demo.get("url", "")))
+    return f"""
+<section class="demopanel tabp tabp-demo" id="demo">
+  <div class="demo-card">
+    <div class="demo-text">
+      <h2{_ia("demo.head")}>{_t("demo.head", lang)}</h2>
+      <p class="demo-blurb"{_ia("demo.blurb")}>{_t("demo.blurb", lang)}</p>
+      {shows}
+    </div>
+    <a class="demobtn" href="{href}"{_ia("demo.open")}>
+      <b>{_t("demo.open", lang)}</b><span>{title}</span>
+    </a>
+  </div>
+  <p class="demo-note"{_ia("demo.note")}>{_t("demo.note", lang)}</p>
 </section>
 """
 
@@ -1601,12 +1630,17 @@ def render_prompt_section(entry: dict, prefix: str, pack_dir: Path,
         + _ia("prompt.download") + ">"
         + _t("prompt.download", lang) + "</a>"
         "</div>"
+        # The hint is a *sibling* of the textarea: anything inside a textarea
+        # is raw text, so nesting this span made its markup the first line of
+        # the preview and of every copied prompt, and left aria-describedby
+        # pointing at an element that was never parsed as one. Referenced by
+        # id, `hidden` still reaches the accessible description.
+        '<span id="prm-implement-hint" hidden data-i18n="prompt.hint.inline">'
+        + _t("prompt.hint.inline", lang) + "</span>"
         '<textarea class="prm-text" id="prm-implement" readonly spellcheck="false"'
         + " "
         + _iaa("aria-label", "prompt.aria.inline")
         + ' aria-describedby="prm-implement-hint">'
-        + '<span id="prm-implement-hint" hidden data-i18n="prompt.hint.inline">'
-        + _t("prompt.hint.inline", lang) + "</span>"
         + _esc(inline) + "</textarea>"
     )
 
@@ -1631,7 +1665,7 @@ def render_prompt_section(entry: dict, prefix: str, pack_dir: Path,
     context_size = len(bundles["files"]["context.md"])
     ctx_n = f"{context_size:,}"
     return f"""
-<section class="prompts" id="prompts">
+<section class="prompts tabp tabp-prompts" id="prompts">
   <h3{_ia("prompts.heading")}>{_t("prompts.heading", lang)}</h3>
   <p class="prompts-note">
     <span{_ia("prompts.note.1")}>{_t("prompts.note.1", lang)}</span>
@@ -1665,27 +1699,45 @@ def render_prompt_section(entry: dict, prefix: str, pack_dir: Path,
 """
 
 
-def render_view_switch(entry: dict | None, lang: str = DEFAULT_LOCALE) -> str:
-    """Radio-based view toggle: no JavaScript, keyboard-operable.
+def render_tab_switch(entry: dict | None, lang: str = DEFAULT_LOCALE) -> str:
+    """The overview page's tab bar: radio-driven, so it survives without JavaScript.
 
-    The inputs must be *siblings* of the two views for the CSS `~` selector to
-    reach them, so they live outside the labelled container.
+    It replaces a two-way view toggle with four destinations, because one page
+    was serving several readers at once — the one reading the architecture, the
+    one looking up an identifier, the one taking the demo, the one copying a
+    prompt — all in a single scroll with no place to start. The demo tab exists
+    only where a demo does: a tab whose panel is empty is a promise the pack
+    has not kept.
+
+    The inputs must be *siblings* of the panels for the CSS `~` selector to
+    reach them, so they live outside the labelled container, as before.
     """
     if entry is None:
         return ""
     counts = entry["counts"]
     n = counts["rules"] + counts["requirements"] + counts["nfrs"] + counts["controls"] + counts["adrs"] + counts["constraints"]
-    return (
-        '<input class="vs-in" type="radio" name="vs" id="vs-doc" checked>'
-        '<label class="vs-lab" for="vs-doc"' + _ia("view.doc") + ">"
-        + _t("view.doc", lang) + "</label>"
-        '<input class="vs-in" type="radio" name="vs" id="vs-spec">'
-        '<label class="vs-lab" for="vs-spec"' + _ia("view.spec") + ">"
-        + _t("view.spec", lang)
-        + (f'<span{_ia("view.spec.count", n=n)}>'
-           + _esc(t("view.spec.count", lang, n=n)) + "</span>" if n else "")
-        + "</label>"
+    spec_suffix = (
+        f'<span{_ia("view.spec.count", n=n)}>'
+        + _esc(t("view.spec.count", lang, n=n)) + "</span>" if n else ""
     )
+    tabs = [
+        ("pt-overview", "tab.overview", ""),
+        ("pt-spec", "tab.spec", spec_suffix),
+    ]
+    if entry.get("demo"):
+        tabs.append(("pt-demo", "tab.demo", ""))
+    tabs.append(("pt-prompts", "tab.prompts", ""))
+    out = []
+    for i, (radio_id, key, suffix) in enumerate(tabs):
+        out.append(
+            '<input class="vs-in" type="radio" name="pt" id="' + radio_id + '"'
+            + (" checked>" if i == 0 else ">")
+        )
+        out.append(
+            '<label class="vs-lab" for="' + radio_id + '"' + _ia(key) + ">"
+            + _t(key, lang) + suffix + "</label>"
+        )
+    return "".join(out)
 
 
 def translation_note(lang: str = DEFAULT_LOCALE) -> str:
@@ -1716,7 +1768,8 @@ def render_doc_page(
     extra = ""
     if is_overview and spec_entry:
         extra = (
-            render_spec_view(spec_entry, prefix, lang)
+            render_spec_view(spec_entry, lang)
+            + render_demo_panel(spec_entry, prefix, lang)
             + render_prompt_section(spec_entry, prefix, pack_dir, lang)
         )
     spec = extra
@@ -1766,11 +1819,11 @@ def render_doc_page(
         + breadcrumb(prefix, pack, lang)
         + header
         + note
-        + render_view_switch(spec_entry if is_overview else None, lang)
+        + render_tab_switch(spec_entry if is_overview else None, lang)
         + '<div class="shell">'
         + render_sidebar(pack, doc, prefix, lang)
         + '<div class="main">'
-        + f'<div class="view-doc{" has-toc" if rail else ""}">'
+        + f'<div class="view-doc tabp tabp-overview{" has-toc" if rail else ""}">'
         + rail
         + f'<article class="prose">{annotate_lang(article_html)}</article>'
         + "</div>"
@@ -1780,11 +1833,11 @@ def render_doc_page(
         + "</div>"
     )
     scripts = ""
-    # `app.js` carries the contents rail, which is the only thing it does on a
-    # chapter page — so it is loaded where a rail exists and nowhere else. It was
-    # never loaded here at all, which is why the rail could not mark the section
-    # being read.
-    if rail:
+    # `app.js` does two jobs, and each names the page that needs it: it marks
+    # the section being read in the contents rail (chapter pages, which have a
+    # rail), and it checks the tab a fragment names (overview pages, which have
+    # tabs). Everywhere else it would be dead weight.
+    if rail or (is_overview and spec_entry):
         scripts += f'<script src="{prefix}assets/app.js" defer></script>'
     if "class=\"mermaid\"" in doc.html:
         scripts += mermaid_script(prefix)
@@ -1878,7 +1931,27 @@ def render_catalog(
         + facet("verification", verifications)
         + "</div>"
     )
-    cards = "".join(render_card(p, spec_entries.get(p.slug), lang) for p in packs)
+    shelves = []
+    for domain in domains:
+        # The catalog is a set of shelves, not a wall: a reader arriving at 17
+        # cards in one undifferentiated grid has to read every title to find
+        # the one industry they came for. Each shelf is named, counted and
+        # given one line saying what lives on it.
+        on_shelf = [p for p in packs if p.domain == domain]
+        shelf_cards = "".join(
+            render_card(p, spec_entries.get(p.slug), lang) for p in on_shelf)
+        desc = _domain_desc(domain, lang)
+        shelves.append(
+            f'<section class="domgrp" data-domain="{html.escape(domain)}">'
+            f'<h2 class="domhead"><span{_ia("domain." + domain)}>'
+            f'{_t("domain." + domain, lang)}</span>'
+            f'<span class="dom-n">{len(on_shelf)}</span></h2>'
+            + (f'<p class="domdesc"{_ia("domain." + domain + ".desc")}>{desc}</p>'
+               if desc else "")
+            + f'<div class="domcards">{shelf_cards}</div>'
+            "</section>"
+        )
+    cards = "".join(shelves)
     # §7.8: an empty result is a moment for direction — icon, title, what
     # happened, and a way out. Never a bare "no data".
     empty = (
@@ -1928,7 +2001,7 @@ def render_catalog(
         + f'<span class="count" id="count"><b>{len(packs)}</b>'
         + f' <span data-i18n="word.pack">{_t("word.pack", lang)}</span></span>'
         + '<span id="hits"></span></div>'
-        + f'<div class="cards" id="cards">{cards}{empty}</div>'
+        + f'<div class="cardwall" id="cards">{cards}{empty}</div>'
         + f'<p class="hint"{_ia("catalog.hint")}>{_t("catalog.hint", lang)}</p>'
         + "</div>"
     )

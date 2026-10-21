@@ -32,11 +32,13 @@
   if (!q || !cards) return;
 
   var cardEls = Array.prototype.slice.call(cards.querySelectorAll(".card"));
+  var groupEls = Array.prototype.slice.call(cards.querySelectorAll(".domgrp"));
   var totalPacks = cardEls.length;
   var active = { domain: new Set(), maturity: new Set(), verification: new Set() };
   var fuse = null;
   var index = null;
   var indexLoading = null;
+  var indexFailed = false;
   var emptyEl = null;
 
   function setStatus(message) {
@@ -80,9 +82,15 @@
           ]
         });
         setStatus("");
+        // The query that waited for the index resolves *now*. Without this a
+        // single paste-search sat on the waiting message forever: only
+        // another keystroke ever re-rendered.
+        if (q.value.trim()) render();
       })
       .catch(function () {
+        indexFailed = true;
         setStatus(tr("catalog.search.index_fail"));
+        if (q.value.trim()) render();
       });
     return indexLoading;
   }
@@ -126,8 +134,12 @@
 
   // ---- input ------------------------------------------------------------
   q.addEventListener("input", function () {
-    render();
+    // Start the load *before* rendering: the first render answers "is it
+    // loading?", and the answer must not be "nothing was ever started" —
+    // that is what printed a permanent "could not be loaded" for a query
+    // whose index was still in flight.
     if (q.value.trim()) loadIndex();
+    render();
   });
   q.addEventListener("focus", function () {
     // Warm the index once the visitor shows search intent; do not block the
@@ -179,7 +191,9 @@
       if (count) count.textContent = "";
       var waiting = document.createElement("p");
       waiting.className = "count";
-      waiting.textContent = indexLoading
+      // A load that has *settled* stays truthy, so the failed case would
+      // otherwise read "loading…" forever; only an in-flight load is one.
+      waiting.textContent = indexLoading && !indexFailed
         ? tr("catalog.search.waiting")
         : tr("catalog.search.waiting_fail");
       hits.appendChild(waiting);
@@ -196,6 +210,12 @@
       var ok = cardMatches(el);
       el.hidden = !ok;
       if (ok) visible++;
+    });
+    // A shelf with nothing left standing on it is noise: the group goes with
+    // its cards, so a filtered catalog still reads as a list of shelves rather
+    // than headings over blanks.
+    groupEls.forEach(function (g) {
+      g.hidden = !g.querySelector(".card:not([hidden])");
     });
     paintCount(visible);
     toggleEmpty(cards, visible === 0, tr("catalog.empty.title"));
@@ -378,4 +398,29 @@
   window.addEventListener("scroll", onScroll, { passive: true });
   window.addEventListener("resize", onScroll);
   update();
+})();
+
+/* The pack overview's tab bar is radio-driven, so it works with no JavaScript
+   at all — clicking a label is clicking a radio. A *fragment* is different:
+   `…/index.html#spec` has to check the matching radio before the browser tries
+   to scroll, because a hidden element cannot be scrolled to. This serves links
+   and bookmarks that name a panel; nothing else on the page needs it. */
+(function () {
+  "use strict";
+
+  var TAB_OF = { spec: "pt-spec", demo: "pt-demo", prompts: "pt-prompts" };
+
+  function select() {
+    var hash = window.location.hash.slice(1);
+    var radio = document.getElementById(TAB_OF[hash] || "");
+    if (!radio) return;
+    radio.checked = true;
+    // The browser skipped the fragment on load because the panel was hidden
+    // a moment ago, so the scroll is ours to make.
+    var target = document.getElementById(hash);
+    if (target) target.scrollIntoView();
+  }
+
+  window.addEventListener("hashchange", select);
+  select();
 })();

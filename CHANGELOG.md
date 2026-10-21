@@ -6,6 +6,47 @@ releases (individual packs carry their own `version` in `manifest.yaml`).
 
 ## [Unreleased]
 
+### Added — the pack page became four tabs, the catalog became named shelves
+
+The pack overview was one 82 KB scroll serving four readers at once — the one
+reading the architecture, the one looking up an identifier, the one taking the
+demo, the one copying a prompt — with the demo buried as a button inside the
+spec header and the prompts at the bottom. The catalog showed all 17 packs as
+one flat wall, so a reader looking for their own industry had to read every
+title. Both follow the shapes their best analogues already proved.
+
+- **The overview page has a tab bar**: 概览 / 规范 / 演示 / 提示词, radio-driven
+  like the two-way view switch it replaces, so it works with no JavaScript and
+  from the keyboard. The trust state stays outside the tabs, visible whatever
+  panel is open. A pack without a demo gets no demo tab — an empty tab is a
+  promise the pack has not kept.
+- **The demo is a destination.** Its panel states what the demo demonstrates
+  from the manifest's own `demonstrates` list — the same list `check-ids.py`
+  validates — and prints the standing rule where the reader is about to
+  click: a demo is presentation, and it raises no pack's verification.
+- **Fragments open their tab.** `…/index.html#spec` checks the right radio
+  (app.js, a dozen lines) before the browser tries to scroll; the catalog's
+  grouping is markup, so with JS off both features degrade to plain pages.
+- **The catalog is grouped into shelves by domain** — each shelf named in the
+  reader's language, counted, and given one line saying what lives on it.
+  Filtering still works and hides a shelf whose cards are all filtered out.
+- **Domain names are now i18n vocabulary** (`domain.data-ai`, …), so an
+  English reader sees "Data & AI" instead of the raw path segment, and the
+  catalog's facet labels follow the build language.
+
+Three defects surfaced while verifying this and are fixed with it:
+
+- The cross-language redirect and the language switch rebuilt the URL and
+  dropped the fragment, so a deep link to `#spec` landed on the right page in
+  the wrong language *and* the wrong place. Both carry `location.hash` now.
+- The catalog's search printed a permanent "index could not be loaded" for a
+  query whose index was still in flight: the input handler rendered before it
+  started the load, and nothing re-rendered when the index landed. A single
+  paste-search now resolves by itself.
+- The prompt hint `<span>` was nested *inside* the inline prompt's
+  `<textarea>`, where a textarea holds raw text: its markup was the first line
+  of the preview and of every prompt the copy button handed out.
+
 ### Added — the Chinese edition, end to end
 
 Every pack now carries a Chinese sibling for every chapter, and the site has a
