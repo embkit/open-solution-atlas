@@ -123,6 +123,11 @@ Build it locally with `python tools/build-site.py` (writes `_site/`; the build
 fails if any internal link is broken). It publishes to GitHub Pages on every
 push to `main`.
 
+The site is bilingual, and the two languages are two complete trees rather
+than two skins: the English tree is at the root, the Chinese tree at `/zh/`,
+and the switch in the titlebar takes you from a page to the same page in the
+other language — prose included.
+
 ## Shelf map
 
 The full taxonomy lives in [`docs/taxonomy.md`](docs/taxonomy.md):

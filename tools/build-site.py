@@ -161,6 +161,140 @@ def primary_nav(prefix: str, current: str = "", lang: str = DEFAULT_LOCALE) -> s
 # The maturity and verification vocabularies. Values are keys into
 # `i18n.STRINGS` because they are chrome: a pack's state shown in the reader's
 # language, not the raw record.
+# The build language also chooses the *content* language. The chrome has a
+# vocabulary in `i18n.py`; the prose lives in the packs, and a Chinese build
+# reads the translated files where they exist.
+CONTENT_LOCALE = {"en": None, "zh": "zh-CN"}
+
+
+#: `business-rules.zh-CN.md` -> base `business-rules`, locale `zh-CN`.
+LOCALE_TAG_RE = re.compile(r"^(?P<base>.+)\.(?P<locale>[a-z]{2}(?:-[A-Z]{2})?)$")
+
+
+#: Where each language's tree lives inside a bilingual build. The English tree
+#: is the site root; the Chinese tree is a directory beside it. Both trees
+#: share one URL space - a translation is a sibling file, not a parallel tree
+#: of pages - so the counterpart of a page is the same relative path under the
+#: other prefix. Switching language is therefore a path change, not a repaint:
+#: the reader lands on a page whose prose is in the language they asked for.
+LOCALE_TREE = {"en": "", "zh": "zh/"}
+
+
+def tree_href(rel: str, tree_prefix: str, alt_prefix: str) -> str:
+    """The path from a page to its counterpart in the other language's tree.
+
+    `rel` is the page's path inside its own tree (`packs/mes/README.html`).
+    The counterpart is the same path under the other tree's prefix, reached
+    from the page's own directory - so the number of `..` is the depth of the
+    page inside the *output* directory, which is one deeper for a tree that is
+    itself a directory.
+    """
+    depth = rel.count("/") + tree_prefix.count("/")
+    return "../" * depth + alt_prefix + rel
+
+
+BODY_TAG_RE = re.compile(r'<body class="([^"]*)">')
+CANONICAL_RE = re.compile(r'<link rel="canonical" href="([^"]*)">')
+
+
+def inject_language_links(tree_dir: Path, lang: str, tree_prefix: str,
+                           alt_prefix: str, site_url: str = "") -> int:
+    """Teach every page in a tree where its counterpart lives.
+
+    The switch in the titlebar is chrome, so the shell renders it; but *where*
+    the other language's page is depends on the page, and only the page knows
+    its own path. This pass writes that answer into the page: `data-alt-en` and
+    `data-alt-zh` on the body, the canonical link and the `hreflang`
+    alternates in the head.
+
+    Without it the switch can only repaint the chrome, which is how a Chinese
+    reader ends up with Chinese navigation over English prose - a page in two
+    languages at once, which is worse than a page in one.
+    """
+    alt_lang = "zh" if lang == "en" else "en"
+    touched = 0
+    for page in sorted(tree_dir.rglob("*.html")):
+        rel = page.relative_to(tree_dir).as_posix()
+        counterpart = tree_href(rel, tree_prefix, alt_prefix)
+        alts = {"en": "", "zh": ""}
+        alts[alt_lang] = counterpart
+        text = page.read_text(encoding="utf-8")
+
+        def body_sub(match: re.Match, alts: dict = alts) -> str:
+            attrs = " ".join(
+                f'data-alt-{code}="{html.escape(value, quote=True)}"'
+                for code, value in alts.items()
+            )
+            return (f'<body class="{match.group(1)}" data-build-lang="{lang}" '
+                    f"{attrs}>")
+
+        new = BODY_TAG_RE.sub(body_sub, text, count=1)
+        if site_url:
+            canonical = abs_url(site_url, tree_prefix + rel)
+            new = CANONICAL_RE.sub(
+                lambda m, url=canonical: f'<link rel="canonical" href="{url}">',
+                new, count=1,
+            )
+            alternates = "".join(
+                f'<link rel="alternate" hreflang="{HTML_LANG[code]}" '
+                f'href="{abs_url(site_url, LOCALE_TREE[code] + rel)}">\n'
+                for code in ("en", "zh")
+            )
+            new = new.replace(
+                '<link rel="canonical"', alternates + '<link rel="canonical"', 1
+            )
+        if new != text:
+            page.write_text(new, encoding="utf-8", newline="")
+            touched += 1
+    return touched
+
+
+def locale_of(path: Path) -> str | None:
+    """The locale a source file is written in, or None for an original."""
+    if path.suffix != ".md":
+        return None
+    match = LOCALE_TAG_RE.match(path.stem)
+    return match.group("locale") if match else None
+
+
+def is_translation_source(path: Path) -> bool:
+    """True when the file is a translation rather than a page of its own.
+
+    A translation is never published as a separate page: it is rendered
+    *instead of* the original, at the original's URL.
+
+    The repository root's `README.<locale>.md` is the one exception, and it
+    is a deliberate one. Those two files are two *front doors* ? the English
+    README and the Chinese one, each linking to the other ? not one page
+    written twice. The English README links to `./README.zh-CN.md`, so that
+    file has to exist as a page in every build, or the link is a 404.
+    """
+    if "translations" in path.parts:
+        return True
+    if locale_of(path) is None:
+        return False
+    try:
+        rel = path.relative_to(ROOT)
+    except ValueError:
+        return True
+    return not (len(rel.parts) == 1 and rel.stem.startswith("README."))
+
+
+def content_source(src: Path, locale: str | None) -> tuple[Path, bool]:
+    """The file to read for `src` in `locale`, and whether it is a translation.
+
+    A translation is a *sibling*: `business-rules.zh-CN.md` beside
+    `business-rules.md`. The URL space is therefore identical in both
+    languages, so a relative link inside a translation points at the page a
+    Chinese reader wants without a single rewrite.
+    """
+    if locale and src.suffix == ".md":
+        alt = src.with_name(src.stem + "." + locale + ".md")
+        if alt.is_file():
+            return alt, True
+    return src, False
+
+
 MATURITY_LABEL = {
     "L1": ("maturity.L1", "m1"),
     "L2": ("maturity.L2", "m2"),
@@ -190,6 +324,10 @@ class Doc:
     html: str = ""
     text: str = ""
     toc: list = field(default_factory=list)
+    # True when the rendered body came from a translation. A Chinese build
+    # says so on the page, so a reader is never left guessing whether the
+    # English they are reading is a gap or a quote.
+    translated: bool = False
 
 
 @dataclass
@@ -208,6 +346,18 @@ class Pack:
     @property
     def title_zh(self) -> str:
         return str(self.manifest.get("title_zh", ""))
+
+    def display_title(self, lang: str = DEFAULT_LOCALE) -> str:
+        """The title in the reader's language.
+
+        The English build shows the English title with the Chinese beneath it,
+        because a bilingual key asset is the norm here. The Chinese build
+        shows the Chinese title alone: the two would otherwise say the same
+        thing twice, with the English first.
+        """
+        if lang == "zh" and self.title_zh:
+            return self.title_zh
+        return self.title
 
     @property
     def maturity(self) -> str:
@@ -361,9 +511,17 @@ INDEX_ROW_RE = re.compile(
 )
 
 
-def load_summaries() -> dict[str, str]:
-    """Parse packs/README.md's index table into {slug: summary}."""
+def load_summaries(locale: str | None = None) -> dict[str, str]:
+    """Parse packs/README.md's index table into {slug: summary}.
+
+    The Chinese build reads `packs/README.zh-CN.md`, whose table carries the
+    Chinese one-line summaries the cards show.
+    """
     index = PACKS_DIR / "README.md"
+    if locale:
+        translated = PACKS_DIR / f"README.{locale}.md"
+        if translated.is_file():
+            index = translated
     summaries: dict[str, str] = {}
     if not index.exists():
         return summaries
@@ -408,6 +566,11 @@ def discover_markdown() -> list[Path]:
         if "templates" in parts or "tests" in parts or "node_modules" in parts:
             continue
         if "site-assets" in parts:  # vendored third-party libs, not content
+            continue
+        if is_translation_source(path):
+            # A translation is rendered instead of its original, at the
+            # original's URL. Publishing it as well would give the site two
+            # pages per chapter and two sets of links to keep in step.
             continue
         files.append(path)
     return files
@@ -639,14 +802,14 @@ def page_shell(
     )
 
 
-def breadcrumb(prefix: str, pack: Pack | None) -> str:
+def breadcrumb(prefix: str, pack: Pack | None, lang: str = DEFAULT_LOCALE) -> str:
     if not pack:
         return ""
     chev = icon("chevron")
     return (
         '<nav class="crumbs">'
-        f'<a href="{prefix}index.html"{_ia("crumb.catalog")}>{_t("crumb.catalog")}</a>{chev}'
-        f'<span>{html.escape(pack.domain)}</span>{chev}'
+        f'<a href="{prefix}index.html"{_ia("crumb.catalog")}>{_t("crumb.catalog", lang)}</a>{chev}'
+        f'<span>{html.escape(_domain_label(pack.domain, lang))}</span>{chev}'
         f'<span class="crumb-cur">{html.escape(pack.slug)}</span>'
         "</nav>"
     )
@@ -675,6 +838,73 @@ def pack_pills(pack: Pack, lang: str = DEFAULT_LOCALE) -> str:
     )
 
 
+#: The taxonomy's domains, named in the reader's language.
+#:
+#: The slug is the key the taxonomy, the filter and the index read; the name
+#: is what a reader needs. A Chinese reader looking at `government-public`
+#: has to guess what the shelf label means — and an English reader had the
+#: raw slug, because the name only existed in one language. Both now come
+#: from the string catalog, where every chrome string already lives.
+def _domain_label(domain: str, lang: str = DEFAULT_LOCALE) -> str:
+    """The domain's name in the reader's language."""
+    key = f"domain.{domain}"
+    if has(key):
+        return t(key, lang)
+    return domain
+
+
+def _domain_desc(domain: str, lang: str = DEFAULT_LOCALE) -> str:
+    """One line saying what kind of system lives on this shelf."""
+    key = f"domain.{domain}.desc"
+    if has(key):
+        return t(key, lang)
+    return ""
+
+
+#: The chapter directories, named in the reader's language.
+#:
+#: The directory is the file path, and the path is data - but a sidebar that
+#: says `03-domain` to a Chinese reader is the mixed state the Chinese tree
+#: exists to remove. The number stays, because it is the ordering the file
+#: paths use.
+CHAPTER_GROUP_LABEL = {
+    "00-context": "00 上下文",
+    "01-business": "01 业务",
+    "02-requirements": "02 需求",
+    "03-domain": "03 领域",
+    "04-architecture": "04 架构",
+    "05-data": "05 数据",
+    "06-contracts": "06 契约",
+    "07-experience": "07 体验",
+    "08-quality": "08 质量",
+    "09-delivery": "09 交付",
+}
+
+
+def _chapter_label(doc: Doc, fallback: str) -> str:
+    """A sidebar label for a chapter: its title, in the tree's language.
+
+    The file name is the path a reader types, and it stays available as the
+    link's tooltip; the label is what the chapter is about. `00-context /
+    行业简报` is `行业简报`, not `industry-brief`.
+    """
+    title = (doc.title or "").strip()
+    if not title:
+        return fallback
+    # `ADR-0001 — 守住 ISA-95 第三级边界`: the id is the scannable part, and
+    # the decision's title is on the page itself.
+    match = re.match(r"^(ADR-\d+[a-z]?)\s*[\u2014\u2013]", title)
+    if match:
+        return match.group(1)
+    # `00-context / 行业简报——一站式政务服务平台`: the chapter's own name, not
+    # the pack's subtitle that follows it.
+    title = re.sub(r"^\d\d(?:-[a-z]+)?\s*[\u00b7/]\s*", "", title)
+    title = re.split(r"\s*\u2014\u2014|\s+[\u2014\u2013]\s+", title)[0]
+    if title.endswith(".md"):
+        title = title[:-3]
+    return title.strip() or fallback
+
+
 def render_sidebar(pack: Pack, doc: Doc, prefix: str, lang: str = DEFAULT_LOCALE) -> str:
     """The pack's sidebar: contract §4.2's three parts.
 
@@ -697,7 +927,7 @@ def render_sidebar(pack: Pack, doc: Doc, prefix: str, lang: str = DEFAULT_LOCALE
         '<div class="side-head">'
         f'<span class="side-logo">{icon(icon_for(pack.domain, pack.slug))}</span>'
         '<span><span class="side-name">Solution Atlas</span><br>'
-        f'<span class="side-sub">{html.escape(pack.domain)}</span></span>'
+        f'<span class="side-sub">{html.escape(_domain_label(pack.domain, lang))}</span></span>'
         "</div>"
         + nav_tree(pack, doc.url, prefix, lang)
         + foot
@@ -728,6 +958,8 @@ def nav_tree(pack: Pack, current_url: str, prefix: str,
         # "overview" group is chrome.
         if not group:
             label, label_key = _t("side.overview", lang), "side.overview"
+        elif lang == "zh" and group in CHAPTER_GROUP_LABEL:
+            label, label_key = CHAPTER_GROUP_LABEL[group], None
         else:
             label, label_key = group, None
         docs = sorted(groups[group], key=lambda d: d.rel)
@@ -739,9 +971,19 @@ def nav_tree(pack: Pack, current_url: str, prefix: str,
             rel_inside = Path(doc.rel).relative_to(pack.rel_dir).as_posix()
             name = Path(rel_inside).name
             name = _t("side.overview", lang) if name == "README.md" else name[:-3]
+            if lang == "zh" and name != _t("side.overview", lang):
+                # The label is the chapter's title; the file name stays as the
+                # tooltip, because the file name is the path an agent types.
+                item_label, tip = _chapter_label(doc, name), name
+            else:
+                item_label, tip = name, ""
             active = ' class="active" aria-current="page"' if doc.url == current_url else ""
             href = prefix + doc.url
-            items.append(f'<li><a{active} href="{href}">{html.escape(name)}</a></li>')
+            title_attr = f' title="{html.escape(tip)}"' if tip else ""
+            items.append(
+                f'<li><a{active} href="{href}"{title_attr}>'
+                f"{html.escape(item_label)}</a></li>"
+            )
         out.append(
             f'<details class="navgroup"{opened}>'
             f'<summary class="navgroup-label"{_ia(label_key) if label_key else ""}>'
@@ -797,7 +1039,8 @@ def build(out: Path, base_url: str, site_url: str = "",
     if lang not in LOCALES:
         print(f"ERROR: unknown --lang {lang!r}", file=sys.stderr)
         return 1
-    summaries = load_summaries()
+    locale = CONTENT_LOCALE.get(lang)
+    summaries = load_summaries(locale)
     packs = load_packs(summaries)
     if not packs:
         print("ERROR: no packs found", file=sys.stderr)
@@ -805,7 +1048,7 @@ def build(out: Path, base_url: str, site_url: str = "",
 
     # The structured index is extracted once and shared by the renderer and
     # the emitted JSON, so a page and the data file can never disagree.
-    pack_index = build_pack_index()
+    pack_index = build_pack_index(locale)
     spec_entries = {p["slug"]: p for p in pack_index["packs"]}
 
     if out.exists():
@@ -816,7 +1059,10 @@ def build(out: Path, base_url: str, site_url: str = "",
     for pack in packs:
         pack_dir = ROOT / pack.rel_dir
         for src in sorted(pack_dir.rglob("*.md")):
-            text = src.read_text(encoding="utf-8")
+            if is_translation_source(src):
+                continue
+            content, translated = content_source(src, locale)
+            text = content.read_text(encoding="utf-8")
             body_html, plain, toc = render_markdown(text)
             pack.docs.append(
                 Doc(
@@ -827,6 +1073,7 @@ def build(out: Path, base_url: str, site_url: str = "",
                     html=body_html,
                     text=plain,
                     toc=toc,
+                    translated=translated,
                 )
             )
 
@@ -836,13 +1083,15 @@ def build(out: Path, base_url: str, site_url: str = "",
         rel = src.relative_to(ROOT).as_posix()
         if rel.startswith("packs/") and rel != "packs/README.md":
             continue
-        text = src.read_text(encoding="utf-8")
+        content, translated = content_source(src, locale)
+        text = content.read_text(encoding="utf-8")
         body_html, plain, toc = render_markdown(text)
         other_docs.append(
             Doc(
                 src=src, rel=rel, url=url_for(src),
                 title=first_heading(text, Path(src).stem),
                 html=body_html, text=plain, toc=toc,
+                translated=translated,
             )
         )
 
@@ -890,7 +1139,7 @@ def build(out: Path, base_url: str, site_url: str = "",
         entry = spec_entries.get(pack.slug)
         if not entry:
             continue
-        bundles = build_bundles(entry, ROOT / pack.rel_dir)
+        bundles = build_bundles(entry, ROOT / pack.rel_dir, lang, locale)
         for fname, text in bundles["files"].items():
             write(out / pack.rel_dir / "prompts" / fname, text)
             prompts_written += 1
@@ -1117,7 +1366,7 @@ def _spec_row_chips(entry: dict, ids: list[str], kind: str) -> str:
     return "".join(_id_chip(i, kind, f"#spec-{i}") for i in ids)
 
 
-def render_spec_view(entry: dict, prefix: str, lang: str = DEFAULT_LOCALE) -> str:
+def render_spec_view(entry: dict, lang: str = DEFAULT_LOCALE) -> str:
     """The whole structured view for one pack.
 
     Server-rendered so the panel is complete with JavaScript disabled — the
@@ -1293,23 +1542,14 @@ def render_spec_view(entry: dict, prefix: str, lang: str = DEFAULT_LOCALE) -> st
             f'<table class="spectab"><tbody>{rows}</tbody></table></details>'
         )
 
-    demo = ""
-    if entry.get("demo"):
-        demo = (
-            '<a class="demobtn" href="' + _esc(prefix + entry["demo"]["url"]) + '">'
-            '<b data-i18n="spec.demo">' + _t("spec.demo", lang) + "</b><span>"
-            + _esc(entry["demo"].get("title") or entry["slug"]) + "</span></a>"
-        )
-
     return f"""
-<section class="spec" id="spec">
+<section class="spec tabp tabp-spec" id="spec">
   <div class="spec-head">
     <div>
       <h2{_ia("spec.head", total=total_ids)}>{_t("spec.head", lang, total=total_ids)}</h2>
       <p class="spec-note"><span{_ia("spec.note.by")}>{_t("spec.note.by", lang)}</span>
         <code>tools/pack_index.py</code> <span{_ia("spec.note.from")}>{_t("spec.note.from", lang)}</span>
         <b{_ia("spec.note.verb")}>{_t("spec.note.verb", lang)}</b><span{_ia("spec.note.tail")}>{_t("spec.note.tail", lang)}</span></p>    </div>
-    {demo}
   </div>
   <div class="spec-stats">{tiles}</div>
   <div class="spec-qlabel"><span{_ia("spec.reuse.label")}>{_t("spec.reuse.label", lang)}</span>
@@ -1317,6 +1557,46 @@ def render_spec_view(entry: dict, prefix: str, lang: str = DEFAULT_LOCALE) -> st
   {_spec_status_badges(entry, lang)}
   <nav class="spec-jump">{jump}</nav>
   <div class="spec-secs">{''.join(sections)}</div>
+</section>
+"""
+
+
+def render_demo_panel(entry: dict, prefix: str,
+                      lang: str = DEFAULT_LOCALE) -> str:
+    """The demo as a destination, not a button inside the spec header.
+
+    What it demonstrates is the demo manifest's own ``demonstrates`` list —
+    the same list ``check-ids.py`` validates against the pack — so this panel
+    cannot advertise a connection the pack does not have. The last line is the
+    repository's standing rule: a demo is presentation, and it raises no
+    pack's verification.
+    """
+    demo = entry.get("demo")
+    if not demo:
+        return ""
+    demonstrates = [str(i) for i in (demo.get("demonstrates") or [])]
+    shows = ""
+    if demonstrates:
+        codes = "".join(f"<code>{_esc(i)}</code>" for i in demonstrates)
+        shows = (
+            f'<p class="demo-shows"><span{_ia("demo.shows")}>'
+            f'{_t("demo.shows", lang)}</span> {codes}</p>'
+        )
+    title = _esc(demo.get("title") or entry["slug"])
+    href = _esc(prefix + str(demo.get("url", "")))
+    return f"""
+<section class="demopanel tabp tabp-demo" id="demo">
+  <div class="demo-card">
+    <div class="demo-text">
+      <h2{_ia("demo.head")}>{_t("demo.head", lang)}</h2>
+      <p class="demo-blurb"{_ia("demo.blurb")}>{_t("demo.blurb", lang)}</p>
+      {shows}
+    </div>
+    <a class="demobtn" href="{href}"{_ia("demo.open")}>
+      <b>{_t("demo.open", lang)}</b><span>{title}</span>
+    </a>
+  </div>
+  <p class="demo-note"{_ia("demo.note")}>{_t("demo.note", lang)}</p>
 </section>
 """
 
@@ -1335,7 +1615,9 @@ def render_prompt_section(entry: dict, prefix: str, pack_dir: Path,
     and per-rule variants are emitted as real files and linked, so a page does
     not carry every prompt's full text in order to copy one of them.
     """
-    bundles = build_bundles(entry, pack_dir)
+    # The locale follows the build's language: a Chinese tree carries the
+    # Chinese chapters in the context bundle.
+    bundles = build_bundles(entry, pack_dir, lang, CONTENT_LOCALE.get(lang))
     base = f"{pack_dir.relative_to(ROOT).as_posix()}/prompts/"
 
     inline = bundles["inline"]["implement"]
@@ -1348,12 +1630,17 @@ def render_prompt_section(entry: dict, prefix: str, pack_dir: Path,
         + _ia("prompt.download") + ">"
         + _t("prompt.download", lang) + "</a>"
         "</div>"
+        # The hint is a *sibling* of the textarea: anything inside a textarea
+        # is raw text, so nesting this span made its markup the first line of
+        # the preview and of every copied prompt, and left aria-describedby
+        # pointing at an element that was never parsed as one. Referenced by
+        # id, `hidden` still reaches the accessible description.
+        '<span id="prm-implement-hint" hidden data-i18n="prompt.hint.inline">'
+        + _t("prompt.hint.inline", lang) + "</span>"
         '<textarea class="prm-text" id="prm-implement" readonly spellcheck="false"'
         + " "
         + _iaa("aria-label", "prompt.aria.inline")
         + ' aria-describedby="prm-implement-hint">'
-        + '<span id="prm-implement-hint" hidden data-i18n="prompt.hint.inline">'
-        + _t("prompt.hint.inline", lang) + "</span>"
         + _esc(inline) + "</textarea>"
     )
 
@@ -1378,7 +1665,7 @@ def render_prompt_section(entry: dict, prefix: str, pack_dir: Path,
     context_size = len(bundles["files"]["context.md"])
     ctx_n = f"{context_size:,}"
     return f"""
-<section class="prompts" id="prompts">
+<section class="prompts tabp tabp-prompts" id="prompts">
   <h3{_ia("prompts.heading")}>{_t("prompts.heading", lang)}</h3>
   <p class="prompts-note">
     <span{_ia("prompts.note.1")}>{_t("prompts.note.1", lang)}</span>
@@ -1412,26 +1699,55 @@ def render_prompt_section(entry: dict, prefix: str, pack_dir: Path,
 """
 
 
-def render_view_switch(entry: dict | None, lang: str = DEFAULT_LOCALE) -> str:
-    """Radio-based view toggle: no JavaScript, keyboard-operable.
+def render_tab_switch(entry: dict | None, lang: str = DEFAULT_LOCALE) -> str:
+    """The overview page's tab bar: radio-driven, so it survives without JavaScript.
 
-    The inputs must be *siblings* of the two views for the CSS `~` selector to
-    reach them, so they live outside the labelled container.
+    It replaces a two-way view toggle with four destinations, because one page
+    was serving several readers at once — the one reading the architecture, the
+    one looking up an identifier, the one taking the demo, the one copying a
+    prompt — all in a single scroll with no place to start. The demo tab exists
+    only where a demo does: a tab whose panel is empty is a promise the pack
+    has not kept.
+
+    The inputs must be *siblings* of the panels for the CSS `~` selector to
+    reach them, so they live outside the labelled container, as before.
     """
     if entry is None:
         return ""
     counts = entry["counts"]
     n = counts["rules"] + counts["requirements"] + counts["nfrs"] + counts["controls"] + counts["adrs"] + counts["constraints"]
+    spec_suffix = (
+        f'<span{_ia("view.spec.count", n=n)}>'
+        + _esc(t("view.spec.count", lang, n=n)) + "</span>" if n else ""
+    )
+    tabs = [
+        ("pt-overview", "tab.overview", ""),
+        ("pt-spec", "tab.spec", spec_suffix),
+    ]
+    if entry.get("demo"):
+        tabs.append(("pt-demo", "tab.demo", ""))
+    tabs.append(("pt-prompts", "tab.prompts", ""))
+    out = []
+    for i, (radio_id, key, suffix) in enumerate(tabs):
+        out.append(
+            '<input class="vs-in" type="radio" name="pt" id="' + radio_id + '"'
+            + (" checked>" if i == 0 else ">")
+        )
+        out.append(
+            '<label class="vs-lab" for="' + radio_id + '"' + _ia(key) + ">"
+            + _t(key, lang) + suffix + "</label>"
+        )
+    return "".join(out)
+
+
+def translation_note(lang: str = DEFAULT_LOCALE) -> str:
+    """The notice on a page whose content has no translation yet.
+
+    It is a notice rather than a link: the English original *is* the page,
+    and saying so is more useful than offering a button to the same words.
+    """
     return (
-        '<input class="vs-in" type="radio" name="vs" id="vs-doc" checked>'
-        '<label class="vs-lab" for="vs-doc"' + _ia("view.doc") + ">"
-        + _t("view.doc", lang) + "</label>"
-        '<input class="vs-in" type="radio" name="vs" id="vs-spec">'
-        '<label class="vs-lab" for="vs-spec"' + _ia("view.spec") + ">"
-        + _t("view.spec", lang)
-        + (f'<span{_ia("view.spec.count", n=n)}>'
-           + _esc(t("view.spec.count", lang, n=n)) + "</span>" if n else "")
-        + "</label>"
+        f'<p class="transnote"{_ia("trans.banner")}>{_t("trans.banner", lang)}</p>'
     )
 
 
@@ -1452,7 +1768,8 @@ def render_doc_page(
     extra = ""
     if is_overview and spec_entry:
         extra = (
-            render_spec_view(spec_entry, prefix, lang)
+            render_spec_view(spec_entry, lang)
+            + render_demo_panel(spec_entry, prefix, lang)
             + render_prompt_section(spec_entry, prefix, pack_dir, lang)
         )
     spec = extra
@@ -1460,11 +1777,15 @@ def render_doc_page(
     if is_overview:
         header = (
             '<div class="packhead">'
-            f'<div class="packhead-titles"><h1>{html.escape(pack.title)}</h1>'
-            + (f'<p class="zh" lang="zh-CN">{html.escape(pack.title_zh)}</p>' if pack.title_zh else "")
+            f'<div class="packhead-titles"><h1>{html.escape(pack.display_title(lang))}</h1>'
+            + (
+                f'<p class="zh" lang="zh-CN">{html.escape(pack.title_zh)}</p>'
+                if pack.title_zh and lang != "zh" else ""
+            )
             + "</div>"
             f'<div class="packhead-meta">{pack_pills(pack, lang)}'
-            f'<span class="meta-plain">{html.escape(pack.domain)} / {html.escape(pack.subdomain)}</span>'
+            f'<span class="meta-plain">{html.escape(_domain_label(pack.domain, lang))}'
+    f' / {html.escape(pack.subdomain)}</span>'
             f'<span class="meta-plain">v{html.escape(str(pack.manifest.get("version", "")))}</span>'
             "</div></div>"
         )
@@ -1490,15 +1811,19 @@ def render_doc_page(
     # The rail is computed first because the reading layout depends on whether
     # there is one: `.view-doc` is a two-column grid only when it holds a rail.
     rail = render_toc(doc.toc) if not is_overview else ""
+    # A Chinese build says so on the page when the body is the English
+    # original, rather than letting the reader assume the gap is theirs.
+    note = "" if (doc.translated or lang != "zh") else translation_note(lang)
     body = (
         '<div class="wrap">'
-        + breadcrumb(prefix, pack)
+        + breadcrumb(prefix, pack, lang)
         + header
-        + render_view_switch(spec_entry if is_overview else None, lang)
+        + note
+        + render_tab_switch(spec_entry if is_overview else None, lang)
         + '<div class="shell">'
         + render_sidebar(pack, doc, prefix, lang)
         + '<div class="main">'
-        + f'<div class="view-doc{" has-toc" if rail else ""}">'
+        + f'<div class="view-doc tabp tabp-overview{" has-toc" if rail else ""}">'
         + rail
         + f'<article class="prose">{annotate_lang(article_html)}</article>'
         + "</div>"
@@ -1508,11 +1833,11 @@ def render_doc_page(
         + "</div>"
     )
     scripts = ""
-    # `app.js` carries the contents rail, which is the only thing it does on a
-    # chapter page — so it is loaded where a rail exists and nowhere else. It was
-    # never loaded here at all, which is why the rail could not mark the section
-    # being read.
-    if rail:
+    # `app.js` does two jobs, and each names the page that needs it: it marks
+    # the section being read in the contents rail (chapter pages, which have a
+    # rail), and it checks the tab a fragment names (overview pages, which have
+    # tabs). Everywhere else it would be dead weight.
+    if rail or (is_overview and spec_entry):
         scripts += f'<script src="{prefix}assets/app.js" defer></script>'
     if "class=\"mermaid\"" in doc.html:
         scripts += mermaid_script(prefix)
@@ -1530,9 +1855,11 @@ def render_doc_page(
 
 def render_plain_page(doc: Doc, prefix: str, site_url: str = "",
                       lang: str = DEFAULT_LOCALE) -> str:
+    note = "" if (doc.translated or lang != "zh") else translation_note(lang)
     body = (
         '<div class="wrap">'
-        f'<article class="prose prose-wide">{annotate_lang(doc.html)}</article>'
+        + note
+        + f'<article class="prose prose-wide">{annotate_lang(doc.html)}</article>'
         "</div>"
     )
     scripts = mermaid_script(prefix) if 'class="mermaid"' in doc.html else ""
@@ -1579,7 +1906,14 @@ def render_catalog(
         for value in values:
             n = sum(1 for p in packs if getattr(p, field) == value)
             key = f"{'maturity' if field == 'maturity' else 'verify'}.{value}"
-            text = _t(key, lang) if has(key) else _esc(value)
+            if has(key):
+                text = _t(key, lang)
+            elif field == "domain":
+                # The chip's value stays the raw slug - the filter reads it -
+                # but its label is the domain's name in this language.
+                text = _esc(_domain_label(value, lang))
+            else:
+                text = _esc(value)
             chips.append(
                 f'<button class="chip" data-facet="{field}" data-value="{html.escape(value)}">'
                 + (f'<span{_ia(key)}>{text}</span>' if has(key) else f"{text}")
@@ -1597,7 +1931,27 @@ def render_catalog(
         + facet("verification", verifications)
         + "</div>"
     )
-    cards = "".join(render_card(p, spec_entries.get(p.slug), lang) for p in packs)
+    shelves = []
+    for domain in domains:
+        # The catalog is a set of shelves, not a wall: a reader arriving at 17
+        # cards in one undifferentiated grid has to read every title to find
+        # the one industry they came for. Each shelf is named, counted and
+        # given one line saying what lives on it.
+        on_shelf = [p for p in packs if p.domain == domain]
+        shelf_cards = "".join(
+            render_card(p, spec_entries.get(p.slug), lang) for p in on_shelf)
+        desc = _domain_desc(domain, lang)
+        shelves.append(
+            f'<section class="domgrp" data-domain="{html.escape(domain)}">'
+            f'<h2 class="domhead"><span{_ia("domain." + domain)}>'
+            f'{_t("domain." + domain, lang)}</span>'
+            f'<span class="dom-n">{len(on_shelf)}</span></h2>'
+            + (f'<p class="domdesc"{_ia("domain." + domain + ".desc")}>{desc}</p>'
+               if desc else "")
+            + f'<div class="domcards">{shelf_cards}</div>'
+            "</section>"
+        )
+    cards = "".join(shelves)
     # §7.8: an empty result is a moment for direction — icon, title, what
     # happened, and a way out. Never a bare "no data".
     empty = (
@@ -1647,15 +2001,13 @@ def render_catalog(
         + f'<span class="count" id="count"><b>{len(packs)}</b>'
         + f' <span data-i18n="word.pack">{_t("word.pack", lang)}</span></span>'
         + '<span id="hits"></span></div>'
-        + f'<div class="cards" id="cards">{cards}{empty}</div>'
+        + f'<div class="cardwall" id="cards">{cards}{empty}</div>'
         + f'<p class="hint"{_ia("catalog.hint")}>{_t("catalog.hint", lang)}</p>'
         + "</div>"
     )
     return page_shell(
-        title="Open Solution Atlas — blueprints for real enterprise systems",
-        description="Seventeen machine-readable blueprints for real enterprise "
-                    "systems, each with traced identifiers, integrity constraints "
-                    "and prompts assembled from the pack itself.",
+        title=_t("catalog.page.title", lang),
+        description=_t("catalog.page.desc", lang),
         prefix="", body=body, body_class="catalog", icon="\u25c8",
         nav_current="catalog",
         # SRI on the vendored library: the hash is pinned in VENDOR_EXPECTED
@@ -1694,7 +2046,10 @@ def render_card(pack: Pack, entry: dict | None = None,
         num = f'<span class="card-num">{total}</span>'
     tags = "".join(f'<span class="tag">{html.escape(t)}</span>' for t in pack.tags[:6])
     summary = str(pack.manifest.get("_summary", ""))
-    zh = f'<p class="zh" lang="zh-CN">{html.escape(pack.title_zh)}</p>' if pack.title_zh else ""
+    zh = (
+        f'<p class="zh" lang="zh-CN">{html.escape(pack.title_zh)}</p>'
+        if pack.title_zh and lang != "zh" else ""
+    )
     return (
         f'<article class="card" data-slug="{html.escape(slug)}"'
         f' data-domain="{html.escape(pack.domain)}"'
@@ -1706,10 +2061,10 @@ def render_card(pack: Pack, entry: dict | None = None,
         f'{num}'
         '</div>'
         f'<a class="card-link" href="{pack.index_url}">'
-        f'<h3>{html.escape(pack.title)}</h3></a>{zh}'
+        f'<h3>{html.escape(pack.display_title(lang))}</h3></a>{zh}'
         f'<p class="card-sum">{html.escape(summary)}</p>'
         f'<div class="card-meta">{pack_pills(pack, lang)}'
-        f'<span class="meta-plain">{html.escape(pack.domain)}</span></div>'
+        f'<span class="meta-plain">{html.escape(_domain_label(pack.domain, lang))}</span></div>'
         f'<div class="tags">{tags}</div>'
         "</article>"
     )
@@ -1938,7 +2293,7 @@ def generate_missing_indexes(out: Path, lang: str = DEFAULT_LOCALE) -> int:
         )
         write(index, page_shell(
             title=f"{title} — Open Solution Atlas",
-            description=f"Contents of {rel}/ in Open Solution Atlas.",
+            description=_t("dir.contents", lang, path=rel),
             prefix=prefix, body=body, body_class="doc",
             lang=lang,
         ))
@@ -2008,7 +2363,7 @@ def write_404(out: Path, site_url: str = "", lang: str = DEFAULT_LOCALE) -> None
         out / "404.html",
         page_shell(
             title=f'{_t("notfound.title", lang)} — Solution Atlas',
-            description="404 — the requested page does not exist.",
+            description=_t("notfound.body", lang),
             prefix="", body=body, body_class="catalog",
             lang=lang, canonical=abs_url(site_url, "404.html"),
         ),
@@ -2036,6 +2391,53 @@ def verify_internal_links(out: Path) -> list[str]:
     return broken
 
 
+def build_bilingual(out: Path, base_url: str = "/", site_url: str = "") -> int:
+    """Build both language trees into one output directory.
+
+    The English tree is the site root and the Chinese tree lives under `zh/`.
+    Each tree is a complete site in its own language - chrome and prose agree
+    - and the switch between them is a link, because a translation is a
+    sibling file and the URL space never changes.
+    """
+    if build(out, base_url, site_url, "en"):
+        return 1
+    # The English tree is annotated before the Chinese tree exists: the pass
+    # walks the whole output directory, and the two trees must not annotate
+    # each other.
+    inject_language_links(out, "en", LOCALE_TREE["en"], LOCALE_TREE["zh"], site_url)
+    zh_out = out / LOCALE_TREE["zh"].rstrip("/")
+    if build(zh_out, base_url, site_url, "zh"):
+        return 1
+    # The Chinese tree's own crawler artifacts would point at the wrong
+    # origin: its pages live under /zh/, and the one sitemap that matters is
+    # the root one.
+    for artifact in ("robots.txt", "sitemap.xml"):
+        (zh_out / artifact).unlink(missing_ok=True)
+    inject_language_links(
+        zh_out, "zh", LOCALE_TREE["zh"], LOCALE_TREE["en"], site_url
+    )
+    # The root sitemap was written by the English build, before the Chinese
+    # tree existed; rewrite it so it lists both.
+    write_sitemap(out, site_url)
+    broken = verify_internal_links(out)
+    if broken:
+        print(f"[ERROR] {len(broken)} broken internal link(s):")
+        for path in broken[:20]:
+            print(f"  {path}")
+        return 1
+    pages = sum(1 for _ in out.rglob("*.html"))
+    try:
+        where = out.relative_to(ROOT).as_posix()
+    except ValueError:
+        where = out.as_posix()
+    print(
+        f"built bilingual site: {pages} pages -> {where}/ "
+        f"(en at /, zh at /{LOCALE_TREE['zh'].rstrip('/')}/)"
+    )
+    print("internal links: all resolve")
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Build the static site")
     parser.add_argument("--out", default="_site", help="output directory")
@@ -2051,14 +2453,17 @@ def main() -> int:
              "crawler artifacts (default: the deployed GitHub Pages origin)",
     )
     parser.add_argument(
-        "--lang", default=DEFAULT_LOCALE,
-        help="language of the site chrome: en or zh (default: en). The reader "
-             "may switch language at runtime; pack prose is language-tagged "
-             "separately",
+        "--lang", default="both",
+        help="language(s) to build: 'en', 'zh' or 'both' (default: both). "
+             "'both' builds the English site at the output root and the Chinese "
+             "site under zh/, each complete in its own language, with a switch "
+             "between them that changes the prose and not only the chrome",
     )
     args = parser.parse_args()
-    if args.lang not in LOCALES:
-        parser.error(f"--lang must be one of {', '.join(LOCALES)}")
+    if args.lang not in LOCALES and args.lang != "both":
+        parser.error(f"--lang must be one of {', '.join(LOCALES)} or both")
+    if args.lang == "both":
+        return build_bilingual(ROOT / args.out, args.base_url, args.site_url)
     return build(ROOT / args.out, args.base_url, args.site_url, args.lang)
 
 

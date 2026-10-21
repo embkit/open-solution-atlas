@@ -86,7 +86,9 @@ REQ_HEADING_RE = re.compile(r"^###\s+(FR-\d+[a-z]?)\s*[\u2014\u2013-]\s*([^\n]*)
 REQ_INLINE_RE = re.compile(r"^-\s*\*\*(FR-\d+[a-z]?)\*\*\s*(.*)$")
 NFR_HEADING_RE = re.compile(r"^##\s+(NFR-\d+[a-z]?)\s*[\u2014\u2013-]\s*([^\n]*)")
 NFR_INLINE_RE = re.compile(r"^-\s*\*\*(NFR-\d+[a-z]?)\b([^*]*)\*\*\s*(.*)$")
-ENFORCED_BY_RE = re.compile(r"\*\(enforced by (.*?)(?:;|\)\*)")
+ENFORCED_BY_RE = re.compile(
+    r"\*[(\uff08](?:enforced by|\u7531)\s*(.*?)(?:;|\uff1b)?\s*(?:\u5f3a\u5236\u6267\u884c)?[)\uff09]\*"
+)
 
 
 def _clean(text: str) -> str:
@@ -101,6 +103,32 @@ def _clean(text: str) -> str:
     text = re.sub(r"\*\*(.+?)\*\*", r"\1", text)
     text = re.sub(r"[*`]", "", text)
     return re.sub(r"\s+", " ", text).strip()
+
+
+def _list_items(text: str) -> list[str]:
+    """Every list item, with its continuation lines joined into one statement.
+
+    A bullet that wraps over several lines is still one statement, and a
+    parser that reads only its first line sees different text depending on
+    where the line happens to break. That is how the same requirement ends up
+    counted as a policy assumption in one language and not in the other: the
+    `(A)` marker lands on the first line only sometimes.
+    """
+    items: list[str] = []
+    current: list[str] = []
+    for line in text.splitlines():
+        if re.match(r"^\s*([-*+]|\d+\.)\s+", line):
+            if current:
+                items.append(" ".join(current))
+            current = [line.strip()]
+        elif current and line[:1] in (" ", "\t") and line.strip():
+            current.append(line.strip())
+        elif current:
+            items.append(" ".join(current))
+            current = []
+    if current:
+        items.append(" ".join(current))
+    return items
 
 
 def _row_cells(line: str) -> list[str]:
@@ -256,16 +284,24 @@ def _ears(block: str) -> tuple[str, str, str]:
     the prohibition, so it is split out rather than left buried in the middle
     of a sentence.
     """
-    when = re.search(r"\*\*WHEN\*\*\s*(.+?)(?=\n\s*-\s*(?:\*\*|\w)|\n\n|\Z)", block, re.DOTALL)
-    shall = re.search(r"\*\*THE SYSTEM SHALL\*\*\s*(.+?)(?=\n\s*-\s*(?:\*\*|\w)|\n\n|\Z)", block, re.DOTALL)
+    when = re.search(
+        r"\*\*(?:WHEN|\u5f53)\*\*\s*(.+?)(?=\n\s*-\s*(?:\*\*|\w)|\n\n|\Z)", block, re.DOTALL)
+    shall = re.search(
+        r"\*\*(?:THE SYSTEM SHALL|\u7cfb\u7edf\u5e94\u5f53)\*\*\s*(.+?)(?=\n\s*-\s*(?:\*\*|\w)|\n\n|\Z)",
+        block, re.DOTALL)
     shall_text = _clean(shall.group(1)) if shall else ""
     if not shall_text:
         # Convention 2 writes the whole statement inline, without the markers:
         # `- **FR-001** WHEN a subject is created, THE SYSTEM SHALL enforce …`.
-        inline = re.search(r"WHEN\b(.+?),\s*THE SYSTEM SHALL\b\s*(.+?)(?:\n|$)", block, re.DOTALL)
+        inline = re.search(
+            r"(?:WHEN|\u5f53)\b(.+?),\s*(?:THE SYSTEM SHALL|\u7cfb\u7edf\u5e94\u5f53)\b\s*(.+?)(?:\n|$)",
+            block, re.DOTALL,
+        )
         if inline:
             return _clean(inline.group(1)), _clean(inline.group(2)), ""
-    not_m = re.search(r"\bSHALL NOT\b\s*(.+)$", shall_text)
+    not_m = re.search(r"\b(?:SHALL NOT)\b\s*(.+)$", shall_text)
+    if not not_m:
+        not_m = re.search(r"\*\*(?:\u4e0d\u5f97|\u7981\u6b62)\*\*\s*(.+)$", shall_text)
     return (
         _clean(when.group(1)) if when else "",
         # The prohibition is rendered on its own line, so it is cut out of
@@ -284,7 +320,7 @@ def parse_requirements(text: str) -> list[dict]:
             continue
         rid, name = m.group(1), _clean(m.group(2))
         when, shall, shall_not = _ears(block)
-        traces = re.search(r"Traces:\s*(.+)", block)
+        traces = re.search(r"(?:Traces|\u8ffd\u6eaf)[\uff1a:]\s*(.+)", block)
         parsed[rid] = {
             "id": rid, "name": name, "when": when,
             "shall": shall, "shall_not": shall_not,
@@ -293,7 +329,7 @@ def parse_requirements(text: str) -> list[dict]:
     if parsed:
         return sorted(parsed.values(), key=lambda r: int(r["id"][3:].rstrip("a-z") or 0))
     # Convention 2: nothing heading-shaped, so look for the inline bullets.
-    for line in text.splitlines():
+    for line in _list_items(text):
         m = REQ_INLINE_RE.match(line)
         if not m:
             continue
@@ -319,10 +355,16 @@ def parse_nfrs(text: str) -> list[dict]:
         m = NFR_HEADING_RE.match("## " + block)
         if not m:
             continue
-        label = re.search(r"\*\*Target(\s*\(A\))?\*\*:?", block)
-        target = re.search(r"\*\*Target(?:\s*\(A\))?\*\*:?\s*(.+?)(?=\n\s*-\s*\*\*|\n\n|\Z)", block, re.DOTALL)
-        formula = re.search(r"\*\*Formula\*\*:?\s*(.+?)(?=\n\s*-\s*\*\*|\n\n|\Z)", block, re.DOTALL)
-        rationale = re.search(r"\*\*Rationale\*\*:?\s*(.+?)(?=\n\s*-\s*\*\*|\n\n|\Z)", block, re.DOTALL)
+        label = re.search(r"\*\*(?:Target|\u76ee\u6807(?:\u503c)?)(\s*\(A\))?\*\*:?", block)
+        target = re.search(
+            r"\*\*(?:Target|\u76ee\u6807(?:\u503c)?)(?:\s*\(A\))?\*\*:?\s*(.+?)(?=\n\s*-\s*\*\*|\n\n|\Z)",
+            block, re.DOTALL)
+        formula = re.search(
+            r"\*\*(?:Formula|\u516c\u5f0f)\*\*:?\s*(.+?)(?=\n\s*-\s*\*\*|\n\n|\Z)",
+            block, re.DOTALL)
+        rationale = re.search(
+            r"\*\*(?:Rationale|\u4f9d\u636e|\u7406\u7531)\*\*:?\s*(.+?)(?=\n\s*-\s*\*\*|\n\n|\Z)",
+            block, re.DOTALL)
         target_text = _clean(target.group(1)) if target else ""
         out.append({
             "id": m.group(1),
@@ -338,7 +380,7 @@ def parse_nfrs(text: str) -> list[dict]:
     if out:
         return sorted(out, key=lambda n: int(n["id"][4:].rstrip("a-z") or 0))
     # Convention 2: `- **NFR-001 (Topic)** statement`.
-    for line in text.splitlines():
+    for line in _list_items(text):
         m = NFR_INLINE_RE.match(line)
         if not m:
             continue
@@ -436,11 +478,26 @@ def parse_store_claimed(text: str) -> set[int]:
     """
     flat = _flat(text)
     m = re.search(
-        r"Constraints?\s+([^.;:]+?)\s+(?:are|is)\s+enforced\s+in\s+the\s+store", flat
+        r"Constraints?\s*(\d[^.;:]*?)\s+(?:are|is)\s+enforced\s+in\s+the\s+store",
+        flat,
     )
-    if not m:
-        return set()
-    return {int(n) for n in re.findall(r"\d+", m.group(1))}
+    if m:
+        return {int(n) for n in re.findall(r"\d+", m.group(1))}
+    # The Chinese claim reads like `约束 1、5、7 和 13 是在**存储层**而非应用程序
+    # 代码中**强制执行**的`: the emphasis markers, and the words between the
+    # subject and the verb, are part of the sentence. So the verb phrase is
+    # found first, and the enumeration is read from the clause in front of it.
+    for hit in re.finditer(
+        r"\u5b58\u50a8(?:\u5c42)?[^.;:\uff1b]{0,40}?\u5f3a\u5236\u6267\u884c", flat
+    ):
+        head = flat.rfind("\u7ea6\u675f", max(0, hit.start() - 160), hit.start())
+        if head < 0:
+            continue
+        clause = flat[head + 2:hit.start()]
+        numbers = re.findall(r"\d+", clause)
+        if numbers:
+            return {int(n) for n in numbers}
+    return set()
 
 
 def parse_constraints(text: str) -> list[dict]:
@@ -476,7 +533,9 @@ def parse_contexts(text: str) -> list[dict]:
         name = _clean(cells[0].replace("**", ""))
         if not name or len(name) > 40 or name.lower() in ("context", "name"):
             continue
-        owns = [o.strip() for o in re.split(r"[,/]", _clean(cells[2])) if o.strip()]
+        # `,` `/` and the Chinese `?` all separate owned aggregates: the
+        # Chinese table lists the same type names, only the separator differs.
+        owns = [o.strip() for o in re.split(r"[,/\u3001]", _clean(cells[2])) if o.strip()]
         # A context row owns CamelCase aggregates; a capability row does not.
         if not owns or not all(re.match(r"^[A-Z][A-Za-z0-9]+$", o) for o in owns):
             continue
@@ -488,7 +547,7 @@ def parse_contexts(text: str) -> list[dict]:
 # ADRs and the optional demo manifest
 # --------------------------------------------------------------------------- #
 
-def parse_adr(path: Path, pack_rel: str) -> dict | None:
+def parse_adr(path: Path, pack_rel: str, stem: str | None = None) -> dict | None:
     """An ADR file -> id, name, and the first sentence of its Decision.
 
     The Decision section is read rather than the status block, because the
@@ -502,7 +561,8 @@ def parse_adr(path: Path, pack_rel: str) -> dict | None:
     if not head:
         return None
     dec = re.search(
-        r"^##\s+Decision\s*\n+(.+?)(?:\n\n|^#)", text, re.MULTILINE | re.DOTALL
+        r"^##\s+(?:Decision|\u51b3\u7b56)\s*\n+(.+?)(?:\n\n|^#)",
+        text, re.MULTILINE | re.DOTALL,
     )
     decision = _clean(dec.group(1).strip()) if dec else ""
     return {
@@ -515,15 +575,20 @@ def parse_adr(path: Path, pack_rel: str) -> dict | None:
         # The rejected options are the half an implementer most needs, because
         # the point of an ADR is what was ruled out and why.
         "rejected": _rejected_options(text),
-        # kept so a prompt bundle can cite the source file by path
-        "slug": path.stem,
-        "url": doc_url(f"{pack_rel}/04-architecture/adr/{path.stem}.md"),
+        # kept so a prompt bundle can cite the source file by path. A
+        # translation carries the *original's* stem, so `0001-x.zh-CN.md`
+        # still points at `0001-x.html`.
+        "slug": stem or path.stem,
+        "url": doc_url(f"{pack_rel}/04-architecture/adr/{stem or path.stem}.md"),
     }
 
 
 def _rejected_options(text: str) -> list[str]:
     """The option headings from an ADR's `## Options considered` section."""
-    section = re.search(r"##\s+Options considered\n(.*?)(?:\n##\s|\Z)", text, re.DOTALL)
+    section = re.search(
+        r"##\s+(?:Options considered|\u5907\u9009\u65b9\u6848)\n(.*?)(?:\n##\s|\Z)",
+        text, re.DOTALL,
+    )
     if not section:
         return []
     return [
@@ -566,6 +631,57 @@ def parse_demo(pack_dir: Path) -> dict | None:
 # Pack extraction
 # --------------------------------------------------------------------------- #
 
+# --------------------------------------------------------------------------- #
+# Localisation
+# --------------------------------------------------------------------------- #
+
+#: A locale is a suffix on the *file name*, not a directory: a Chinese
+#: translation of ``01-business/business-rules.md`` is
+#: ``01-business/business-rules.zh-CN.md``, sitting beside the original.
+#:
+#: Siblings rather than a parallel tree for one reason: the URL space stays
+#: identical. Both files render to ``business-rules.html``, so a relative link
+#: written in the translation resolves to exactly the page a Chinese reader
+#: wants, and no link rewriting is needed anywhere in the build.
+LOCALE_SUFFIX = {"zh-CN": ".zh-CN.md"}
+
+
+def locale_suffix(locale: str | None) -> str:
+    """The file-name suffix for `locale`, or "" when it has none."""
+    if not locale:
+        return ""
+    return LOCALE_SUFFIX.get(locale, f".{locale}.md")
+
+
+def is_translation(path: Path) -> bool:
+    """True when the file is a translation of another file, not a page.
+
+    A translation carries a locale tag in its file name:
+    ``0001-choice.zh-CN.md``. It is rendered *instead of* the file it
+    translates, at that file's URL, so it must never be counted as a
+    separate artifact.
+    """
+    if path.suffix != ".md":
+        return False
+    stem = path.stem
+    base, _, tag = stem.rpartition(".")
+    return bool(base) and bool(re.match(r"^[a-z]{2}(?:-[A-Z]{2})?$", tag))
+
+
+def localized_path(path: Path, locale: str | None) -> Path:
+    """`path` in `locale`, falling back to the original when untranslated.
+
+    The fallback is the point: a half-translated pack renders its English
+    chapters rather than disappearing, and the build says so on the page.
+    """
+    suffix = locale_suffix(locale)
+    if suffix and path.suffix == ".md":
+        alt = path.with_name(path.stem + suffix)
+        if alt.is_file():
+            return alt
+    return path
+
+
 SECTIONS = (
     ("capabilities", "01-business/capability-map.md"),
     ("rules", "01-business/business-rules.md"),
@@ -576,8 +692,8 @@ SECTIONS = (
 )
 
 
-def _read(pack_dir: Path, rel: str) -> str:
-    path = pack_dir / rel
+def _read(pack_dir: Path, rel: str, locale: str | None = None) -> str:
+    path = localized_path(pack_dir / rel, locale)
     if not path.is_file():
         return ""
     try:
@@ -586,8 +702,13 @@ def _read(pack_dir: Path, rel: str) -> str:
         return ""
 
 
-def extract(pack_dir: Path) -> dict | None:
-    """One pack directory -> its index entry, or None if it is not a pack."""
+def extract(pack_dir: Path, locale: str | None = None) -> dict | None:
+    """One pack directory -> its index entry, or None if it is not a pack.
+
+    `locale` selects the translated files where they exist. The English
+    original stays the fallback, and a chapter that has no translation yet
+    still appears in the index rather than vanishing from the Chinese build.
+    """
     manifest_path = pack_dir / "manifest.yaml"
     if not manifest_path.is_file():
         return None
@@ -602,22 +723,29 @@ def extract(pack_dir: Path) -> dict | None:
     pack_rel = pack_dir.relative_to(ROOT).as_posix()
 
     parsed: dict[str, list] = {
-        "capabilities": parse_capabilities(_read(pack_dir, "01-business/capability-map.md")),
-        "rules": parse_rules(_read(pack_dir, "01-business/business-rules.md")),
-        "requirements": parse_requirements(_read(pack_dir, "02-requirements/functional.md")),
-        "nfrs": parse_nfrs(_read(pack_dir, "02-requirements/non-functional.md")),
-        "controls": parse_controls(_read(pack_dir, "02-requirements/compliance.md")),
-        "constraints": parse_constraints(_read(pack_dir, "05-data/logical-data-model.md")),
+        "capabilities": parse_capabilities(_read(pack_dir, "01-business/capability-map.md", locale)),
+        "rules": parse_rules(_read(pack_dir, "01-business/business-rules.md", locale)),
+        "requirements": parse_requirements(_read(pack_dir, "02-requirements/functional.md", locale)),
+        "nfrs": parse_nfrs(_read(pack_dir, "02-requirements/non-functional.md", locale)),
+        "controls": parse_controls(_read(pack_dir, "02-requirements/compliance.md", locale)),
+        "constraints": parse_constraints(_read(pack_dir, "05-data/logical-data-model.md", locale)),
     }
-    contexts = parse_contexts(_read(pack_dir, "03-domain/domain-model.md"))
+    contexts = parse_contexts(_read(pack_dir, "03-domain/domain-model.md", locale))
 
     adr_dir = pack_dir / "04-architecture" / "adr"
-    adrs = [a for a in (parse_adr(p, pack_rel) for p in sorted(adr_dir.glob("*.md"))) if a]
+    adrs = []
+    for p in sorted(adr_dir.glob("*.md")):
+        if is_translation(p):
+            continue
+        src = localized_path(p, locale)
+        entry = parse_adr(src, pack_rel, stem=p.stem)
+        if entry:
+            adrs.append(entry)
 
     # Extraction quality is recorded per section rather than assumed.
     sections: dict[str, dict] = {}
     for key, rel in SECTIONS:
-        text = _read(pack_dir, rel)
+        text = _read(pack_dir, rel, locale)
         sections[key] = {
             "status": _status(len(parsed[key]), text),
             "count": len(parsed[key]),
@@ -662,16 +790,17 @@ def extract(pack_dir: Path) -> dict | None:
     }
 
 
-def build_index() -> dict:
+def build_index(locale: str | None = None) -> dict:
     """Extract every pack, then add the cross-pack lookups."""
     packs = [
         entry
         for p in sorted(PACKS_DIR.glob("*/*/manifest.yaml"))
-        if (entry := extract(p.parent)) is not None
+        if (entry := extract(p.parent, locale)) is not None
     ]
     packs.sort(key=lambda p: (p["domain"], p["slug"]))
     return {
         "generated_by": "tools/pack_index.py",
+        "locale": locale or "en",
         "pack_count": len(packs),
         "packs": packs,
         "totals": {

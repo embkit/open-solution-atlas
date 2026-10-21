@@ -59,3 +59,8 @@ def build_site() -> ModuleType:
 @pytest.fixture(scope="session")
 def i18n() -> ModuleType:
     return _load("i18n")
+
+
+@pytest.fixture(scope="session")
+def check_translations() -> ModuleType:
+    return _load("check-translations")

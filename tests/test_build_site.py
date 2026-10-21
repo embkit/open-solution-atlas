@@ -115,10 +115,50 @@ def test_local_build_omits_origin_metadata(build_site, tmp_path):
 def test_progressive_enhancement_preserved(built_site):
     """Cards are server-rendered; JS only adds search on top."""
     index_html = _html_index(built_site)
-    assert 'class="cards"' in index_html
+    assert 'class="cardwall"' in index_html
     assert "card-link" in index_html
+    # The catalog is grouped into shelves by domain, and the grouping is
+    # markup, not a script's output: with JS off the shelves still stand.
+    assert index_html.count('class="domgrp"') >= 8
+    assert 'class="domhead"' in index_html and 'class="domcards"' in index_html
     # The search index is data, not markup — its absence cannot break browsing.
     assert (built_site / "search-index.json").is_file()
+
+
+def test_the_inline_prompt_is_only_the_prompt(built_site):
+    """Nothing but the prompt may live inside the textarea.
+
+    A hint span used to be nested there; a textarea's content is raw text, so
+    its markup became the first line of the preview *and* of every prompt the
+    copy button handed out, while aria-describedby pointed at an element the
+    parser never created.
+    """
+    html_text = _pack_overview(built_site, "workflow-bpm")
+    start = html_text.index('<textarea class="prm-text" id="prm-implement"')
+    body = html_text[html_text.index(">", start) + 1:html_text.index("</textarea>", start)]
+    assert "<" not in body, f"markup leaked into the inline prompt: {body[:120]!r}"
+    # the hint exists, outside the textarea, where describedby can reach it
+    hint = html_text.index('id="prm-implement-hint"')
+    assert hint < start, "the hint must be a sibling, not a child of the textarea"
+    assert 'aria-describedby="prm-implement-hint"' in html_text
+
+
+def test_a_pasted_search_resolves_without_another_keystroke(built_site):
+    """A single input event must carry a query all the way to its hits.
+
+    The handler used to render *before* starting the load, so the first
+    render saw "not loaded and not loading" and printed the permanent
+    "could not be loaded" message; and nothing re-rendered when the index
+    landed, so the query stayed stuck on it until the visitor typed again.
+    """
+    js = (built_site / "assets" / "app.js").read_text(encoding="utf-8")
+    start = js.index('q.addEventListener("input"')
+    handler = js[start:js.index("});", start)]
+    assert handler.index("loadIndex()") < handler.index("render();"), \
+        "the load must start before the first render, or the first render lies"
+    # both outcomes of the load re-render the query that waited for it
+    assert js.count("if (q.value.trim()) render();") >= 2
+    assert "indexFailed" in js, "a failed load must not read as one in flight"
 
 
 def test_pack_chapter_nav_is_collapsible(built_site):
@@ -372,7 +412,7 @@ def _pack_overview(out: Path, slug: str) -> str:
 
 def test_pack_overview_renders_the_spec_panel(built_site):
     html_text = _pack_overview(built_site, "workflow-bpm")
-    assert '<section class="spec"' in html_text
+    assert '<section class="spec tabp tabp-spec" id="spec">' in html_text
     # counts a reader can scan, each linking to its section
     assert html_text.count('class="stat"') >= 6
     assert 'id="sec-adr"' in html_text and 'id="sec-req"' in html_text and 'id="sec-con"' in html_text
@@ -386,13 +426,87 @@ def test_spec_panel_is_server_rendered_not_js_built(built_site):
         assert f"spec-{ident}" in html_text, f"{ident} missing from rendered HTML"
 
 
-def test_view_switch_is_usable_without_javascript(built_site):
+def test_tab_bar_is_usable_without_javascript(built_site):
+    """The overview page's four destinations are radios and labels.
+
+    No script is involved in switching: clicking a label is clicking a radio,
+    and the inputs are *siblings* of the panels so CSS alone shows one and
+    hides the rest. That is the same idiom the two-way view switch used — a
+    page serving four readers at once needed four destinations, not a toggle.
+    """
     html_text = _pack_overview(built_site, "workflow-bpm")
-    assert 'id="vs-doc"' in html_text and 'id="vs-spec"' in html_text
-    # The radios are siblings of the two views so CSS alone can toggle them.
-    doc = html_text.find('id="vs-spec"')
+    for tab in ("pt-overview", "pt-spec", "pt-demo", "pt-prompts"):
+        assert f'id="{tab}"' in html_text, f"missing tab {tab}"
+    assert html_text.count('name="pt"') == 4
+    assert html_text.count(" checked>") == 1, "exactly one tab may start open"
+    assert 'id="pt-overview" checked' in html_text
+    # the radios precede the panels they control
+    doc = html_text.find('id="pt-spec"')
     assert html_text.find('<div class="shell">', doc) > doc
-    assert html_text.find('<section class="spec"', doc) > doc
+    assert html_text.find('<section class="spec', doc) > doc
+    # and every panel is tagged with the tab that reveals it
+    for panel in (
+        'class="view-doc tabp tabp-overview',
+        '<section class="spec tabp tabp-spec"',
+        '<section class="demopanel tabp tabp-demo"',
+        '<section class="prompts tabp tabp-prompts"',
+    ):
+        assert panel in html_text, f"panel not tagged for its tab: {panel}"
+
+
+def test_the_demo_is_a_tab_and_states_what_it_demonstrates(built_site):
+    """The demo was a button inside the spec header — the page's most
+    valuable asset, one scroll from the bottom. It is now a destination.
+
+    What the panel claims the demo demonstrates is the demo manifest's own
+    `demonstrates` list, the same list `check-ids.py` validates, so the panel
+    cannot advertise a connection the pack does not have. And the standing
+    rule is printed where the reader is about to click.
+    """
+    data = json.loads((built_site / "data" / "pack-index.json").read_text(encoding="utf-8"))
+    entry = next(p for p in data["packs"] if p["slug"] == "workflow-bpm")
+    assert entry.get("demo"), "this pack is expected to ship a demo"
+    html_text = _pack_overview(built_site, "workflow-bpm")
+    assert '<section class="demopanel tabp tabp-demo" id="demo">' in html_text
+    for ident in entry["demo"]["demonstrates"]:
+        assert f"<code>{ident}</code>" in html_text, f"{ident} not shown on the demo panel"
+    assert "raises no pack" in html_text
+    # the button lives in the demo panel now, and only there
+    assert html_text.count('class="demobtn"') == 1
+
+
+def test_a_pack_without_a_demo_gets_no_demo_tab(built_site):
+    """A tab whose panel is empty is a promise the pack has not kept."""
+    data = json.loads((built_site / "data" / "pack-index.json").read_text(encoding="utf-8"))
+    for p in data["packs"]:
+        text = (built_site / p["url"]).read_text(encoding="utf-8")
+        if p.get("demo"):
+            assert 'id="pt-demo"' in text, f"{p['slug']} ships a demo but offers no tab"
+        else:
+            assert 'id="pt-demo"' not in text, f"{p['slug']} offers a demo tab with nothing in it"
+
+
+def test_catalog_groups_packs_into_named_shelves(built_site):
+    """Seventeen cards in one undifferentiated grid made a reader read every
+    title to find the one industry they came for. Each domain is now a shelf:
+    named in the reader's language, counted, and given one line saying what
+    kind of system lives on it.
+    """
+    index_html = _html_index(built_site)
+    data = json.loads((built_site / "data" / "pack-index.json").read_text(encoding="utf-8"))
+    per_domain: dict[str, int] = {}
+    for p in data["packs"]:
+        per_domain[p["domain"]] = per_domain.get(p["domain"], 0) + 1
+    shelves = dict(re.findall(
+        r'<section class="domgrp" data-domain="([^"]+)">.*?'
+        r'<span class="dom-n">(\d+)</span>', index_html, re.S))
+    assert {d: int(n) for d, n in shelves.items()} == per_domain
+    for domain in per_domain:
+        assert f'data-i18n="domain.{domain}"' in index_html, f"shelf unnamed: {domain}"
+        assert f'data-i18n="domain.{domain}.desc"' in index_html, f"shelf undescribed: {domain}"
+    # the cards themselves still carry the raw slug: the filter reads it, and
+    # a filter's value is data however the shelf heading is translated.
+    assert 'data-domain="data-ai"' in index_html
 
 
 def test_structured_index_is_emitted_for_every_pack(built_site):
@@ -440,16 +554,16 @@ def test_store_enforced_constraints_are_flagged(built_site):
 
 
 def test_non_overview_pages_do_not_get_a_spec_toggle(built_site):
-    """The switch appears where there is something to switch to."""
+    """The tab bar appears where there is something to switch to."""
     html_text = (built_site / "packs" / "horizontal" / "workflow-bpm" / "AGENTS.html").read_text(
         encoding="utf-8"
     )
-    assert 'id="vs-spec"' not in html_text
+    assert 'id="pt-spec"' not in html_text
 
 
 def test_prose_view_is_still_the_default(built_site):
     html_text = _pack_overview(built_site, "workflow-bpm")
-    assert 'id="vs-doc" checked' in html_text
+    assert 'id="pt-overview" checked' in html_text
 
 
 # --------------------------------------------------------------------------- #

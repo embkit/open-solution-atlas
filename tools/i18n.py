@@ -58,6 +58,16 @@ STRINGS: dict[str, dict[str, str]] = {
     "lang.en": {"en": "EN", "zh": "EN"},
     "lang.zh": {"en": "中文", "zh": "中文"},
 
+    # ---- translation status -------------------------------------------- #
+    # A Chinese build renders the translated chapter where one exists and the
+    # English original where one does not. The reader is told which: a page
+    # that quietly mixes two languages is worse than either one alone.
+    "trans.banner": {
+        "en": "No Chinese translation of this page yet; the English original "
+              "follows.",
+        "zh": "本页尚无中文译本，以下为英文原文。",
+    },
+
     # ---- footer ---------------------------------------------------------- #
     # Every value carries its own spacing: the template joins these pieces with
     # no whitespace of its own where the two languages need different spacing,
@@ -80,6 +90,22 @@ STRINGS: dict[str, dict[str, str]] = {
     "footer.trust.tail": {"en": ".", "zh": "。"},
 
     # ---- catalog --------------------------------------------------------- #
+    "dir.contents": {
+        "en": "Contents of {path}/ in Open Solution Atlas.",
+        "zh": "Open Solution Atlas \u4e2d {path}/ \u7684\u76ee\u5f55\u5185\u5bb9\u3002",
+    },
+    "catalog.page.title": {
+        "en": "Open Solution Atlas \u2014 blueprints for real enterprise systems",
+        "zh": "Open Solution Atlas \u2014\u2014 \u9762\u5411\u771f\u5b9e\u4f01\u4e1a\u7cfb\u7edf\u7684\u84dd\u56fe\u5e93",
+    },
+    "catalog.page.desc": {
+        "en": "Seventeen machine-readable blueprints for real enterprise "
+              "systems, each with traced identifiers, integrity constraints "
+              "and prompts assembled from the pack itself.",
+        "zh": "\u5341\u4e03\u4e2a\u53ef\u673a\u5668\u8bfb\u53d6\u7684\u771f\u5b9e\u4f01\u4e1a\u7cfb\u7edf\u84dd\u56fe\uff0c"
+              "\u6bcf\u4e2a\u90fd\u5e26\u6709\u53ef\u8ffd\u6eaf\u7684\u7f16\u53f7\u3001\u5b8c\u6574\u6027\u7ea6\u675f\uff0c"
+              "\u4ee5\u53ca\u7531\u65b9\u6848\u5305\u81ea\u8eab\u62fc\u88c5\u7684\u63d0\u793a\u8bcd\u3002",
+    },
     "catalog.hero.title1": {
         "en": "Production-grade blueprints",
         "zh": "生产级蓝图",
@@ -171,12 +197,79 @@ STRINGS: dict[str, dict[str, str]] = {
     },
     "notfound.back": {"en": "← Back to the catalog", "zh": "← 返回目录"},
 
+    # ---- the taxonomy's shelves ------------------------------------------ #
+    # A domain is a path segment, and a path is data — but a shelf heading is
+    # chrome: a reader must be able to read the name of the shelf the cards
+    # stand on, and the one line saying what kind of system lives there.
+    "domain.data-ai": {"en": "Data & AI", "zh": "数据与智能平台"},
+    "domain.data-ai.desc": {
+        "en": "Warehouses, lakes, analytics, and the machine-learning lifecycle.",
+        "zh": "数据仓库、数据湖、数据分析，以及机器学习的全生命周期。",
+    },
+    "domain.energy-utilities": {"en": "Energy & utilities", "zh": "能源电力"},
+    "domain.energy-utilities.desc": {
+        "en": "Power marketing and the customer information system behind the meter.",
+        "zh": "电力营销，以及电表背后的客户信息系统。",
+    },
+    "domain.government-public": {"en": "Government & public", "zh": "政务公共"},
+    "domain.government-public.desc": {
+        "en": "Exchange between agencies, and the front door citizens open.",
+        "zh": "部门之间的数据交换，以及市民推开的那扇门。",
+    },
+    "domain.healthcare": {"en": "Healthcare", "zh": "医疗健康"},
+    "domain.healthcare.desc": {
+        "en": "The hospital information system and the record at its centre.",
+        "zh": "医院信息系统，以及处于中心位置的病历。",
+    },
+    "domain.horizontal": {"en": "Horizontal platforms", "zh": "通用能力平台"},
+    "domain.horizontal.desc": {
+        "en": "Platforms the whole organisation stands on, whatever it sells.",
+        "zh": "整个组织都要站立其上的平台，无论它卖什么。",
+    },
+    "domain.manufacturing": {"en": "Manufacturing & logistics", "zh": "制造工业"},
+    "domain.manufacturing.desc": {
+        "en": "The shop floor, the warehouse, and the road between them.",
+        "zh": "车间、仓库，以及连通两者的那条路。",
+    },
+    "domain.retail-commerce": {"en": "Retail & commerce", "zh": "零售电商"},
+    "domain.retail-commerce.desc": {
+        "en": "Orders, and the channels they arrive from.",
+        "zh": "订单，以及订单到来的各个渠道。",
+    },
+    "domain.telecom": {"en": "Telecom", "zh": "通信"},
+    "domain.telecom.desc": {
+        "en": "Business and operations support for a carrier: charging, billing, service.",
+        "zh": "运营商的业务与运营支撑：计费、账单、服务。",
+    },
+
     # ---- pack chrome ----------------------------------------------------- #
     "side.overview": {"en": "overview", "zh": "概览"},
     "side.standard": {"en": "pack standard", "zh": "方案包规范"},
-    "view.doc": {"en": "Document view", "zh": "文档视图"},
-    "view.spec": {"en": "Structured view", "zh": "结构视图"},
+    # The overview page's tab bar. One page serves several readers — the one
+    # reading the architecture, the one looking up an identifier, the one
+    # taking the demo, the one copying a prompt — and a single scroll mixed
+    # all four together with no place to start.
+    "tab.overview": {"en": "Overview", "zh": "概览"},
+    "tab.spec": {"en": "Spec", "zh": "规范"},
+    "tab.demo": {"en": "Demo", "zh": "演示"},
+    "tab.prompts": {"en": "Prompts", "zh": "提示词"},
     "view.spec.count": {"en": " · {n} IDs", "zh": " · {n} 条标识"},
+
+    # ---- the demo, as a destination -------------------------------------- #
+    "demo.head": {"en": "Interactive demo", "zh": "交互演示"},
+    "demo.blurb": {
+        "en": (
+            "A working page for this pack, written by hand from its own "
+            "material so the system can be seen rather than described."
+        ),
+        "zh": "为本方案包手工编写的工作页面，取材于包内内容 —— 让系统被看见，而不只是被描述。",
+    },
+    "demo.open": {"en": "Open the demo", "zh": "打开演示"},
+    "demo.shows": {"en": "It demonstrates", "zh": "演示覆盖"},
+    "demo.note": {
+        "en": "A demo is presentation. It raises no pack’s verification.",
+        "zh": "演示只是呈现，不会提升任何方案包的验证等级。",
+    },
 
     # ---- structured spec panel ------------------------------------------- #
     "spec.head": {
@@ -228,7 +321,6 @@ STRINGS: dict[str, dict[str, str]] = {
         "en": "the data model claims this is enforced in the store",
         "zh": "数据模型声称此项由存储强制执行",
     },
-    "spec.demo": {"en": "Open interactive demo", "zh": "打开交互 demo"},
 
     # ---- prompt bundles -------------------------------------------------- #
     "prompts.heading": {
@@ -380,7 +472,12 @@ I18N_JS_TEMPLATE = r"""/* Generated by tools/i18n.py from the site's string cata
  *
  * Everything degrades: without this script the page is still fully readable
  * in the build's language, and without a stored preference the browser's own
- * language decides. */
+ * language decides.
+ *
+ * When the site was built with both languages (the English tree at the root
+ * and the Chinese tree under zh/), the switch is a link to the same page in
+ * the other tree, and this script follows it - prose and chrome change
+ * together, which is the only way a page can be in one language. */
 
 (function () {
   "use strict";
@@ -421,6 +518,31 @@ I18N_JS_TEMPLATE = r"""/* Generated by tools/i18n.py from the site's string cata
 
   function htmlLang(value) {
     return value === "zh" ? "zh-CN" : "en";
+  }
+
+  /* The counterpart of this page in the other language, if the site was
+   * built with both trees. The build writes it into the body, because only
+   * the page knows its own path. An empty value means "there is no other
+   * language here" - a single-language build, where the switch can only
+   * repaint the chrome. */
+  function altUrl(lang) {
+    var body = document.body;
+    if (!body) return "";
+    var value = body.getAttribute("data-alt-" + lang);
+    return value && value.trim() ? value.trim() : "";
+  }
+
+  function buildLang() {
+    var lang = document.documentElement.getAttribute("lang") || "";
+    return lang.indexOf("zh") === 0 ? "zh" : "en";
+  }
+
+  function remember(lang) {
+    try {
+      window.localStorage.setItem(STORE_KEY, lang);
+    } catch (e) {
+      /* private mode and file:// origins: the choice simply does not persist. */
+    }
   }
 
   function apply() {
@@ -477,7 +599,22 @@ I18N_JS_TEMPLATE = r"""/* Generated by tools/i18n.py from the site's string cata
     }
   };
 
-  function ready() { apply(); }
+  function ready() {
+    /* A bilingual site has a page in the reader's language; the prose cannot
+     * be repainted, only the chrome, so the reader is taken there instead.
+     * Repainting the chrome alone is what produces a Chinese navigation over
+     * English prose. The fragment rides along: a deep link like #spec is a
+     * destination, and a redirect that drops it hands the reader the page
+     * they asked for without the place they asked for on it. */
+    var preferred = initialLocale();
+    var target = preferred === buildLang() ? "" : altUrl(preferred);
+    if (target) {
+      remember(preferred);
+      window.location.replace(target + window.location.hash);
+      return;
+    }
+    apply();
+  }
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", ready);
   } else {
@@ -492,7 +629,17 @@ I18N_JS_TEMPLATE = r"""/* Generated by tools/i18n.py from the site's string cata
       ? event.target.closest("[data-locale]")
       : null;
     if (!button) return;
-    window.OSA_I18N.setLocale(button.getAttribute("data-locale"));
+    var next = button.getAttribute("data-locale");
+    var target = altUrl(next);
+    if (target) {
+      remember(next);
+      // The twin page is built from the same tree, so its anchors are the
+      // same anchors: switching language must not cost the reader their
+      // place on the page either.
+      window.location.href = target + window.location.hash;
+      return;
+    }
+    window.OSA_I18N.setLocale(next);
   });
 })();
 """

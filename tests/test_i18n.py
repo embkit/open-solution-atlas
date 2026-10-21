@@ -93,6 +93,11 @@ def test_generated_runtime_is_deterministic_and_complete(i18n):
     match = re.search(r"var STRINGS = (\{.*?\});\n", js, re.DOTALL)
     assert match, "the runtime must declare its dictionary"
     assert json.loads(match.group(1)) == i18n.dictionary()
+    # Both cross-language navigations carry the fragment. A deep link like
+    # #spec names a place on the page; a redirect that rebuilds the URL and
+    # drops it lands the reader on the right page in the wrong place.
+    assert "location.replace(target + window.location.hash)" in js
+    assert "location.href = target + window.location.hash" in js
 
 
 # --------------------------------------------------------------------------- #
@@ -105,6 +110,19 @@ def i18n_site(build_site, tmp_path_factory) -> Path:
     """The real repository built once, in English, for the chrome assertions."""
     out = tmp_path_factory.mktemp("i18n-site")
     assert build_site.build(out, "/", "", "en") == 0
+    return out
+
+
+@pytest.fixture(scope="module")
+def zh_i18n_site(build_site, tmp_path_factory) -> Path:
+    """The same repository built in Chinese.
+
+    A key that only the Chinese build renders (the translation-fallback
+    notice) is referenced by the site, not dead vocabulary ? so the scan for
+    dead keys has to look at both builds.
+    """
+    out = tmp_path_factory.mktemp("zh-i18n-site")
+    assert build_site.build(out, "/", "", "zh") == 0
     return out
 
 
@@ -168,7 +186,7 @@ def test_the_runtime_asset_is_emitted_and_parses(i18n_site):
     assert data["nav.catalog"]["zh"] == "目录"
 
 
-def test_every_key_is_referenced_somewhere(i18n_site, i18n, build_site):
+def test_every_key_is_referenced_somewhere(i18n_site, zh_i18n_site, i18n, build_site):
     """A key nothing references is dead vocabulary.
 
     The catalog is the site's glossary, and an entry nobody reads is a claim
@@ -178,12 +196,22 @@ def test_every_key_is_referenced_somewhere(i18n_site, i18n, build_site):
     server never sees.
     """
     referenced: set[str] = set()
-    for page in _pages(i18n_site):
-        referenced |= set(I18N_MARKERS.findall(page.read_text(encoding="utf-8")))
+    for site in (i18n_site, zh_i18n_site):
+        for page in _pages(site):
+            referenced |= set(I18N_MARKERS.findall(page.read_text(encoding="utf-8")))
     assets = Path(__file__).resolve().parent.parent / "tools" / "site-assets"
     for name in ("app.js", "prompt-copy.js"):
         text = (assets / name).read_text(encoding="utf-8")
         referenced |= set(re.findall(r'"([a-z][a-z0-9._]*)"', text))
+    # A key the server-rendered templates use is referenced too: the build
+    # writes it into the page directly - a <title>, a <meta description> -
+    # where there is no element to carry a `data-i18n` marker.
+    build = (Path(__file__).resolve().parent.parent / "tools" / "build-site.py")
+    source = build.read_text(encoding="utf-8")
+    referenced |= set(re.findall(r'_t\(\s*"([^"]+)"', source))
+    referenced |= set(re.findall(r'_ia\(\s*"([^"]+)"', source))
+    referenced |= set(re.findall(r'_span\(\s*"([^"]+)"', source))
+    referenced |= set(re.findall(r'_iaa\(\s*"[^"]+"\s*,\s*"([^"]+)"', source))
     # The enum tables reference their keys by construction: an L4 pack cannot
     # exist today, but the pill must not fall back to a raw "L4" when one is
     # promoted, so the vocabulary is complete even though the markup is not.
@@ -203,11 +231,10 @@ def test_the_switch_marks_exactly_one_language_pressed(i18n_site, build_site):
         )
 
 
-def test_chinese_build_renders_chinese_chrome(build_site, tmp_path, i18n_site):
+def test_chinese_build_renders_chinese_chrome(zh_i18n_site, i18n_site):
     """The other half of the switch: the build's own language argument must
     actually reach every template, not only `<html lang>`."""
-    out = tmp_path / "zh-site"
-    assert build_site.build(out, "/", "", "zh") == 0
+    out = zh_i18n_site
     index = (out / "index.html").read_text(encoding="utf-8")
     assert '<html lang="zh-CN">' in index
     assert "生产级蓝图" in index, "the catalog hero must follow --lang zh"
@@ -215,7 +242,7 @@ def test_chinese_build_renders_chinese_chrome(build_site, tmp_path, i18n_site):
 
     def spec_page(site):
         pages = [p for p in site.rglob("index.html")
-                 if 'class="spec"' in p.read_text(encoding="utf-8")]
+                 if 'class="spec tabp tabp-spec"' in p.read_text(encoding="utf-8")]
         assert pages, "a pack overview with a structured panel must exist"
         return pages[0].read_text(encoding="utf-8")
 
@@ -224,6 +251,14 @@ def test_chinese_build_renders_chinese_chrome(build_site, tmp_path, i18n_site):
     assert "规格面板" in zh_spec, "the spec panel must follow --lang zh"
     assert "规格面板" not in en_spec, "the English build must not carry it"
     assert "被引用：" in zh_spec and "Referenced by:" in en_spec
+    # the tab bar and the demo panel are chrome, and they follow the build too
+    assert 'data-i18n="tab.overview">概览' in zh_spec
+    assert 'data-i18n="tab.overview">Overview' in en_spec
+    assert 'data-i18n="demo.head">交互演示' in zh_spec
+    assert 'data-i18n="demo.head">Interactive demo' in en_spec
+    # and the catalog's shelf headings are chrome as well
+    assert "数据与智能平台" in index
+    assert "Warehouses, lakes" not in index
 
 
 def test_unknown_language_fails_the_build(build_site, tmp_path):

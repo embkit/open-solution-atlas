@@ -168,6 +168,18 @@ evidence: []                              # [{type, ref, note}] type:
   locale with no such file is a false claim and `tools/validate-packs.py`
   rejects it. Full translation is incremental; leaving the list empty (`[]`)
   while key assets are bilingual is honest and expected.
+- **A translation is a sibling, not a parallel tree**: the Chinese version of
+  `01-business/business-rules.md` is `01-business/business-rules.zh-CN.md`,
+  beside the original. The URL space is therefore identical in both languages,
+  so a relative link written in a translation resolves to the page a Chinese
+  reader wants, and no link rewriting is needed anywhere in the build. The
+  Chinese build renders the sibling *in place of* the original, at the
+  original's URL; a chapter with no translation yet renders the English
+  original and says so on the page.
+- **Declaring a locale means the whole pack is translated**: `translations:
+  [zh-CN]` is a claim that every translatable file has a `.zh-CN.md` sibling,
+  and `tools/validate-packs.py` checks exactly that. A half-translated pack
+  declares nothing, because the honest claim is `[]`.
 
 ## 6. Level checklists
 
