@@ -6,6 +6,10 @@ releases (individual packs carry their own `version` in `manifest.yaml`).
 
 ## [Unreleased]
 
+Nothing yet.
+
+## [0.5.0] — 2026-10-21
+
 ### Changed — the reading body is 15px, and the ladder moved with it
 
 The contract's type scale was reverse-engineered from a reference image whose
