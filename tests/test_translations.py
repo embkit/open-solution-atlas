@@ -87,6 +87,29 @@ def test_code_blocks_are_not_mistaken_for_untranslated_prose(check_translations,
     assert check_translations.compare(source, translation) == []
 
 
+def test_a_multiline_html_comment_is_not_prose(check_translations, tmp_path):
+    """A comment that spans lines is comment on every line it spans.
+
+    A line-wise pattern cannot see that at all - `.` does not cross a
+    newline - so the checker tracks the comment as state, the way it
+    already tracks a code fence.
+    """
+    body = "# R\n\n<!-- This note is kept in English.\nIt spans two lines.\n-->\n\n\u6b63\u6587\u3002\n"
+    source = _write(tmp_path, "h.md", body)
+    translation = _write(tmp_path, "h.zh-CN.md", body)
+    assert check_translations.compare(source, translation) == []
+
+
+def test_prose_after_a_multiline_comment_is_still_checked(check_translations, tmp_path):
+    source = _write(tmp_path, "i.md", "# R\n\n<!-- note\nstill the note\n-->\n\n\u6b63\u6587\u3002\n")
+    translation = _write(
+        tmp_path, "i.zh-CN.md",
+        "# R\n\n<!-- note\nstill the note\n-->\n\nThe system shall enforce this rule.\n",
+    )
+    problems = check_translations.compare(source, translation)
+    assert any("not translated" in p for p in problems), problems
+
+
 # --------------------------------------------------------------------------- #
 # The corpus itself
 # --------------------------------------------------------------------------- #

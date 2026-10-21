@@ -44,10 +44,12 @@ ID_RE = re.compile(r"\b((?:CAP|BR|FR|NFR|CTL|ADR|AC|SM|T|P|I|F|C|BC|E)-\d+[a-z]?
 #: distinguishes "prose that was not translated" from a product name, a
 #: regulation id, or a file path.
 PROSE_RE = re.compile(r"(?:[A-Za-z][A-Za-z'-]*[ ,.]){4,}[A-Za-z]")
-#: Lines that are structure rather than prose.
+#: Lines that are structure rather than prose. HTML comments are structure
+#: too, but they have no line of their own - one opens wherever it opens and
+#: closes on the same line or a later one - so they are tracked as state in
+#: ``untranslated_lines`` rather than matched here.
 FENCE_RE = re.compile(r"^\s*```")
 TABLE_SEP_RE = re.compile(r"^\s*\|[\s:|-]+\|\s*$")
-HTML_COMMENT_RE = re.compile(r"^\s*<!--.*-->\s*$")
 #: A link whose text is a path, a url or a bare identifier.
 ONLY_LINK_RE = re.compile(r"^\s*\[[^\]]*\]\([^)]*\)\s*$")
 
@@ -109,6 +111,7 @@ def untranslated_lines(text: str) -> list[tuple[int, str]]:
     """Lines that still read as English prose."""
     hits: list[tuple[int, str]] = []
     in_code = False
+    in_comment = False
     for number, line in enumerate(text.splitlines(), start=1):
         if FENCE_RE.match(line):
             in_code = not in_code
@@ -118,7 +121,19 @@ def untranslated_lines(text: str) -> list[tuple[int, str]]:
         stripped = line.strip()
         if not stripped:
             continue
-        if TABLE_SEP_RE.match(line) or HTML_COMMENT_RE.match(line):
+        # A comment that spans lines is invisible to any line-wise pattern,
+        # so it is tracked like the code fence above: once one opens, its
+        # lines are comment, not prose, until it closes.
+        if in_comment:
+            if "-->" in line:
+                in_comment = False
+            continue
+        if stripped.startswith("<!--") and stripped.endswith("-->"):
+            continue
+        if "<!--" in line and "-->" not in line.split("<!--", 1)[1]:
+            in_comment = True
+            continue
+        if TABLE_SEP_RE.match(line):
             continue
         if ONLY_LINK_RE.match(line):
             continue

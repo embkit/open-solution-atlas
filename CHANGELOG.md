@@ -34,7 +34,8 @@ title. Both follow the shapes their best analogues already proved.
   English reader sees "Data & AI" instead of the raw path segment, and the
   catalog's facet labels follow the build language.
 
-Three defects surfaced while verifying this and are fixed with it:
+Three defects surfaced while verifying this, and a fourth arrived from
+CodeQL's review of the branch itself; all four are fixed with it:
 
 - The cross-language redirect and the language switch rebuilt the URL and
   dropped the fragment, so a deep link to `#spec` landed on the right page in
@@ -46,6 +47,10 @@ Three defects surfaced while verifying this and are fixed with it:
 - The prompt hint `<span>` was nested *inside* the inline prompt's
   `<textarea>`, where a textarea holds raw text: its markup was the first line
   of the preview and of every prompt the copy button handed out.
+- And CodeQL, on this branch: the translation checker's HTML-comment pattern
+  (`^\s*<!--.*-->\s*$`) could not match a comment containing a newline, so a
+  multi-line editorial note would be prose-checked as an untranslated line.
+  The comment is tracked as state now, the way a code fence already was.
 
 ### Added — the Chinese edition, end to end
 
