@@ -16,7 +16,7 @@ Open Solution Atlas 是一个内容与工具仓库，而非生产应用。其主
 - `tools/` - Python 验证器和构建器，以及注册表站点资源。
 - `tests/` - Python 工具链和生成站点的测试。
 - `templates/` - 可复用的方案包模板和脚手架说明。
-- `design-systems/` - 外置的设计系统参考：互操作协议与品牌对照库，站点 token 工作以此为映射对象。
+- `design-systems/` - 外置的设计系统参考：互操作协议与品牌对照库，站点 token 工作以此为映射对象。以英文**逐字提交**：属于外部参考材料，不属翻译语料，其中文树页面带未翻译横幅是设计之内的行为。
 - `.github/` - CI、Pages、CodeQL 和贡献工作流配置。
 - 根目录下的 `README*`、`CONTRIBUTING.md`、`CHANGELOG.md` 和许可证文件。
 

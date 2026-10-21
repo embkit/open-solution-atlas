@@ -25,6 +25,9 @@ Only tracked repository content is project source. In particular:
 - `templates/` - reusable pack template and scaffolding instructions.
 - `design-systems/` - vendored design-system reference: the interop protocol
   and the brand crosswalk library the site's token work maps against.
+  Committed *verbatim* in English: it is external reference material, not
+  part of the translated corpus, and its pages carry the untranslated-page
+  banner in the Chinese tree by design.
 - `.github/` - CI, Pages, CodeQL, and contribution workflow configuration.
 - Root `README*`, `CONTRIBUTING.md`, `CHANGELOG.md`, and license files.
 
