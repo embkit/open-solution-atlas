@@ -4,5 +4,5 @@
 # the verdict on code 0.16 accepted).
 -r requirements.txt
 pytest>=9.1.1,<10.0
-pytest-cov>=6.0,<7.0    # CI enforces a coverage floor (ci.yml, validate job)
-ruff==0.17.0            # CI lint (ci.yml, lint job) — keep in lockstep with local
+pytest-cov>=7.1.0,<8.0    # CI enforces a coverage floor (ci.yml, validate job)
+ruff==0.17.1            # CI lint (ci.yml, lint job) — keep in lockstep with local
