@@ -3,6 +3,6 @@
 # "passes locally, fails in CI" happens (ruff 0.17 added UP017, which changed
 # the verdict on code 0.16 accepted).
 -r requirements.txt
-pytest>=9.1.1,<10.0
-pytest-cov>=6.0,<7.0    # CI enforces a coverage floor (ci.yml, validate job)
-ruff==0.17.0            # CI lint (ci.yml, lint job) — keep in lockstep with local
+pytest>=9.2.0,<10.0
+pytest-cov>=7.1.0,<8.0    # CI enforces a coverage floor (ci.yml, validate job)
+ruff==0.17.3            # CI lint (ci.yml, lint job) — keep in lockstep with local
